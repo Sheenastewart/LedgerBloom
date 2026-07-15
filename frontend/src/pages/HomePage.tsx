@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { fetchHealth } from '../api/health'
 
@@ -32,7 +33,7 @@ export function HomePage() {
   }, [])
 
   return (
-    <main className="page">
+    <main className="home-page">
       <h1>LedgerBloom</h1>
       <p className="tagline">Smart budget and receipt tracker</p>
       <p className="status" data-testid="health-status" aria-live="polite">
@@ -40,6 +41,11 @@ export function HomePage() {
         {status === 'connected' && 'API connected'}
         {status === 'unavailable' && 'API unavailable'}
       </p>
+      <div className="home-actions">
+        <Link to="/categories" className="button button-primary">
+          Manage categories
+        </Link>
+      </div>
     </main>
   )
 }
