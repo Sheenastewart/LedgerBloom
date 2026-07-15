@@ -1,0 +1,26 @@
+# Root
+.env
+.env.local
+
+# Frontend local environment
+frontend/.env.local
+
+# Frontend build and dependencies
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+
+# Backend build
+backend/target/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Operating system
+.DS_Store
+
+# Logs
+*.log
+logs/

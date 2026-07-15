@@ -1,0 +1,56 @@
+:root {
+  color: #1d2a24;
+  background:
+    radial-gradient(circle at top left, #dcefdc 0%, transparent 45%),
+    linear-gradient(180deg, #f4f7f3 0%, #e7eee8 100%);
+  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.page {
+  width: min(36rem, 100%);
+  text-align: center;
+}
+
+.page h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 6vw, 3.5rem);
+  letter-spacing: -0.03em;
+}
+
+.tagline {
+  margin: 0.75rem 0 1.5rem;
+  color: #4c6356;
+}
+
+.status {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
