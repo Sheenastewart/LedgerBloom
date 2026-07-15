@@ -216,4 +216,46 @@ class IncomeEntryControllerTest {
 			.andExpect(jsonPath("$.message").exists())
 			.andExpect(jsonPath("$.path").value("/api/income/42"));
 	}
+
+	@Test
+	void listIncomeEntriesReturns200WhenDataExists() throws Exception {
+		when(incomeEntryService.findAll(isNull(), isNull(), isNull())).thenReturn(List.of(sampleResponse()));
+
+		mockMvc.perform(get("/api/income"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$[0].id").value(5))
+			.andExpect(jsonPath("$[0].description").value("Freelance payment"));
+	}
+
+	@Test
+	void unknownIncomeEntriesPathReturns404ResourceNotFound() throws Exception {
+		mockMvc.perform(get("/api/income-entries"))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.status").value(404))
+			.andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"))
+			.andExpect(jsonPath("$.message").value("The requested API resource was not found."))
+			.andExpect(jsonPath("$.path").value("/api/income-entries"))
+			.andExpect(jsonPath("$.timestamp").exists())
+			.andExpect(jsonPath("$.error").exists());
+	}
+
+	@Test
+	void arbitraryUnknownApiPathReturns404ResourceNotFound() throws Exception {
+		mockMvc.perform(get("/api/does-not-exist"))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"))
+			.andExpect(jsonPath("$.path").value("/api/does-not-exist"));
+	}
+
+	@Test
+	void unexpectedServiceFailureStillReturns500() throws Exception {
+		when(incomeEntryService.findAll(isNull(), isNull(), isNull()))
+			.thenThrow(new IllegalStateException("boom"));
+
+		mockMvc.perform(get("/api/income"))
+			.andExpect(status().isInternalServerError())
+			.andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"))
+			.andExpect(jsonPath("$.message").value("An unexpected error occurred"))
+			.andExpect(jsonPath("$.path").value("/api/income"));
+	}
 }

@@ -35,6 +35,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -376,6 +377,19 @@ public class GlobalExceptionHandler {
 			HttpStatus.BAD_REQUEST,
 			ErrorCode.INVALID_REQUEST,
 			"Malformed request body",
+			request.getRequestURI(),
+			null
+		);
+	}
+
+	@ExceptionHandler(NoResourceFoundException.class)
+	public ResponseEntity<ApiErrorResponse> handleNoResourceFound(
+			NoResourceFoundException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.NOT_FOUND,
+			ErrorCode.RESOURCE_NOT_FOUND,
+			"The requested API resource was not found.",
 			request.getRequestURI(),
 			null
 		);
