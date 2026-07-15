@@ -63,6 +63,9 @@ export function HomePage() {
         <Link to="/income" className="button button-secondary">
           Manage income
         </Link>
+        <Link to="/reports" className="button button-secondary">
+          View reports
+        </Link>
       </div>
     </main>
   )

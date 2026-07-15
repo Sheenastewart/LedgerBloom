@@ -2,9 +2,8 @@ import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiClientError } from '../../api/ApiClientError'
 import { AppRoutes } from '../../App'
-import * as budgetApi from './api/budgetApi'
+import * as reportsApi from './api/reportsApi'
 
 vi.mock('../../api/health', () => ({
   fetchHealth: vi.fn().mockResolvedValue({ status: 'UP', service: 'ledgerbloom-api' }),
@@ -60,8 +59,8 @@ vi.mock('../dashboard/api/dashboardApi', () => ({
   }),
 }))
 
-vi.mock('./api/budgetApi', () => ({
-  getMonthlyBudget: vi.fn(),
+vi.mock('../budgets/api/budgetApi', () => ({
+  getMonthlyBudget: vi.fn().mockRejectedValue({ code: 'BUDGET_NOT_FOUND' }),
   createMonthlyBudget: vi.fn(),
   updateMonthlyBudget: vi.fn(),
   deleteMonthlyBudget: vi.fn(),
@@ -69,7 +68,6 @@ vi.mock('./api/budgetApi', () => ({
   updateCategoryLimit: vi.fn(),
   deleteCategoryLimit: vi.fn(),
 }))
-
 
 vi.mock('../recurring/api/recurringApi', () => ({
   getRecurringExpenses: vi.fn().mockResolvedValue([]),
@@ -91,7 +89,7 @@ vi.mock('../recurringIncome/api/recurringIncomeApi', () => ({
   markRecurringIncomeReceived: vi.fn(),
 }))
 
-vi.mock('../reports/api/reportsApi', () => ({
+vi.mock('./api/reportsApi', () => ({
   getMonthlyComparison: vi.fn().mockResolvedValue({
     startYear: 2026,
     startMonth: 1,
@@ -117,25 +115,45 @@ vi.mock('../reports/api/reportsApi', () => ({
   }),
 }))
 
-vi.mock('../reports/api/exportsApi', () => ({
+vi.mock('./api/exportsApi', () => ({
   downloadMonthlyTransactionsCsv: vi.fn(),
   downloadMonthlySummaryCsv: vi.fn(),
   saveCsvDownload: vi.fn(),
 }))
 
-describe('Budget routes', () => {
+describe('Reports routes', () => {
   afterEach(() => {
     cleanup()
     vi.restoreAllMocks()
   })
 
   beforeEach(() => {
-    vi.mocked(budgetApi.getMonthlyBudget).mockRejectedValue(
-      new ApiClientError({ message: 'missing', code: 'BUDGET_NOT_FOUND', status: 404 }),
-    )
+    vi.mocked(reportsApi.getMonthlyComparison).mockResolvedValue({
+      startYear: 2026,
+      startMonth: 1,
+      endYear: 2026,
+      endMonth: 7,
+      monthCount: 7,
+      months: [],
+    })
+    vi.mocked(reportsApi.getYearToDate).mockResolvedValue({
+      year: 2026,
+      totals: { totalIncome: 0, totalExpenses: 0, netCashFlow: 0 },
+      averages: { averageIncome: 0, averageExpenses: 0, averageNetCashFlow: 0 },
+      highestIncomeMonth: null,
+      highestExpenseMonth: null,
+      bestNetCashFlowMonth: null,
+      worstNetCashFlowMonth: null,
+      totalBudgeted: 0,
+      totalBudgetRemaining: 0,
+      monthsOverBudget: 0,
+      spendingByCategory: [],
+      incomeBySource: [],
+      monthSummaries: [],
+    })
   })
 
-  it('navigates from Home to Budgets via nav and CTA', async () => {
+  it('navigates from Home to Reports via nav and CTA', async () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/']}>
@@ -144,11 +162,34 @@ describe('Budget routes', () => {
     )
 
     expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
-    await user.click(screen.getByRole('link', { name: 'Budgets' }))
-    expect(await screen.findByRole('heading', { name: 'Budgets' })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Reports' }))
+    expect(await screen.findByRole('heading', { name: 'Reports' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Home' }))
-    await user.click(screen.getByRole('link', { name: 'Manage budgets' }))
-    expect(await screen.findByRole('heading', { name: 'Budgets' })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'View reports' }))
+    expect(await screen.findByRole('heading', { name: 'Reports' })).toBeInTheDocument()
+  })
+
+  it('navigates between Trends, Year-to-date, and Monthly report from the overview', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/reports']}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Reports' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'View trends' }))
+    expect(await screen.findByRole('heading', { name: 'Trends' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'Year-to-date' }))
+    expect(await screen.findByRole('heading', { name: 'Year-to-date' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'Monthly report' }))
+    expect(await screen.findByRole('heading', { name: 'Monthly report' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'Overview' }))
+    expect(await screen.findByRole('heading', { name: 'Reports' })).toBeInTheDocument()
   })
 })

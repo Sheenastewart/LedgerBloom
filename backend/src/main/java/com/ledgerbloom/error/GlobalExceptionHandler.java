@@ -25,6 +25,9 @@ import com.ledgerbloom.recurringincome.InvalidRecurringIncomeDataException;
 import com.ledgerbloom.recurringincome.InvalidRecurringIncomeFilterException;
 import com.ledgerbloom.recurringincome.RecurringIncomeNotFoundException;
 import com.ledgerbloom.recurringincome.RecurringIncomeReceiptConflictException;
+import com.ledgerbloom.report.ExportGenerationFailedException;
+import com.ledgerbloom.report.InvalidReportPeriodException;
+import com.ledgerbloom.report.ReportRangeTooLargeException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.List;
@@ -321,6 +324,45 @@ public class GlobalExceptionHandler {
 		return build(
 			HttpStatus.BAD_REQUEST,
 			ErrorCode.INVALID_REQUEST,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
+	@ExceptionHandler(InvalidReportPeriodException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidReportPeriod(
+			InvalidReportPeriodException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_REPORT_PERIOD,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
+	@ExceptionHandler(ReportRangeTooLargeException.class)
+	public ResponseEntity<ApiErrorResponse> handleReportRangeTooLarge(
+			ReportRangeTooLargeException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.REPORT_RANGE_TOO_LARGE,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
+	@ExceptionHandler(ExportGenerationFailedException.class)
+	public ResponseEntity<ApiErrorResponse> handleExportGenerationFailed(
+			ExportGenerationFailedException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.INTERNAL_SERVER_ERROR,
+			ErrorCode.EXPORT_GENERATION_FAILED,
 			ex.getMessage(),
 			request.getRequestURI(),
 			null

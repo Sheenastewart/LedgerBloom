@@ -94,6 +94,18 @@ Stage 6 does **not** include automatic background expense creation, reminders/no
 
 Stage 7 does **not** include email/SMS/push notifications, scheduled jobs, background auto-posting, charts, authentication, or bank sync.
 
+### Stage 8 — Reporting, Trends, and Exports
+
+- `GET /api/reports/monthly-comparison` for multi-month comparisons (max 24 months) with per-month totals, budget status, and recurring cash-flow projections
+- `GET /api/reports/year-to-date` aggregating January through the current month (or all 12 months for past years): totals, averages, highest/best/worst months, budget totals, category/source breakdowns
+- CSV exports: `GET /api/exports/monthly-transactions.csv` (raw ledger rows) and `GET /api/exports/monthly-summary.csv` (multi-section summary) for a selected month
+- `Content-Disposition` response header exposed via CORS so browser clients can read the suggested filename
+- CSV cell escaping guards against formula injection (leading `=`, `+`, `-`, `@` are neutralized with a leading `'`)
+- Frontend routes: `/reports` (overview), `/reports/trends`, `/reports/year-to-date`, `/reports/monthly` (printable report with print CSS)
+- Reports nav link and CSV download actions in the SPA
+
+Stage 8 does **not** include PDF libraries, scheduled/emailed reports, or chart libraries (browser print-to-PDF is supported).
+
 ## Repository structure
 
 ```text
@@ -748,17 +760,50 @@ The backend allows only:
 
 No wildcard origin is configured.
 
+## Reporting and Exports API (Stage 8)
+
+### Reports
+
+| Method | Path | Success |
+| --- | --- | --- |
+| `GET` | `/api/reports/monthly-comparison?startYear=&startMonth=&endYear=&endMonth=` | `200` / `400` invalid period or range too large |
+| `GET` | `/api/reports/year-to-date?year=` | `200` / `400` invalid or future year |
+
+`monthly-comparison` spans a maximum of 24 inclusive months (`REPORT_RANGE_TOO_LARGE` beyond that). Each month row includes actual income/expenses, net cash flow, optional budget status (`null` when no budget exists for that month), and recurring-driven cash-flow projections (mirrors the Stage 7 planning logic).
+
+`year-to-date` covers January through December for past years, or January through the current month for the current year. It aggregates totals, averages, highest/best/worst months by income, expenses, and net cash flow, year-wide budget totals, and category/source breakdowns.
+
+### Exports
+
+| Method | Path | Success |
+| --- | --- | --- |
+| `GET` | `/api/exports/monthly-transactions.csv?year=&month=` | `200` CSV attachment / `400` invalid period |
+| `GET` | `/api/exports/monthly-summary.csv?year=&month=` | `200` CSV attachment / `400` invalid period / `500` `EXPORT_GENERATION_FAILED` |
+
+`monthly-transactions.csv` lists every income and expense row for the month (newest date first, `EXPENSE` before `INCOME` on ties) with columns `Type,Date,Description,SourceOrMerchant,Category,Amount,Notes`. `monthly-summary.csv` is a multi-section file: month metrics, category spending, and income by source.
+
+Both exports respond with `Content-Type: text/csv; charset=UTF-8` and `Content-Disposition: attachment; filename="ledgerbloom-<report>-YYYY-MM.csv"`. CORS exposes `Content-Disposition` so browser clients can read the filename.
+
+Stable codes added in Stage 8: `INVALID_REPORT_PERIOD`, `REPORT_RANGE_TOO_LARGE`, `EXPORT_GENERATION_FAILED`.
+
+### CSV formula-injection protection
+
+Any cell value beginning with `=`, `+`, `-`, or `@` (after trimming) is prefixed with a single quote `'` before being written, so spreadsheet applications (Excel, Google Sheets, LibreOffice) render it as literal text instead of evaluating it as a formula. Cells containing a comma, quote, or newline are additionally wrapped in double quotes with embedded quotes doubled, per standard CSV escaping. See `com.ledgerbloom.report.CsvUtil`.
+
+### Current limitations
+
+- No PDF library (use browser print / Save as PDF), scheduled or emailed reports, or chart libraries
+
 ## Features intentionally deferred
 
-Deferred beyond Stage 7:
+Deferred beyond Stage 8:
 
-- Multi-month / year-to-date comparisons and charts
+- Charts / chart libraries and server-generated PDF exports
 - Category detail page, search, pagination, sorting UI controls
 - Recurring budgets / budget rollover / savings goals
 - Email, SMS, or push reminders for recurring schedules
 - Authentication and users
 - Receipt upload and OCR
-- Reports and exports
 - Background jobs / automatic posting of recurring ledger rows
 - AWS or other cloud deployment
 - Spring Security and Actuator

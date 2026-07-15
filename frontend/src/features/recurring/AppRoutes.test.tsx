@@ -89,6 +89,38 @@ vi.mock('../recurringIncome/api/recurringIncomeApi', () => ({
   markRecurringIncomeReceived: vi.fn(),
 }))
 
+vi.mock('../reports/api/reportsApi', () => ({
+  getMonthlyComparison: vi.fn().mockResolvedValue({
+    startYear: 2026,
+    startMonth: 1,
+    endYear: 2026,
+    endMonth: 7,
+    monthCount: 7,
+    months: [],
+  }),
+  getYearToDate: vi.fn().mockResolvedValue({
+    year: 2026,
+    totals: { totalIncome: 0, totalExpenses: 0, netCashFlow: 0 },
+    averages: { averageIncome: 0, averageExpenses: 0, averageNetCashFlow: 0 },
+    highestIncomeMonth: null,
+    highestExpenseMonth: null,
+    bestNetCashFlowMonth: null,
+    worstNetCashFlowMonth: null,
+    totalBudgeted: 0,
+    totalBudgetRemaining: 0,
+    monthsOverBudget: 0,
+    spendingByCategory: [],
+    incomeBySource: [],
+    monthSummaries: [],
+  }),
+}))
+
+vi.mock('../reports/api/exportsApi', () => ({
+  downloadMonthlyTransactionsCsv: vi.fn(),
+  downloadMonthlySummaryCsv: vi.fn(),
+  saveCsvDownload: vi.fn(),
+}))
+
 describe('Recurring routes', () => {
   afterEach(() => {
     cleanup()
