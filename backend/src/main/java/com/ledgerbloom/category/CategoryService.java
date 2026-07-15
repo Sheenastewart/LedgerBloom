@@ -1,5 +1,6 @@
 package com.ledgerbloom.category;
 
+import com.ledgerbloom.expense.ExpenseRepository;
 import java.util.List;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -10,9 +11,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class CategoryService {
 
 	private final CategoryRepository categoryRepository;
+	private final ExpenseRepository expenseRepository;
 
-	public CategoryService(CategoryRepository categoryRepository) {
+	public CategoryService(CategoryRepository categoryRepository, ExpenseRepository expenseRepository) {
 		this.categoryRepository = categoryRepository;
+		this.expenseRepository = expenseRepository;
 	}
 
 	@Transactional(readOnly = true)
@@ -49,9 +52,16 @@ public class CategoryService {
 
 	public void delete(Long id) {
 		Category category = getCategoryOrThrow(id);
-		categoryRepository.delete(category);
-		// Deletion does not check "category in use" yet. That rule is deferred until
-		// Expense relationships and foreign-key restrictions exist.
+		if (expenseRepository.existsByCategory_Id(id)) {
+			throw new CategoryInUseException(id);
+		}
+		try {
+			categoryRepository.delete(category);
+			categoryRepository.flush();
+		}
+		catch (DataIntegrityViolationException ex) {
+			throw new CategoryInUseException(id);
+		}
 	}
 
 	private Category getCategoryOrThrow(Long id) {

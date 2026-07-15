@@ -1,0 +1,254 @@
+package com.ledgerbloom.expense;
+
+import com.ledgerbloom.category.Category;
+import com.ledgerbloom.category.CategoryNotFoundException;
+import com.ledgerbloom.category.CategoryRepository;
+import java.math.BigDecimal;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.List;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@Transactional
+public class ExpenseService {
+
+	private static final BigDecimal MAX_AMOUNT = new BigDecimal("9999999999.99");
+
+	private final ExpenseRepository expenseRepository;
+	private final CategoryRepository categoryRepository;
+
+	public ExpenseService(ExpenseRepository expenseRepository, CategoryRepository categoryRepository) {
+		this.expenseRepository = expenseRepository;
+		this.categoryRepository = categoryRepository;
+	}
+
+	@Transactional(readOnly = true)
+	public List<ExpenseResponse> findAll(Integer year, Integer month, Long categoryId) {
+		validateFilter(year, month, categoryId);
+
+		boolean hasMonth = year != null || month != null;
+		boolean hasCategory = categoryId != null;
+
+		List<Expense> expenses;
+		if (hasMonth && hasCategory) {
+			LocalDate start = YearMonth.of(year, month).atDay(1);
+			LocalDate endExclusive = start.plusMonths(1);
+			expenses = expenseRepository
+				.findByCategory_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+					categoryId,
+					start,
+					endExclusive
+				);
+		}
+		else if (hasMonth) {
+			LocalDate start = YearMonth.of(year, month).atDay(1);
+			LocalDate endExclusive = start.plusMonths(1);
+			expenses = expenseRepository
+				.findByExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+					start,
+					endExclusive
+				);
+		}
+		else if (hasCategory) {
+			expenses = expenseRepository.findByCategory_IdOrderByExpenseDateDescIdDesc(categoryId);
+		}
+		else {
+			expenses = expenseRepository.findAllByOrderByExpenseDateDescIdDesc();
+		}
+
+		return expenses.stream().map(this::toResponse).toList();
+	}
+
+	@Transactional(readOnly = true)
+	public ExpenseResponse findById(Long id) {
+		return toResponse(getExpenseOrThrow(id));
+	}
+
+	public ExpenseResponse create(ExpenseCreateRequest request) {
+		NormalizedExpenseData data = normalize(request.description(), request.merchant(), request.amount(),
+			request.expenseDate(), request.categoryId(), request.notes());
+		Category category = getCategoryOrThrow(data.categoryId());
+
+		Expense expense = new Expense(
+			data.description(),
+			data.merchant(),
+			data.amount(),
+			data.expenseDate(),
+			data.notes(),
+			category
+		);
+		return toResponse(saveExpense(expense));
+	}
+
+	public ExpenseResponse update(Long id, ExpenseUpdateRequest request) {
+		Expense expense = getExpenseOrThrow(id);
+		NormalizedExpenseData data = normalize(request.description(), request.merchant(), request.amount(),
+			request.expenseDate(), request.categoryId(), request.notes());
+		Category category = getCategoryOrThrow(data.categoryId());
+
+		expense.setDescription(data.description());
+		expense.setMerchant(data.merchant());
+		expense.setAmount(data.amount());
+		expense.setExpenseDate(data.expenseDate());
+		expense.setNotes(data.notes());
+		expense.setCategory(category);
+		return toResponse(saveExpense(expense));
+	}
+
+	public void delete(Long id) {
+		Expense expense = getExpenseOrThrow(id);
+		expenseRepository.delete(expense);
+	}
+
+	private Expense saveExpense(Expense expense) {
+		try {
+			return expenseRepository.saveAndFlush(expense);
+		}
+		catch (DataIntegrityViolationException ex) {
+			if (isForeignKeyViolation(ex)) {
+				// Expense has one FK (category_id). SQLState 23503 indicates that constraint failed,
+				// typically because the category was deleted after lookup but before flush.
+				throw new CategoryNotFoundException(expense.getCategory().getId());
+			}
+			throw ex;
+		}
+	}
+
+	/**
+	 * Detects PostgreSQL foreign-key violations via JDBC SQLState 23503 without inspecting
+	 * constraint names or database error text.
+	 */
+	private static boolean isForeignKeyViolation(DataIntegrityViolationException ex) {
+		Throwable current = ex;
+		while (current != null) {
+			if (current instanceof SQLException sqlException && "23503".equals(sqlException.getSQLState())) {
+				return true;
+			}
+			current = current.getCause();
+		}
+		return false;
+	}
+
+	private Expense getExpenseOrThrow(Long id) {
+		return expenseRepository.findById(id)
+			.orElseThrow(() -> new ExpenseNotFoundException(id));
+	}
+
+	private Category getCategoryOrThrow(Long categoryId) {
+		return categoryRepository.findById(categoryId)
+			.orElseThrow(() -> new CategoryNotFoundException(categoryId));
+	}
+
+	private void validateFilter(Integer year, Integer month, Long categoryId) {
+		boolean yearPresent = year != null;
+		boolean monthPresent = month != null;
+		if (yearPresent != monthPresent) {
+			throw new InvalidExpenseFilterException("year and month must both be provided together");
+		}
+		if (monthPresent) {
+			if (month < 1 || month > 12) {
+				throw new InvalidExpenseFilterException("month must be between 1 and 12");
+			}
+			if (year < 1 || year > 9999) {
+				throw new InvalidExpenseFilterException("year must be a positive value between 1 and 9999");
+			}
+		}
+		if (categoryId != null && categoryId <= 0) {
+			throw new InvalidExpenseFilterException("categoryId must be positive");
+		}
+	}
+
+	private NormalizedExpenseData normalize(
+			String description,
+			String merchant,
+			BigDecimal amount,
+			LocalDate expenseDate,
+			Long categoryId,
+			String notes) {
+		String normalizedDescription = description == null ? "" : description.trim();
+		if (normalizedDescription.isBlank()) {
+			throw new InvalidExpenseDataException("Description is required");
+		}
+		if (normalizedDescription.length() > 160) {
+			throw new InvalidExpenseDataException("Description must be at most 160 characters");
+		}
+
+		String normalizedMerchant = normalizeOptionalText(merchant, 120, "Merchant");
+		String normalizedNotes = normalizeOptionalText(notes, null, "Notes");
+		validateAmount(amount);
+
+		if (expenseDate == null) {
+			throw new InvalidExpenseDataException("Expense date is required");
+		}
+		if (categoryId == null || categoryId <= 0) {
+			throw new InvalidExpenseDataException("Category ID must be a positive value");
+		}
+
+		return new NormalizedExpenseData(
+			normalizedDescription,
+			normalizedMerchant,
+			amount,
+			expenseDate,
+			categoryId,
+			normalizedNotes
+		);
+	}
+
+	private String normalizeOptionalText(String value, Integer maxLength, String fieldLabel) {
+		if (value == null) {
+			return null;
+		}
+		String normalized = value.trim();
+		if (normalized.isBlank()) {
+			return null;
+		}
+		if (maxLength != null && normalized.length() > maxLength) {
+			throw new InvalidExpenseDataException(fieldLabel + " must be at most " + maxLength + " characters");
+		}
+		return normalized;
+	}
+
+	private void validateAmount(BigDecimal amount) {
+		if (amount == null) {
+			throw new InvalidExpenseDataException("Amount is required");
+		}
+		if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+			throw new InvalidExpenseDataException("Amount must be greater than zero");
+		}
+		if (amount.scale() > 2) {
+			throw new InvalidExpenseDataException("Amount must have at most 2 decimal places");
+		}
+		if (amount.compareTo(MAX_AMOUNT) > 0) {
+			throw new InvalidExpenseDataException("Amount must fit NUMERIC(12,2)");
+		}
+	}
+
+	private ExpenseResponse toResponse(Expense expense) {
+		Category category = expense.getCategory();
+		return new ExpenseResponse(
+			expense.getId(),
+			expense.getDescription(),
+			expense.getMerchant(),
+			expense.getAmount(),
+			expense.getExpenseDate(),
+			new ExpenseCategorySummary(category.getId(), category.getName()),
+			expense.getNotes(),
+			expense.getCreatedAt(),
+			expense.getUpdatedAt()
+		);
+	}
+
+	private record NormalizedExpenseData(
+			String description,
+			String merchant,
+			BigDecimal amount,
+			LocalDate expenseDate,
+			Long categoryId,
+			String notes
+	) {
+	}
+}
