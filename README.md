@@ -20,7 +20,14 @@ LedgerBloom is a smart budget and receipt tracker portfolio application.
 - Case-insensitive unique category names
 - Structured API error responses
 
-Stage 1A does **not** include a category frontend, expenses, budgets, authentication, receipts, OCR, reports, notifications, exports, or cloud deployment.
+### Stage 1B — Category Management UI (frontend)
+
+- Primary navigation in `AppLayout` (Home, Categories)
+- Category list, create, edit, and delete flows
+- Native `fetch` client against Stage 1A endpoints
+- Client-side form validation plus structured API error display
+
+Stage 1B does **not** include a category detail page, search/pagination/sorting, expenses, budgets, authentication, receipts, OCR, reports, notifications, exports, or cloud deployment.
 
 ## Repository structure
 
@@ -183,9 +190,35 @@ Example response:
 
 This is an API-process health check. It does not inspect PostgreSQL availability.
 
+## Category UI (Stage 1B)
+
+With PostgreSQL, the backend, and the Vite frontend running:
+
+1. Open `http://localhost:5173`
+2. Use the primary nav (Home / Categories) or the home page **Manage categories** CTA
+3. Create, edit, and delete categories through the UI
+
+### Frontend routes
+
+| Path | Page |
+| --- | --- |
+| `/` | Home (health check + link to Categories) |
+| `/categories` | Category list |
+| `/categories/new` | Create category |
+| `/categories/:id/edit` | Edit category (`:id` must be a positive safe integer) |
+
+Invalid edit IDs (missing, `0`, negative, decimal, non-numeric, or unsafe integers) show a not-found state **without** calling the API.
+
+### Frontend layout notes
+
+- `CategoriesPage` owns loading, retries, list data, delete confirmation/pending state, and success/error feedback
+- `CategoryList` is presentational (categories, deleting id, delete handler)
+- Create/update success messages travel through React Router location state and are cleared with `replace` (they do not survive a full refresh)
+- Shared API helpers live in `frontend/src/api/`; category endpoint functions stay in `frontend/src/features/categories/api/`
+
 ## Category API (Stage 1A)
 
-There is **no category UI** in Stage 1A. Use the backend endpoints below.
+The Category UI consumes these backend endpoints.
 
 ### Endpoints
 
@@ -289,9 +322,9 @@ No wildcard origin is configured.
 
 ## Features intentionally deferred
 
-Deferred beyond Stage 1A:
+Deferred beyond Stage 1B:
 
-- Category frontend UI
+- Category detail page, search, pagination, sorting UI controls
 - Expenses (including “category is in use” delete protection)
 - Budgets
 - Authentication and users

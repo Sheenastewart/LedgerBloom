@@ -1,6 +1,15 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { HomePage } from './HomePage'
+
+function renderHome() {
+  return render(
+    <MemoryRouter>
+      <HomePage />
+    </MemoryRouter>,
+  )
+}
 
 describe('HomePage', () => {
   afterEach(() => {
@@ -18,7 +27,7 @@ describe('HomePage', () => {
       }),
     )
 
-    render(<HomePage />)
+    renderHome()
 
     expect(screen.getByTestId('health-status')).toHaveTextContent(
       'Checking API connection...',
@@ -27,12 +36,16 @@ describe('HomePage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('health-status')).toHaveTextContent('API connected')
     })
+    expect(screen.getByRole('link', { name: 'Manage categories' })).toHaveAttribute(
+      'href',
+      '/categories',
+    )
   })
 
   it('shows API unavailable when the health request fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network error')))
 
-    render(<HomePage />)
+    renderHome()
 
     await waitFor(() => {
       expect(screen.getByTestId('health-status')).toHaveTextContent('API unavailable')
