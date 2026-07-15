@@ -46,9 +46,17 @@ Stage 2A does **not** include an Expense frontend, monthly aggregate totals, bud
 - Optional filters by month/year and/or category
 - Native `fetch` client against Stage 2A endpoints
 - Client-side amount validation plus structured API error display
-- Home page **Coming soon** card notes that Income is planned for a future stage
 
-Stage 2B does **not** include Income, monthly totals, budgets, search/pagination, charts, receipts, authentication, or exports.
+Stage 2B originally deferred Income; Income is delivered in Stage 3 below.
+
+### Stage 3 — Income Management (full stack)
+
+- Flyway `V3__create_income_entries_table.sql` (`income_entries`, separate from expenses)
+- Income CRUD REST API with optional year/month and/or source filters
+- Income UI: list, create, edit, delete, filters, nav link, home CTA
+- Shared frontend money helpers extracted for reuse by Expenses and Income
+
+Stage 3 does **not** include monthly totals, net cash flow, dashboards, budgets, recurring income, authentication, or bank connections.
 
 ## Repository structure
 
@@ -309,7 +317,7 @@ With PostgreSQL, the backend, and the Vite frontend running:
 
 | Path | Page |
 | --- | --- |
-| `/` | Home (health check, CTAs, Income coming-soon card) |
+| `/` | Home (health check + CTAs for Categories, Expenses, Income) |
 | `/categories` | Category list |
 | `/categories/new` | Create category |
 | `/categories/:id/edit` | Edit category |
@@ -355,9 +363,71 @@ Actions: create, edit, delete (with native confirmation), filter, clear filters,
 
 ### Current limitations
 
-- No Income tracking, monthly totals, budgets, search, pagination, charts, receipts, authentication, or exports
+- No monthly totals, budgets, search, pagination, charts, receipts, authentication, or exports
 - No date-picker library; filters use month dropdown + year number input
 - List order follows the backend (newest expense date first)
+
+## Income (Stage 3)
+
+With PostgreSQL, the backend, and the Vite frontend running:
+
+1. Open `http://localhost:5173`
+2. Use the primary nav (Home / Categories / Expenses / Income) or the home page **Manage income** CTA
+3. Create, edit, delete, and filter income entries
+
+### Frontend routes
+
+| Path | Page |
+| --- | --- |
+| `/income` | Income list with filters |
+| `/income/new` | Create income |
+| `/income/:id/edit` | Edit income (`:id` must be a positive safe integer) |
+
+### Supported fields and actions
+
+| Field | Create/Edit | List display |
+| --- | --- | --- |
+| Description | Required, max 160 | Yes |
+| Source | Required, max 120 | Yes |
+| Amount | Required, > 0, max 10 digits + 2 decimals | Formatted currency |
+| Income date | Required (`YYYY-MM-DD`) | Yes |
+| Notes | Optional | When present |
+
+Actions: create, edit, delete (native confirmation), filter by month/year and/or source, clear filters, retry on load failure.
+
+### Filters
+
+- Month (January–December) and year must be selected together
+- Source is a free-text filter (case-insensitive on the API)
+- Apply sends validated query params; Clear resets filters
+- Active filters are preserved after delete and Retry
+
+### Income API endpoints
+
+| Method | Path | Success |
+| --- | --- | --- |
+| `GET` | `/api/income` | `200` — newest `incomeDate`, then `id` descending |
+| `GET` | `/api/income/{id}` | `200` / `404` |
+| `POST` | `/api/income` | `201` + `Location` / `400` |
+| `PUT` | `/api/income/{id}` | `200` / `400` / `404` |
+| `DELETE` | `/api/income/{id}` | `204` / `404` |
+
+Optional filters on `GET /api/income`: `year` + `month` together, and/or `source` (trimmed; blank treated as absent; case-insensitive).
+
+### Flyway V3
+
+Migration `V3__create_income_entries_table.sql` creates:
+
+- `income_entries` (`id`, `description`, `source`, `amount`, `income_date`, `notes`, `created_at`, `updated_at`)
+- check `ck_income_entries_amount_positive` (`amount > 0`)
+- indexes `ix_income_entries_income_date`, `ix_income_entries_source`, `ix_income_entries_income_date_source`
+- No foreign key to categories or expenses
+
+### Current limitations
+
+- No monthly totals or net cash flow yet (planned as a later reporting stage that will combine separate Income and Expense totals)
+- No budgets, recurring income, authentication, bank connections, receipts, search, or pagination
+- Source is free text (no dedicated source table in this stage)
 
 ## Expense API (Stage 2A)
 
@@ -508,14 +578,12 @@ No wildcard origin is configured.
 
 ## Features intentionally deferred
 
-Deferred beyond Stage 2A:
+Deferred beyond Stage 3:
 
-- Expense frontend UI
-- Monthly aggregate totals (future reporting will combine separate Expense and Income totals)
-- Income management API and UI (planned as a separate controlled stage before monthly financial summaries; Income will remain its own backend feature and database table — not a generic Transaction entity)
+- Monthly aggregate totals and net cash flow (future reporting will combine separate Expense and Income totals: monthly income − monthly expenses)
 - Category detail page, search, pagination, sorting UI controls
 - Budgets
-- Recurring expenses / subscriptions
+- Recurring expenses / subscriptions / recurring income
 - Authentication and users
 - Receipt upload and OCR
 - Reports and exports

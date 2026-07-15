@@ -44,8 +44,11 @@ describe('HomePage', () => {
       'href',
       '/expenses',
     )
-    expect(screen.getByRole('heading', { name: 'Coming soon' })).toBeInTheDocument()
-    expect(screen.getByText(/Income tracking will be added in a future stage/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Manage income' })).toHaveAttribute(
+      'href',
+      '/income',
+    )
+    expect(screen.queryByRole('heading', { name: 'Coming soon' })).not.toBeInTheDocument()
   })
 
   it('shows API unavailable when the health request fails', async () => {

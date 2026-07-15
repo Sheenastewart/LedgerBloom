@@ -7,6 +7,9 @@ import com.ledgerbloom.category.InvalidCategoryDataException;
 import com.ledgerbloom.expense.ExpenseNotFoundException;
 import com.ledgerbloom.expense.InvalidExpenseDataException;
 import com.ledgerbloom.expense.InvalidExpenseFilterException;
+import com.ledgerbloom.income.IncomeEntryNotFoundException;
+import com.ledgerbloom.income.InvalidIncomeDataException;
+import com.ledgerbloom.income.InvalidIncomeFilterException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.List;
@@ -33,6 +36,19 @@ public class GlobalExceptionHandler {
 			ExpenseNotFoundException ex,
 			HttpServletRequest request) {
 		return build(HttpStatus.NOT_FOUND, ErrorCode.EXPENSE_NOT_FOUND, ex.getMessage(), request.getRequestURI(), null);
+	}
+
+	@ExceptionHandler(IncomeEntryNotFoundException.class)
+	public ResponseEntity<ApiErrorResponse> handleIncomeEntryNotFound(
+			IncomeEntryNotFoundException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.NOT_FOUND,
+			ErrorCode.INCOME_ENTRY_NOT_FOUND,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
 	}
 
 	@ExceptionHandler(CategoryNameAlreadyExistsException.class)
@@ -87,9 +103,35 @@ public class GlobalExceptionHandler {
 		);
 	}
 
+	@ExceptionHandler(InvalidIncomeDataException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidIncomeData(
+			InvalidIncomeDataException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_INCOME_DATA,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
 	@ExceptionHandler(InvalidExpenseFilterException.class)
 	public ResponseEntity<ApiErrorResponse> handleInvalidExpenseFilter(
 			InvalidExpenseFilterException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_REQUEST,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
+	@ExceptionHandler(InvalidIncomeFilterException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidIncomeFilter(
+			InvalidIncomeFilterException ex,
 			HttpServletRequest request) {
 		return build(
 			HttpStatus.BAD_REQUEST,

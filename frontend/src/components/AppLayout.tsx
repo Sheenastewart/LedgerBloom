@@ -23,6 +23,12 @@ export function AppLayout() {
           >
             Expenses
           </NavLink>
+          <NavLink
+            to="/income"
+            className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+          >
+            Income
+          </NavLink>
         </nav>
       </header>
       <Outlet />

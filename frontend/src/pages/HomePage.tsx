@@ -48,15 +48,10 @@ export function HomePage() {
         <Link to="/expenses" className="button button-secondary">
           Manage expenses
         </Link>
+        <Link to="/income" className="button button-secondary">
+          Manage income
+        </Link>
       </div>
-
-      <section className="coming-soon-card" aria-labelledby="coming-soon-heading">
-        <h2 id="coming-soon-heading">Coming soon</h2>
-        <p>
-          Income tracking will be added in a future stage. LedgerBloom currently supports
-          categories and expenses only.
-        </p>
-      </section>
     </main>
   )
 }

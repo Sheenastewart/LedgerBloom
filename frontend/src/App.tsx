@@ -4,6 +4,8 @@ import { CategoriesPage } from './features/categories/pages/CategoriesPage'
 import { CategoryFormPage } from './features/categories/pages/CategoryFormPage'
 import { ExpenseFormPage } from './features/expenses/pages/ExpenseFormPage'
 import { ExpensesPage } from './features/expenses/pages/ExpensesPage'
+import { IncomeFormPage } from './features/income/pages/IncomeFormPage'
+import { IncomePage } from './features/income/pages/IncomePage'
 import { HomePage } from './pages/HomePage'
 
 export function AppRoutes() {
@@ -17,6 +19,9 @@ export function AppRoutes() {
         <Route path="/expenses" element={<ExpensesPage />} />
         <Route path="/expenses/new" element={<ExpenseFormPage mode="create" />} />
         <Route path="/expenses/:id/edit" element={<ExpenseFormPage mode="edit" />} />
+        <Route path="/income" element={<IncomePage />} />
+        <Route path="/income/new" element={<IncomeFormPage mode="create" />} />
+        <Route path="/income/:id/edit" element={<IncomeFormPage mode="edit" />} />
       </Route>
     </Routes>
   )
