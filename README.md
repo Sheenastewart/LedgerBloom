@@ -84,6 +84,16 @@ Stage 5 does **not** include recurring budgets, rollovers, savings goals, notifi
 
 Stage 6 does **not** include automatic background expense creation, reminders/notifications, authentication, bank integrations, receipts, OCR, or recurring income.
 
+### Stage 7 — Cash Flow Planning (full stack)
+
+- V6 `recurring_income` table for expected income schedules (separate from `income_entries`)
+- Recurring Income CRUD + upcoming + mark-received creating a real IncomeEntry only after confirmation
+- Required `expectedNextIncomeDate` on mark-received (409 conflict on stale/duplicate)
+- Dashboard **Cash Flow Planning** section: expected income/obligations, projected cash flow, upcoming lists for the selected month
+- In-app overdue / due today / due soon labels on recurring expense and income UIs
+
+Stage 7 does **not** include email/SMS/push notifications, scheduled jobs, background auto-posting, charts, authentication, or bank sync.
+
 ## Repository structure
 
 ```text
@@ -740,17 +750,16 @@ No wildcard origin is configured.
 
 ## Features intentionally deferred
 
-Deferred beyond Stage 6:
+Deferred beyond Stage 7:
 
 - Multi-month / year-to-date comparisons and charts
 - Category detail page, search, pagination, sorting UI controls
 - Recurring budgets / budget rollover / savings goals
-- Recurring income
-- Email or push reminders for recurring expenses
+- Email, SMS, or push reminders for recurring schedules
 - Authentication and users
 - Receipt upload and OCR
 - Reports and exports
-- Notifications
+- Background jobs / automatic posting of recurring ledger rows
 - AWS or other cloud deployment
 - Spring Security and Actuator
 

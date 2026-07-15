@@ -15,6 +15,7 @@ public record MonthlyDashboardResponse(
 		List<SourceIncomeTotal> incomeBySource,
 		LargestExpenseSummary largestExpense,
 		LargestIncomeSummary largestIncome,
-		DashboardBudgetSummary budget
+		DashboardBudgetSummary budget,
+		DashboardCashFlowPlanning planning
 ) {
 }

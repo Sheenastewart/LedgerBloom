@@ -208,6 +208,85 @@ export function DashboardPage() {
             )}
           </section>
 
+          <section className="dashboard-section" aria-labelledby="cash-flow-planning-heading">
+            <h2 id="cash-flow-planning-heading">Cash Flow Planning</h2>
+            <p className="page-subtitle">
+              Estimates for this month based on active recurring schedules. Not a guarantee of cash
+              received or spent.
+            </p>
+            <div className="dashboard-summary-grid">
+              <article className="dashboard-card">
+                <h2>Expected income</h2>
+                <p className="dashboard-card-value">
+                  {formatCurrency(dashboard.planning.expectedIncome)}
+                </p>
+              </article>
+              <article className="dashboard-card">
+                <h2>Expected obligations</h2>
+                <p className="dashboard-card-value">
+                  {formatCurrency(dashboard.planning.expectedExpenses)}
+                </p>
+              </article>
+              <article className="dashboard-card">
+                <h2>Projected cash flow</h2>
+                <p
+                  className={
+                    dashboard.planning.projectedCashFlow < 0
+                      ? 'dashboard-card-value negative'
+                      : 'dashboard-card-value'
+                  }
+                >
+                  {formatCurrency(dashboard.planning.projectedCashFlow)}
+                </p>
+              </article>
+              <article className="dashboard-card">
+                <h2>Upcoming income</h2>
+                <p className="dashboard-card-value">{dashboard.planning.upcomingIncomeCount}</p>
+              </article>
+              <article className="dashboard-card">
+                <h2>Upcoming payments</h2>
+                <p className="dashboard-card-value">{dashboard.planning.upcomingExpenseCount}</p>
+              </article>
+            </div>
+
+            <div className="dashboard-planning-lists">
+              <div>
+                <h3>Upcoming income</h3>
+                {dashboard.planning.upcomingIncomeItems.length === 0 ? (
+                  <p className="dashboard-empty" role="status">
+                    No scheduled recurring income in this month.
+                  </p>
+                ) : (
+                  <ul className="dashboard-compact-list">
+                    {dashboard.planning.upcomingIncomeItems.map((item) => (
+                      <li key={item.id}>
+                        <strong>{item.description}</strong> · {formatCurrency(item.amount)} ·{' '}
+                        {formatIsoDate(item.nextIncomeDate)} · {item.source}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div>
+                <h3>Upcoming obligations</h3>
+                {dashboard.planning.upcomingExpenseItems.length === 0 ? (
+                  <p className="dashboard-empty" role="status">
+                    No scheduled recurring payments in this month.
+                  </p>
+                ) : (
+                  <ul className="dashboard-compact-list">
+                    {dashboard.planning.upcomingExpenseItems.map((item) => (
+                      <li key={item.id}>
+                        <strong>{item.description}</strong> · {formatCurrency(item.amount)} ·{' '}
+                        {formatIsoDate(item.nextPaymentDate)} · {item.categoryName}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </section>
+
           <section className="dashboard-section" aria-labelledby="spending-by-category-heading">
             <h2 id="spending-by-category-heading">Spending by category</h2>
             {dashboard.spendingByCategory.length === 0 ? (

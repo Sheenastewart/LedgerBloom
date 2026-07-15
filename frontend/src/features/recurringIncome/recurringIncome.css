@@ -1,0 +1,14 @@
+@import '../recurring/recurring.css';
+
+.recurring-income-page {
+  width: min(52rem, 100%);
+  margin: 0 auto;
+}
+
+.recurring-status.due-today {
+  color: #7a5a10;
+}
+
+.recurring-status.upcoming {
+  color: #2f6b45;
+}

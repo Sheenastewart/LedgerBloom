@@ -6,6 +6,10 @@ import com.ledgerbloom.expense.Expense;
 import com.ledgerbloom.expense.ExpenseRepository;
 import com.ledgerbloom.income.IncomeEntry;
 import com.ledgerbloom.income.IncomeEntryRepository;
+import com.ledgerbloom.recurring.RecurringExpense;
+import com.ledgerbloom.recurring.RecurringExpenseRepository;
+import com.ledgerbloom.recurringincome.RecurringIncome;
+import com.ledgerbloom.recurringincome.RecurringIncomeRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -25,22 +29,30 @@ public class MonthlyDashboardService {
 	private final ExpenseRepository expenseRepository;
 	private final IncomeEntryRepository incomeEntryRepository;
 	private final MonthlyBudgetService monthlyBudgetService;
+	private final RecurringExpenseRepository recurringExpenseRepository;
+	private final RecurringIncomeRepository recurringIncomeRepository;
 
 	public MonthlyDashboardService(
 			ExpenseRepository expenseRepository,
 			IncomeEntryRepository incomeEntryRepository,
-			MonthlyBudgetService monthlyBudgetService) {
+			MonthlyBudgetService monthlyBudgetService,
+			RecurringExpenseRepository recurringExpenseRepository,
+			RecurringIncomeRepository recurringIncomeRepository) {
 		this.expenseRepository = expenseRepository;
 		this.incomeEntryRepository = incomeEntryRepository;
 		this.monthlyBudgetService = monthlyBudgetService;
+		this.recurringExpenseRepository = recurringExpenseRepository;
+		this.recurringIncomeRepository = recurringIncomeRepository;
 	}
 
 	@Transactional(readOnly = true)
 	public MonthlyDashboardResponse getMonthlyDashboard(Integer year, Integer month) {
 		validatePeriod(year, month);
 
-		LocalDate start = YearMonth.of(year, month).atDay(1);
+		YearMonth yearMonth = YearMonth.of(year, month);
+		LocalDate start = yearMonth.atDay(1);
 		LocalDate endExclusive = start.plusMonths(1);
+		LocalDate monthEnd = yearMonth.atEndOfMonth();
 
 		List<IncomeEntry> incomeEntries = incomeEntryRepository
 			.findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
@@ -62,6 +74,8 @@ public class MonthlyDashboardService {
 			.map(this::toBudgetSummary)
 			.orElse(null);
 
+		DashboardCashFlowPlanning planning = buildPlanning(totalIncome, totalExpenses, start, monthEnd);
+
 		return new MonthlyDashboardResponse(
 			year,
 			month,
@@ -74,7 +88,57 @@ public class MonthlyDashboardService {
 			buildIncomeBySource(incomeEntries),
 			findLargestExpense(expenses),
 			findLargestIncome(incomeEntries),
-			budgetSummary
+			budgetSummary,
+			planning
+		);
+	}
+
+	private DashboardCashFlowPlanning buildPlanning(
+			BigDecimal actualIncome,
+			BigDecimal actualExpenses,
+			LocalDate monthStart,
+			LocalDate monthEnd) {
+		List<RecurringIncome> upcomingIncome = recurringIncomeRepository.findActiveInMonth(monthStart, monthEnd);
+		List<RecurringExpense> upcomingExpenses = recurringExpenseRepository.findActiveInMonth(monthStart, monthEnd);
+
+		BigDecimal expectedIncome = sumAmounts(upcomingIncome.stream().map(RecurringIncome::getAmount).toList());
+		BigDecimal expectedExpenses = sumAmounts(upcomingExpenses.stream().map(RecurringExpense::getAmount).toList());
+		BigDecimal projectedCashFlow = actualIncome
+			.add(expectedIncome)
+			.subtract(actualExpenses)
+			.subtract(expectedExpenses)
+			.setScale(2, RoundingMode.HALF_UP);
+
+		List<DashboardUpcomingIncomeItem> incomeItems = upcomingIncome.stream()
+			.map(item -> new DashboardUpcomingIncomeItem(
+				item.getId(),
+				item.getDescription(),
+				item.getSource(),
+				item.getAmount().setScale(2, RoundingMode.HALF_UP),
+				item.getNextIncomeDate(),
+				item.getCadence().name()
+			))
+			.toList();
+
+		List<DashboardUpcomingExpenseItem> expenseItems = upcomingExpenses.stream()
+			.map(item -> new DashboardUpcomingExpenseItem(
+				item.getId(),
+				item.getDescription(),
+				item.getCategory().getName(),
+				item.getAmount().setScale(2, RoundingMode.HALF_UP),
+				item.getNextPaymentDate(),
+				item.getCadence().name()
+			))
+			.toList();
+
+		return new DashboardCashFlowPlanning(
+			expectedIncome,
+			expectedExpenses,
+			projectedCashFlow,
+			incomeItems.size(),
+			expenseItems.size(),
+			incomeItems,
+			expenseItems
 		);
 	}
 

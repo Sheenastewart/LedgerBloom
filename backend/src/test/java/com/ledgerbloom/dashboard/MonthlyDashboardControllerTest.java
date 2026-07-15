@@ -86,7 +86,8 @@ class MonthlyDashboardControllerTest {
 				List.of(),
 				null,
 				null,
-				null
+				null,
+				emptyPlanning()
 			)
 		);
 
@@ -126,7 +127,20 @@ class MonthlyDashboardControllerTest {
 				LocalDate.of(2026, 7, 1),
 				"Salary"
 			),
-			null
+			null,
+			emptyPlanning()
+		);
+	}
+
+	private static DashboardCashFlowPlanning emptyPlanning() {
+		return new DashboardCashFlowPlanning(
+			new BigDecimal("0.00"),
+			new BigDecimal("0.00"),
+			new BigDecimal("0.00"),
+			0,
+			0,
+			List.of(),
+			List.of()
 		);
 	}
 }

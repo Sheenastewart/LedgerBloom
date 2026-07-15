@@ -31,6 +31,15 @@ vi.mock('../dashboard/api/dashboardApi', () => ({
     largestExpense: null,
     largestIncome: null,
     budget: null,
+    planning: {
+      expectedIncome: 0,
+      expectedExpenses: 0,
+      projectedCashFlow: 0,
+      upcomingIncomeCount: 0,
+      upcomingExpenseCount: 0,
+      upcomingIncomeItems: [],
+      upcomingExpenseItems: [],
+    },
   }),
 }))
 
@@ -69,6 +78,16 @@ vi.mock('../recurring/api/recurringApi', () => ({
   updateRecurringExpense: vi.fn(),
   deleteRecurringExpense: vi.fn(),
   markRecurringExpensePaid: vi.fn(),
+}))
+
+vi.mock('../recurringIncome/api/recurringIncomeApi', () => ({
+  getRecurringIncome: vi.fn().mockResolvedValue([]),
+  getUpcomingRecurringIncome: vi.fn().mockResolvedValue([]),
+  getRecurringIncomeById: vi.fn(),
+  createRecurringIncome: vi.fn(),
+  updateRecurringIncome: vi.fn(),
+  deleteRecurringIncome: vi.fn(),
+  markRecurringIncomeReceived: vi.fn(),
 }))
 
 describe('Category routes', () => {

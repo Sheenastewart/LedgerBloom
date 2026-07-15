@@ -41,6 +41,15 @@ const sampleDashboard = {
     source: 'Salary',
   },
   budget: null,
+    planning: {
+      expectedIncome: 0,
+      expectedExpenses: 0,
+      projectedCashFlow: 0,
+      upcomingIncomeCount: 0,
+      upcomingExpenseCount: 0,
+      upcomingIncomeItems: [],
+      upcomingExpenseItems: [],
+    },
 }
 
 function renderPage() {
@@ -78,6 +87,9 @@ describe('DashboardPage', () => {
     expect(screen.getByRole('columnheader', { name: 'Source' })).toBeInTheDocument()
     expect(screen.getByText('Paycheck · Salary')).toBeInTheDocument()
     expect(screen.getByText('Power · Utilities')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Cash Flow Planning' })).toBeInTheDocument()
+    expect(screen.getByText('Expected income')).toBeInTheDocument()
+    expect(screen.getByText('No scheduled recurring income in this month.')).toBeInTheDocument()
   })
 
   it('shows empty-state messages for a quiet month', async () => {
@@ -93,6 +105,15 @@ describe('DashboardPage', () => {
       largestExpense: null,
       largestIncome: null,
       budget: null,
+    planning: {
+      expectedIncome: 0,
+      expectedExpenses: 0,
+      projectedCashFlow: 0,
+      upcomingIncomeCount: 0,
+      upcomingExpenseCount: 0,
+      upcomingIncomeItems: [],
+      upcomingExpenseItems: [],
+    },
     })
 
     renderPage()

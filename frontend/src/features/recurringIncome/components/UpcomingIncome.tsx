@@ -1,24 +1,24 @@
 import { daysUntil, dueDateStatus } from '../../../utils/dueDateUtils'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
-import { cadenceLabel, type RecurringExpense } from '../types'
+import { cadenceLabel, type RecurringIncome } from '../types'
 
-type UpcomingPaymentsProps = {
-  items: RecurringExpense[]
+type UpcomingIncomeProps = {
+  items: RecurringIncome[]
   todayIso: string
 }
 
-export function UpcomingPayments({ items, todayIso }: UpcomingPaymentsProps) {
+export function UpcomingIncome({ items, todayIso }: UpcomingIncomeProps) {
   return (
-    <section className="recurring-section" aria-labelledby="upcoming-payments-heading">
-      <h2 id="upcoming-payments-heading">Upcoming payments</h2>
+    <section className="recurring-section" aria-labelledby="upcoming-income-heading">
+      <h2 id="upcoming-income-heading">Upcoming income</h2>
       {items.length === 0 ? (
         <p className="dashboard-empty" role="status">
-          No upcoming payments in the next 30 days.
+          No upcoming income in the next 30 days.
         </p>
       ) : (
         <ul className="upcoming-list">
           {items.map((item) => {
-            const status = dueDateStatus(daysUntil(item.nextPaymentDate, todayIso))
+            const status = dueDateStatus(daysUntil(item.nextIncomeDate, todayIso))
             return (
               <li key={item.id} className="upcoming-item">
                 <p className="recurring-item-header">
@@ -26,7 +26,7 @@ export function UpcomingPayments({ items, todayIso }: UpcomingPaymentsProps) {
                   <span>{formatCurrency(item.amount)}</span>
                 </p>
                 <p className="recurring-meta">
-                  {formatIsoDate(item.nextPaymentDate)} · {item.category.name} ·{' '}
+                  {formatIsoDate(item.nextIncomeDate)} · {item.source} ·{' '}
                   {cadenceLabel(item.cadence)}
                 </p>
                 <p className={`recurring-status ${status.className}`}>{status.label}</p>

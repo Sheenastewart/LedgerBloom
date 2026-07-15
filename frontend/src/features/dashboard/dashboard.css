@@ -163,6 +163,35 @@
   color: #4c6356;
 }
 
+.dashboard-planning-lists {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  margin-top: 1rem;
+}
+
+.dashboard-planning-lists h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.dashboard-compact-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.dashboard-compact-list li {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid #c7d5cb;
+  font-size: 0.95rem;
+}
+
 @media (max-width: 640px) {
   .dashboard-card-value {
     font-size: 1.2rem;

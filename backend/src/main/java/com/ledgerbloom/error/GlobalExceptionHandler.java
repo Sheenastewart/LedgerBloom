@@ -21,6 +21,10 @@ import com.ledgerbloom.recurring.InvalidRecurringExpenseDataException;
 import com.ledgerbloom.recurring.InvalidRecurringExpenseFilterException;
 import com.ledgerbloom.recurring.RecurringExpenseNotFoundException;
 import com.ledgerbloom.recurring.RecurringExpensePaymentConflictException;
+import com.ledgerbloom.recurringincome.InvalidRecurringIncomeDataException;
+import com.ledgerbloom.recurringincome.InvalidRecurringIncomeFilterException;
+import com.ledgerbloom.recurringincome.RecurringIncomeNotFoundException;
+import com.ledgerbloom.recurringincome.RecurringIncomeReceiptConflictException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.List;
@@ -101,6 +105,19 @@ public class GlobalExceptionHandler {
 		);
 	}
 
+	@ExceptionHandler(RecurringIncomeNotFoundException.class)
+	public ResponseEntity<ApiErrorResponse> handleRecurringIncomeNotFound(
+			RecurringIncomeNotFoundException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.NOT_FOUND,
+			ErrorCode.RECURRING_INCOME_NOT_FOUND,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
 	@ExceptionHandler(CategoryNameAlreadyExistsException.class)
 	public ResponseEntity<ApiErrorResponse> handleConflict(
 			CategoryNameAlreadyExistsException ex,
@@ -147,6 +164,19 @@ public class GlobalExceptionHandler {
 		return build(
 			HttpStatus.CONFLICT,
 			ErrorCode.RECURRING_EXPENSE_PAYMENT_CONFLICT,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
+	@ExceptionHandler(RecurringIncomeReceiptConflictException.class)
+	public ResponseEntity<ApiErrorResponse> handleRecurringIncomeReceiptConflict(
+			RecurringIncomeReceiptConflictException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.CONFLICT,
+			ErrorCode.RECURRING_INCOME_RECEIPT_CONFLICT,
 			ex.getMessage(),
 			request.getRequestURI(),
 			null
@@ -231,6 +261,19 @@ public class GlobalExceptionHandler {
 		);
 	}
 
+	@ExceptionHandler(InvalidRecurringIncomeDataException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidRecurringIncomeData(
+			InvalidRecurringIncomeDataException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_RECURRING_INCOME_DATA,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
 	@ExceptionHandler(InvalidExpenseFilterException.class)
 	public ResponseEntity<ApiErrorResponse> handleInvalidExpenseFilter(
 			InvalidExpenseFilterException ex,
@@ -290,6 +333,19 @@ public class GlobalExceptionHandler {
 		return build(
 			HttpStatus.BAD_REQUEST,
 			ErrorCode.INVALID_RECURRING_EXPENSE_FILTER,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
+	@ExceptionHandler(InvalidRecurringIncomeFilterException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidRecurringIncomeFilter(
+			InvalidRecurringIncomeFilterException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_RECURRING_INCOME_FILTER,
 			ex.getMessage(),
 			request.getRequestURI(),
 			null

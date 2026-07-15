@@ -11,6 +11,12 @@ import com.ledgerbloom.expense.Expense;
 import com.ledgerbloom.expense.ExpenseRepository;
 import com.ledgerbloom.income.IncomeEntry;
 import com.ledgerbloom.income.IncomeEntryRepository;
+import com.ledgerbloom.recurring.RecurringExpense;
+import com.ledgerbloom.recurring.RecurringExpenseCadence;
+import com.ledgerbloom.recurring.RecurringExpenseRepository;
+import com.ledgerbloom.recurringincome.RecurringIncome;
+import com.ledgerbloom.recurringincome.RecurringIncomeCadence;
+import com.ledgerbloom.recurringincome.RecurringIncomeRepository;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -35,6 +41,12 @@ class MonthlyDashboardServiceTest {
 
 	@Mock
 	private MonthlyBudgetService monthlyBudgetService;
+
+	@Mock
+	private RecurringExpenseRepository recurringExpenseRepository;
+
+	@Mock
+	private RecurringIncomeRepository recurringIncomeRepository;
 
 	@InjectMocks
 	private MonthlyDashboardService monthlyDashboardService;
@@ -212,6 +224,71 @@ class MonthlyDashboardServiceTest {
 	}
 
 	@Test
+	void planningUsesScheduledDatesAndProjectsCashFlow() throws Exception {
+		stubMonth(
+			2026,
+			7,
+			List.of(income(1L, "Actual pay", "Salary", "2000.00", LocalDate.of(2026, 7, 1))),
+			List.of(expense(2L, "Actual spend", "500.00", LocalDate.of(2026, 7, 2), groceries))
+		);
+
+		Category entertainment = new Category("Entertainment", null);
+		setId(entertainment, 3L);
+
+		RecurringIncome scheduledIncome = new RecurringIncome(
+			"Bonus",
+			"Employer",
+			new BigDecimal("300.00"),
+			RecurringIncomeCadence.MONTHLY,
+			LocalDate.of(2026, 7, 20),
+			true,
+			null
+		);
+		setId(scheduledIncome, 50L);
+
+		RecurringExpense scheduledExpense = new RecurringExpense(
+			"Netflix",
+			null,
+			new BigDecimal("15.99"),
+			entertainment,
+			RecurringExpenseCadence.MONTHLY,
+			LocalDate.of(2026, 7, 10),
+			true,
+			null
+		);
+		setId(scheduledExpense, 60L);
+
+		when(recurringIncomeRepository.findActiveInMonth(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31)))
+			.thenReturn(List.of(scheduledIncome));
+		when(recurringExpenseRepository.findActiveInMonth(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31)))
+			.thenReturn(List.of(scheduledExpense));
+
+		MonthlyDashboardResponse response = monthlyDashboardService.getMonthlyDashboard(2026, 7);
+
+		assertThat(response.planning().expectedIncome()).isEqualByComparingTo("300.00");
+		assertThat(response.planning().expectedExpenses()).isEqualByComparingTo("15.99");
+		// 2000 + 300 - 500 - 15.99 = 1784.01
+		assertThat(response.planning().projectedCashFlow()).isEqualByComparingTo("1784.01");
+		assertThat(response.planning().upcomingIncomeCount()).isEqualTo(1);
+		assertThat(response.planning().upcomingExpenseCount()).isEqualTo(1);
+		assertThat(response.planning().upcomingIncomeItems().get(0).description()).isEqualTo("Bonus");
+		assertThat(response.planning().upcomingExpenseItems().get(0).categoryName()).isEqualTo("Entertainment");
+	}
+
+	@Test
+	void planningEmptyWhenNoScheduledItemsInMonth() throws Exception {
+		stubMonth(2026, 7, List.of(), List.of());
+
+		MonthlyDashboardResponse response = monthlyDashboardService.getMonthlyDashboard(2026, 7);
+
+		assertThat(response.planning().expectedIncome()).isEqualByComparingTo("0.00");
+		assertThat(response.planning().expectedExpenses()).isEqualByComparingTo("0.00");
+		assertThat(response.planning().projectedCashFlow()).isEqualByComparingTo("0.00");
+		assertThat(response.planning().upcomingIncomeItems()).isEmpty();
+		assertThat(response.planning().upcomingExpenseItems()).isEmpty();
+	}
+
+	@Test
 	void rejectsMissingYearOrMonth() {
 		assertThatThrownBy(() -> monthlyDashboardService.getMonthlyDashboard(null, 7))
 			.isInstanceOf(InvalidDashboardFilterException.class)
@@ -247,6 +324,7 @@ class MonthlyDashboardServiceTest {
 	private void stubMonth(int year, int month, List<IncomeEntry> incomeEntries, List<Expense> expenses) {
 		LocalDate start = YearMonth.of(year, month).atDay(1);
 		LocalDate endExclusive = start.plusMonths(1);
+		LocalDate monthEnd = YearMonth.of(year, month).atEndOfMonth();
 		when(incomeEntryRepository.findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
 			start,
 			endExclusive
@@ -256,6 +334,8 @@ class MonthlyDashboardServiceTest {
 			endExclusive
 		)).thenReturn(expenses);
 		when(monthlyBudgetService.findOptionalByYearAndMonth(year, month)).thenReturn(Optional.empty());
+		when(recurringIncomeRepository.findActiveInMonth(start, monthEnd)).thenReturn(List.of());
+		when(recurringExpenseRepository.findActiveInMonth(start, monthEnd)).thenReturn(List.of());
 	}
 
 	private IncomeEntry income(Long id, String description, String source, String amount, LocalDate date)

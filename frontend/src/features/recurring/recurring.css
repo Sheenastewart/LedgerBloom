@@ -60,8 +60,13 @@
   font-weight: 600;
 }
 
-.recurring-status.active {
+.recurring-status.active,
+.recurring-status.upcoming {
   color: #2f6b45;
+}
+
+.recurring-status.due-today {
+  color: #7a5a10;
 }
 
 .recurring-status.inactive {

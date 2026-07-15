@@ -39,4 +39,15 @@ public interface RecurringExpenseRepository extends JpaRepository<RecurringExpen
 	List<RecurringExpense> findUpcoming(
 			@Param("fromInclusive") LocalDate fromInclusive,
 			@Param("toInclusive") LocalDate toInclusive);
+
+	@Query("""
+			SELECT r FROM RecurringExpense r
+			WHERE r.active = true
+			AND r.nextPaymentDate >= :monthStart
+			AND r.nextPaymentDate <= :monthEnd
+			ORDER BY r.nextPaymentDate ASC, r.id ASC
+			""")
+	List<RecurringExpense> findActiveInMonth(
+			@Param("monthStart") LocalDate monthStart,
+			@Param("monthEnd") LocalDate monthEnd);
 }

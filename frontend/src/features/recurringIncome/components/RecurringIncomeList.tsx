@@ -1,39 +1,39 @@
 import { Link } from 'react-router-dom'
 import { daysUntil, dueDateStatus } from '../../../utils/dueDateUtils'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
-import { cadenceLabel, type RecurringExpense } from '../types'
+import { cadenceLabel, type RecurringIncome } from '../types'
 
-type RecurringListProps = {
-  items: RecurringExpense[]
+type RecurringIncomeListProps = {
+  items: RecurringIncome[]
   todayIso: string
-  markingPaidId: number | null
+  markingReceivedId: number | null
   deletingId: number | null
-  onMarkPaid: (item: RecurringExpense) => void
-  onDelete: (item: RecurringExpense) => void
+  onMarkReceived: (item: RecurringIncome) => void
+  onDelete: (item: RecurringIncome) => void
 }
 
-function paymentStatus(
-  item: RecurringExpense,
+function incomeStatus(
+  item: RecurringIncome,
   todayIso: string,
 ): { label: string; className: string } {
   if (!item.active) {
     return { label: 'Inactive', className: 'inactive' }
   }
-  return dueDateStatus(daysUntil(item.nextPaymentDate, todayIso))
+  return dueDateStatus(daysUntil(item.nextIncomeDate, todayIso))
 }
 
-export function RecurringList({
+export function RecurringIncomeList({
   items,
   todayIso,
-  markingPaidId,
+  markingReceivedId,
   deletingId,
-  onMarkPaid,
+  onMarkReceived,
   onDelete,
-}: RecurringListProps) {
+}: RecurringIncomeListProps) {
   return (
     <ul className="recurring-list">
       {items.map((item) => {
-        const status = paymentStatus(item, todayIso)
+        const status = incomeStatus(item, todayIso)
         return (
           <li key={item.id} className="recurring-item">
             <div className="recurring-item-header">
@@ -41,28 +41,29 @@ export function RecurringList({
               <strong>{formatCurrency(item.amount)}</strong>
             </div>
             <p className="recurring-meta">
-              {item.category.name} · {cadenceLabel(item.cadence)} · Next{' '}
-              {formatIsoDate(item.nextPaymentDate)}
+              {item.source} · {cadenceLabel(item.cadence)} · Next{' '}
+              {formatIsoDate(item.nextIncomeDate)}
             </p>
-            {item.merchant ? <p className="recurring-meta">Merchant: {item.merchant}</p> : null}
             {item.notes ? <p className="recurring-meta">{item.notes}</p> : null}
             <p className={`recurring-status ${status.className}`}>{status.label}</p>
             <div className="recurring-actions">
-              <Link to={`/recurring/${item.id}/edit`} className="button button-secondary">
+              <Link to={`/recurring-income/${item.id}/edit`} className="button button-secondary">
                 Edit
               </Link>
               <button
                 type="button"
                 className="button button-primary"
-                disabled={!item.active || markingPaidId === item.id || deletingId === item.id}
-                onClick={() => onMarkPaid(item)}
+                disabled={
+                  !item.active || markingReceivedId === item.id || deletingId === item.id
+                }
+                onClick={() => onMarkReceived(item)}
               >
-                {markingPaidId === item.id ? 'Marking paid…' : 'Mark Paid'}
+                {markingReceivedId === item.id ? 'Marking received…' : 'Mark Received'}
               </button>
               <button
                 type="button"
                 className="button button-secondary"
-                disabled={deletingId === item.id || markingPaidId === item.id}
+                disabled={deletingId === item.id || markingReceivedId === item.id}
                 onClick={() => onDelete(item)}
               >
                 {deletingId === item.id ? 'Deleting…' : 'Delete'}

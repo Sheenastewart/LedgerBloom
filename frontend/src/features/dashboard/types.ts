@@ -36,6 +36,34 @@ export type DashboardBudgetSummary = {
   overBudget: boolean
 }
 
+export type DashboardCashFlowPlanning = {
+  expectedIncome: number
+  expectedExpenses: number
+  projectedCashFlow: number
+  upcomingIncomeCount: number
+  upcomingExpenseCount: number
+  upcomingIncomeItems: DashboardUpcomingIncomeItem[]
+  upcomingExpenseItems: DashboardUpcomingExpenseItem[]
+}
+
+export type DashboardUpcomingIncomeItem = {
+  id: number
+  description: string
+  source: string
+  amount: number
+  nextIncomeDate: string
+  cadence: string
+}
+
+export type DashboardUpcomingExpenseItem = {
+  id: number
+  description: string
+  categoryName: string
+  amount: number
+  nextPaymentDate: string
+  cadence: string
+}
+
 export type MonthlyDashboard = {
   year: number
   month: number
@@ -49,6 +77,7 @@ export type MonthlyDashboard = {
   largestExpense: LargestExpenseSummary | null
   largestIncome: LargestIncomeSummary | null
   budget: DashboardBudgetSummary | null
+  planning: DashboardCashFlowPlanning
 }
 
 export type DashboardPeriod = {
