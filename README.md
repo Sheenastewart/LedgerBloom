@@ -39,6 +39,17 @@ Stage 1B does **not** include a category detail page, search/pagination/sorting,
 
 Stage 2A does **not** include an Expense frontend, monthly aggregate totals, budgets, recurring expenses, income, receipts, OCR, authentication, or pagination/search.
 
+### Stage 2B — Expense Management UI (frontend)
+
+- Primary navigation adds **Expenses** (Home, Categories, Expenses)
+- Expense list, create, edit, and delete flows
+- Optional filters by month/year and/or category
+- Native `fetch` client against Stage 2A endpoints
+- Client-side amount validation plus structured API error display
+- Home page **Coming soon** card notes that Income is planned for a future stage
+
+Stage 2B does **not** include Income, monthly totals, budgets, search/pagination, charts, receipts, authentication, or exports.
+
 ## Repository structure
 
 ```text
@@ -286,9 +297,71 @@ Migration `V1__create_categories_table.sql` creates:
 - `categories` (`id`, `name`, `description`, `created_at`, `updated_at`)
 - unique index `ux_categories_name_lower` on `LOWER(name)`
 
+## Expense UI (Stage 2B)
+
+With PostgreSQL, the backend, and the Vite frontend running:
+
+1. Open `http://localhost:5173`
+2. Use the primary nav (Home / Categories / Expenses) or the home page CTAs
+3. Create categories first if needed, then create, edit, delete, and filter expenses
+
+### Frontend routes
+
+| Path | Page |
+| --- | --- |
+| `/` | Home (health check, CTAs, Income coming-soon card) |
+| `/categories` | Category list |
+| `/categories/new` | Create category |
+| `/categories/:id/edit` | Edit category |
+| `/expenses` | Expense list with filters |
+| `/expenses/new` | Create expense |
+| `/expenses/:id/edit` | Edit expense (`:id` must be a positive safe integer) |
+
+Invalid expense edit IDs show a not-found state **without** calling the API.
+
+### Supported fields and actions
+
+| Field | Create/Edit | List display |
+| --- | --- | --- |
+| Description | Required, max 160 | Yes |
+| Merchant | Optional, max 120 | When present |
+| Amount | Required, > 0, max 10 digits + 2 decimals | Formatted currency |
+| Expense date | Required (`YYYY-MM-DD`) | Yes |
+| Category | Required (dropdown from Category API) | Category name |
+| Notes | Optional | When present |
+
+Actions: create, edit, delete (with native confirmation), filter, clear filters, retry on load failure.
+
+### Filters
+
+- Month (1–12) and year must be selected together
+- Category filter is optional
+- Apply sends validated query params; Clear resets filters and reloads the full list
+- Active filters are preserved after delete and refresh
+
+### Client validation
+
+- Description required; merchant/notes trimmed with blank → `null` on submit
+- Amount kept as string in the form; validated without floating-point math; commas stripped before submit
+- Category required; expense date required
+- Backend remains the final authority for validation
+
+### Frontend layout notes
+
+- `ExpensesPage` owns loading, filters, retries, list data, delete confirmation/pending state, and success/error feedback
+- `ExpenseList` and `ExpenseFilters` are presentational / filter UI only
+- `ExpenseForm` is shared between create and edit; `ExpenseFormPage` loads categories (and expense on edit)
+- Create/update success messages travel through React Router location state and are cleared with `replace`
+
+### Current limitations
+
+- No Income tracking, monthly totals, budgets, search, pagination, charts, receipts, authentication, or exports
+- No date-picker library; filters use month dropdown + year number input
+- List order follows the backend (newest expense date first)
+
 ## Expense API (Stage 2A)
 
-There is **no Expense UI** in Stage 2A. Use the backend endpoints below.
+The Expense UI consumes these backend endpoints.
 
 ### Endpoints
 
