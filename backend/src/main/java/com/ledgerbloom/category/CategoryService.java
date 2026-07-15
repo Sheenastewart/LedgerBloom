@@ -1,5 +1,6 @@
 package com.ledgerbloom.category;
 
+import com.ledgerbloom.budget.CategoryBudgetLimitRepository;
 import com.ledgerbloom.expense.ExpenseRepository;
 import java.util.List;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -12,10 +13,15 @@ public class CategoryService {
 
 	private final CategoryRepository categoryRepository;
 	private final ExpenseRepository expenseRepository;
+	private final CategoryBudgetLimitRepository categoryBudgetLimitRepository;
 
-	public CategoryService(CategoryRepository categoryRepository, ExpenseRepository expenseRepository) {
+	public CategoryService(
+			CategoryRepository categoryRepository,
+			ExpenseRepository expenseRepository,
+			CategoryBudgetLimitRepository categoryBudgetLimitRepository) {
 		this.categoryRepository = categoryRepository;
 		this.expenseRepository = expenseRepository;
+		this.categoryBudgetLimitRepository = categoryBudgetLimitRepository;
 	}
 
 	@Transactional(readOnly = true)
@@ -52,7 +58,7 @@ public class CategoryService {
 
 	public void delete(Long id) {
 		Category category = getCategoryOrThrow(id);
-		if (expenseRepository.existsByCategory_Id(id)) {
+		if (expenseRepository.existsByCategory_Id(id) || categoryBudgetLimitRepository.existsByCategory_Id(id)) {
 			throw new CategoryInUseException(id);
 		}
 		try {

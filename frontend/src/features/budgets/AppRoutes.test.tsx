@@ -2,8 +2,9 @@ import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiClientError } from '../../api/ApiClientError'
 import { AppRoutes } from '../../App'
-import * as dashboardApi from './api/dashboardApi'
+import * as budgetApi from './api/budgetApi'
 
 vi.mock('../../api/health', () => ({
   fetchHealth: vi.fn().mockResolvedValue({ status: 'UP', service: 'ledgerbloom-api' }),
@@ -33,7 +34,7 @@ vi.mock('../income/api/incomeApi', () => ({
   deleteIncomeEntry: vi.fn(),
 }))
 
-vi.mock('./api/dashboardApi', () => ({
+vi.mock('../dashboard/api/dashboardApi', () => ({
   getMonthlyDashboard: vi.fn().mockResolvedValue({
     year: 2026,
     month: 7,
@@ -50,8 +51,8 @@ vi.mock('./api/dashboardApi', () => ({
   }),
 }))
 
-vi.mock('../budgets/api/budgetApi', () => ({
-  getMonthlyBudget: vi.fn().mockRejectedValue({ code: 'BUDGET_NOT_FOUND' }),
+vi.mock('./api/budgetApi', () => ({
+  getMonthlyBudget: vi.fn(),
   createMonthlyBudget: vi.fn(),
   updateMonthlyBudget: vi.fn(),
   deleteMonthlyBudget: vi.fn(),
@@ -60,30 +61,19 @@ vi.mock('../budgets/api/budgetApi', () => ({
   deleteCategoryLimit: vi.fn(),
 }))
 
-describe('Dashboard routes', () => {
+describe('Budget routes', () => {
   afterEach(() => {
     cleanup()
     vi.restoreAllMocks()
   })
 
   beforeEach(() => {
-    vi.mocked(dashboardApi.getMonthlyDashboard).mockResolvedValue({
-      year: 2026,
-      month: 7,
-      totalIncome: 0,
-      totalExpenses: 0,
-      netCashFlow: 0,
-      incomeEntryCount: 0,
-      expenseEntryCount: 0,
-      spendingByCategory: [],
-      incomeBySource: [],
-      largestExpense: null,
-      largestIncome: null,
-      budget: null,
-    })
+    vi.mocked(budgetApi.getMonthlyBudget).mockRejectedValue(
+      new ApiClientError({ message: 'missing', code: 'BUDGET_NOT_FOUND', status: 404 }),
+    )
   })
 
-  it('navigates from Home to Dashboard via nav and CTA', async () => {
+  it('navigates from Home to Budgets via nav and CTA', async () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/']}>
@@ -92,11 +82,11 @@ describe('Dashboard routes', () => {
     )
 
     expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
-    await user.click(screen.getByRole('link', { name: 'Dashboard' }))
-    expect(await screen.findByRole('heading', { name: 'Monthly dashboard' })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Budgets' }))
+    expect(await screen.findByRole('heading', { name: 'Budgets' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Home' }))
-    await user.click(screen.getByRole('link', { name: 'View dashboard' }))
-    expect(await screen.findByRole('heading', { name: 'Monthly dashboard' })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Manage budgets' }))
+    expect(await screen.findByRole('heading', { name: 'Budgets' })).toBeInTheDocument()
   })
 })

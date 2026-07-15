@@ -64,7 +64,16 @@ Stage 3 does **not** include monthly totals, net cash flow, dashboards, budgets,
 - Dashboard UI at `/dashboard` with summary cards, category spending, income-by-source, and largest entries
 - No changes to Income or Expense CRUD architecture or tables
 
-Stage 4 does **not** include charts/chart libraries, budgets, authentication, multi-month comparisons, exports, or pagination of underlying ledger rows.
+Stage 4 does **not** include charts/chart libraries, authentication, multi-month comparisons, exports, or pagination of underlying ledger rows.
+
+### Stage 5 — Monthly Budget Management (full stack)
+
+- V4 `monthly_budgets` and `category_budget_limits` tables
+- Budget CRUD API comparing planned limits to actual Expense totals
+- Budgets UI at `/budgets` with month selection, category limits, and status labels
+- Light dashboard budget overview when a budget exists for the selected month
+
+Stage 5 does **not** include recurring budgets, rollovers, savings goals, notifications, charts, authentication, or annual/weekly budgets.
 
 ## Repository structure
 
@@ -459,14 +468,63 @@ With PostgreSQL, the backend, and the Vite frontend running:
 
 Required query params: `year` (1–9999) and `month` (1–12). Both must be provided.
 
-Response includes: `totalIncome`, `totalExpenses`, `netCashFlow` (income − expenses), entry counts, `spendingByCategory`, `incomeBySource`, `largestExpense`, `largestIncome`.
+Response includes: `totalIncome`, `totalExpenses`, `netCashFlow` (income − expenses), entry counts, `spendingByCategory`, `incomeBySource`, `largestExpense`, `largestIncome`, and optional `budget` summary when a Stage 5 monthly budget exists.
 
-Totals are calculated on the backend from existing Income and Expense repositories. Income and Expense CRUD tables/APIs are unchanged.
+Totals are calculated on the backend from existing Income and Expense repositories. Income and Expense CRUD tables/APIs are unchanged. Budget planning data comes from the Stage 5 budgets API / tables.
 
 ### Current limitations
 
 - No chart libraries or multi-month comparisons
-- No budgets, exports, authentication, or drill-down editing from the dashboard cards
+- No exports, authentication, or drill-down editing from the dashboard cards
+
+## Budgets (Stage 5)
+
+With PostgreSQL, the backend, and the Vite frontend running:
+
+1. Open `http://localhost:5173/budgets` (or use nav **Budgets** / home **Manage budgets**)
+2. Select month and year, then **Load budget**
+3. Create an overall monthly budget, then optional category limits
+4. Review actual expenses, remaining amounts, percent used, and status
+5. On the dashboard for the same month, confirm the budget overview appears
+
+Period state uses query parameters such as `/budgets?year=2026&month=7` so create/edit/delete flows can return to the same month.
+
+### Frontend routes
+
+| Path | Page |
+| --- | --- |
+| `/budgets` | Monthly budget view for a selected month |
+| `/budgets/new` | Create monthly budget |
+| `/budgets/:id/edit` | Edit monthly budget total limit |
+
+### Budget API
+
+| Method | Path | Success |
+| --- | --- | --- |
+| `GET` | `/api/budgets/monthly?year=&month=` | `200` budget DTO / `404` `BUDGET_NOT_FOUND` |
+| `POST` | `/api/budgets/monthly` | `201` + `Location` |
+| `PUT` | `/api/budgets/monthly/{id}` | `200` |
+| `DELETE` | `/api/budgets/monthly/{id}` | `204` (cascades category limits) |
+| `POST` | `/api/budgets/monthly/{budgetId}/categories` | `201` + `Location` |
+| `PUT` | `/api/budgets/monthly/{budgetId}/categories/{limitId}` | `200` |
+| `DELETE` | `/api/budgets/monthly/{budgetId}/categories/{limitId}` | `200` budget DTO |
+
+Actuals, remaining, percent used, and over-budget flags are calculated from Expense data and are not stored. Percent used uses BigDecimal scale 2 with `RoundingMode.HALF_UP`. Category limits may exceed the overall monthly limit (allowed for now). Category deletion is blocked with `409 CATEGORY_IN_USE` when referenced by expenses or category budget limits.
+
+Status labels: **On track** (< 80% used), **Near budget** (≥ 80% and not over), **Over budget** (actual > limit).
+
+### Database (V4)
+
+Confirm with `psql` after startup:
+
+- tables `monthly_budgets`, `category_budget_limits`
+- unique `(budget_year, budget_month)` and `(monthly_budget_id, category_id)`
+- FK cascade from limits → budgets; RESTRICT from limits → categories
+- indexes `ix_monthly_budgets_year_month`, `ix_category_budget_limits_monthly_budget_id`, `ix_category_budget_limits_category_id`
+
+### Current limitations
+
+- No recurring budgets, automatic copying, rollovers, savings goals, notifications, charts, annual/weekly budgets, or authentication
 
 ## Expense API (Stage 2A)
 
@@ -617,11 +675,11 @@ No wildcard origin is configured.
 
 ## Features intentionally deferred
 
-Deferred beyond Stage 4:
+Deferred beyond Stage 5:
 
 - Multi-month / year-to-date comparisons and charts
 - Category detail page, search, pagination, sorting UI controls
-- Budgets
+- Recurring budgets / budget rollover / savings goals
 - Recurring expenses / subscriptions / recurring income
 - Authentication and users
 - Receipt upload and OCR

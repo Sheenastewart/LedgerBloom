@@ -40,6 +40,10 @@ describe('HomePage', () => {
       'href',
       '/dashboard',
     )
+    expect(screen.getByRole('link', { name: 'Manage budgets' })).toHaveAttribute(
+      'href',
+      '/budgets',
+    )
     expect(screen.getByRole('link', { name: 'Manage categories' })).toHaveAttribute(
       'href',
       '/categories',

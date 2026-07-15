@@ -18,6 +18,12 @@ export function AppLayout() {
             Dashboard
           </NavLink>
           <NavLink
+            to="/budgets"
+            className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+          >
+            Budgets
+          </NavLink>
+          <NavLink
             to="/categories"
             className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
           >

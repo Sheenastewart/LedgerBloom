@@ -14,5 +14,7 @@ public record MonthlyDashboardResponse(
 		List<CategorySpendingTotal> spendingByCategory,
 		List<SourceIncomeTotal> incomeBySource,
 		LargestExpenseSummary largestExpense,
-		LargestIncomeSummary largestIncome) {
+		LargestIncomeSummary largestIncome,
+		DashboardBudgetSummary budget
+) {
 }

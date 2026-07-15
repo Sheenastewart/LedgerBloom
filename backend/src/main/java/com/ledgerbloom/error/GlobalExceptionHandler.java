@@ -1,5 +1,11 @@
 package com.ledgerbloom.error;
 
+import com.ledgerbloom.budget.CategoryBudgetAlreadyExistsException;
+import com.ledgerbloom.budget.CategoryBudgetLimitNotFoundException;
+import com.ledgerbloom.budget.InvalidBudgetDataException;
+import com.ledgerbloom.budget.InvalidBudgetFilterException;
+import com.ledgerbloom.budget.MonthlyBudgetAlreadyExistsException;
+import com.ledgerbloom.budget.MonthlyBudgetNotFoundException;
 import com.ledgerbloom.category.CategoryInUseException;
 import com.ledgerbloom.category.CategoryNameAlreadyExistsException;
 import com.ledgerbloom.category.CategoryNotFoundException;
@@ -52,6 +58,32 @@ public class GlobalExceptionHandler {
 		);
 	}
 
+	@ExceptionHandler(MonthlyBudgetNotFoundException.class)
+	public ResponseEntity<ApiErrorResponse> handleMonthlyBudgetNotFound(
+			MonthlyBudgetNotFoundException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.NOT_FOUND,
+			ErrorCode.BUDGET_NOT_FOUND,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
+	@ExceptionHandler(CategoryBudgetLimitNotFoundException.class)
+	public ResponseEntity<ApiErrorResponse> handleCategoryBudgetLimitNotFound(
+			CategoryBudgetLimitNotFoundException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.NOT_FOUND,
+			ErrorCode.CATEGORY_BUDGET_LIMIT_NOT_FOUND,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
 	@ExceptionHandler(CategoryNameAlreadyExistsException.class)
 	public ResponseEntity<ApiErrorResponse> handleConflict(
 			CategoryNameAlreadyExistsException ex,
@@ -59,6 +91,32 @@ public class GlobalExceptionHandler {
 		return build(
 			HttpStatus.CONFLICT,
 			ErrorCode.CATEGORY_NAME_ALREADY_EXISTS,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
+	@ExceptionHandler(MonthlyBudgetAlreadyExistsException.class)
+	public ResponseEntity<ApiErrorResponse> handleMonthlyBudgetAlreadyExists(
+			MonthlyBudgetAlreadyExistsException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.CONFLICT,
+			ErrorCode.BUDGET_ALREADY_EXISTS,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
+	@ExceptionHandler(CategoryBudgetAlreadyExistsException.class)
+	public ResponseEntity<ApiErrorResponse> handleCategoryBudgetAlreadyExists(
+			CategoryBudgetAlreadyExistsException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.CONFLICT,
+			ErrorCode.CATEGORY_BUDGET_ALREADY_EXISTS,
 			ex.getMessage(),
 			request.getRequestURI(),
 			null
@@ -117,6 +175,19 @@ public class GlobalExceptionHandler {
 		);
 	}
 
+	@ExceptionHandler(InvalidBudgetDataException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidBudgetData(
+			InvalidBudgetDataException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_BUDGET_DATA,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
 	@ExceptionHandler(InvalidExpenseFilterException.class)
 	public ResponseEntity<ApiErrorResponse> handleInvalidExpenseFilter(
 			InvalidExpenseFilterException ex,
@@ -146,6 +217,19 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(InvalidDashboardFilterException.class)
 	public ResponseEntity<ApiErrorResponse> handleInvalidDashboardFilter(
 			InvalidDashboardFilterException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_REQUEST,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
+	@ExceptionHandler(InvalidBudgetFilterException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidBudgetFilter(
+			InvalidBudgetFilterException ex,
 			HttpServletRequest request) {
 		return build(
 			HttpStatus.BAD_REQUEST,

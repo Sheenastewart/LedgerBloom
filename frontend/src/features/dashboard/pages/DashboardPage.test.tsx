@@ -40,6 +40,7 @@ const sampleDashboard = {
     incomeDate: '2026-07-01',
     source: 'Salary',
   },
+  budget: null,
 }
 
 function renderPage() {
@@ -91,6 +92,7 @@ describe('DashboardPage', () => {
       incomeBySource: [],
       largestExpense: null,
       largestIncome: null,
+      budget: null,
     })
 
     renderPage()
@@ -98,6 +100,7 @@ describe('DashboardPage', () => {
     expect(
       await screen.findByText('No income or expense entries for this month.'),
     ).toBeInTheDocument()
+    expect(screen.getByText('No budget set for this month.')).toBeInTheDocument()
     expect(screen.getByText('No expenses in this month.')).toBeInTheDocument()
     expect(screen.getByText('No income entries in this month.')).toBeInTheDocument()
   })
@@ -152,5 +155,26 @@ describe('DashboardPage', () => {
     renderPage()
 
     expect(await screen.findByText('month must be between 1 and 12')).toBeInTheDocument()
+  })
+
+  it('shows budget overview when a budget exists', async () => {
+    vi.mocked(dashboardApi.getMonthlyDashboard).mockResolvedValue({
+      ...sampleDashboard,
+      budget: {
+        id: 10,
+        totalLimit: 1000,
+        actualExpenses: 200.25,
+        remaining: 799.75,
+        percentUsed: 20.03,
+        overBudget: false,
+      },
+    })
+
+    renderPage()
+
+    expect(await screen.findByText('Budget overview')).toBeInTheDocument()
+    expect(screen.getByText('Total budget')).toBeInTheDocument()
+    expect(screen.getByText('$1,000.00')).toBeInTheDocument()
+    expect(screen.getByText('On track')).toBeInTheDocument()
   })
 })

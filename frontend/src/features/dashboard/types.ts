@@ -27,6 +27,15 @@ export type LargestIncomeSummary = {
   source: string
 }
 
+export type DashboardBudgetSummary = {
+  id: number
+  totalLimit: number
+  actualExpenses: number
+  remaining: number
+  percentUsed: number
+  overBudget: boolean
+}
+
 export type MonthlyDashboard = {
   year: number
   month: number
@@ -39,6 +48,7 @@ export type MonthlyDashboard = {
   incomeBySource: SourceIncomeTotal[]
   largestExpense: LargestExpenseSummary | null
   largestIncome: LargestIncomeSummary | null
+  budget: DashboardBudgetSummary | null
 }
 
 export type DashboardPeriod = {

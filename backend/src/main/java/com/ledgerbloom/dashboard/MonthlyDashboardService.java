@@ -1,5 +1,7 @@
 package com.ledgerbloom.dashboard;
 
+import com.ledgerbloom.budget.MonthlyBudgetResponse;
+import com.ledgerbloom.budget.MonthlyBudgetService;
 import com.ledgerbloom.expense.Expense;
 import com.ledgerbloom.expense.ExpenseRepository;
 import com.ledgerbloom.income.IncomeEntry;
@@ -22,12 +24,15 @@ public class MonthlyDashboardService {
 
 	private final ExpenseRepository expenseRepository;
 	private final IncomeEntryRepository incomeEntryRepository;
+	private final MonthlyBudgetService monthlyBudgetService;
 
 	public MonthlyDashboardService(
 			ExpenseRepository expenseRepository,
-			IncomeEntryRepository incomeEntryRepository) {
+			IncomeEntryRepository incomeEntryRepository,
+			MonthlyBudgetService monthlyBudgetService) {
 		this.expenseRepository = expenseRepository;
 		this.incomeEntryRepository = incomeEntryRepository;
+		this.monthlyBudgetService = monthlyBudgetService;
 	}
 
 	@Transactional(readOnly = true)
@@ -52,6 +57,11 @@ public class MonthlyDashboardService {
 		BigDecimal totalExpenses = sumAmounts(expenses.stream().map(Expense::getAmount).toList());
 		BigDecimal netCashFlow = totalIncome.subtract(totalExpenses).setScale(2, RoundingMode.HALF_UP);
 
+		DashboardBudgetSummary budgetSummary = monthlyBudgetService
+			.findOptionalByYearAndMonth(year, month)
+			.map(this::toBudgetSummary)
+			.orElse(null);
+
 		return new MonthlyDashboardResponse(
 			year,
 			month,
@@ -63,7 +73,19 @@ public class MonthlyDashboardService {
 			buildSpendingByCategory(expenses),
 			buildIncomeBySource(incomeEntries),
 			findLargestExpense(expenses),
-			findLargestIncome(incomeEntries)
+			findLargestIncome(incomeEntries),
+			budgetSummary
+		);
+	}
+
+	private DashboardBudgetSummary toBudgetSummary(MonthlyBudgetResponse budget) {
+		return new DashboardBudgetSummary(
+			budget.id(),
+			budget.totalLimit(),
+			budget.actualExpenses(),
+			budget.remaining(),
+			budget.percentUsed(),
+			budget.overBudget()
 		);
 	}
 

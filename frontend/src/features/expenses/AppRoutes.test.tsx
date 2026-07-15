@@ -39,7 +39,18 @@ vi.mock('../dashboard/api/dashboardApi', () => ({
     incomeBySource: [],
     largestExpense: null,
     largestIncome: null,
+    budget: null,
   }),
+}))
+
+vi.mock('../budgets/api/budgetApi', () => ({
+  getMonthlyBudget: vi.fn(),
+  createMonthlyBudget: vi.fn(),
+  updateMonthlyBudget: vi.fn(),
+  deleteMonthlyBudget: vi.fn(),
+  createCategoryLimit: vi.fn(),
+  updateCategoryLimit: vi.fn(),
+  deleteCategoryLimit: vi.fn(),
 }))
 
 describe('Expense routes', () => {

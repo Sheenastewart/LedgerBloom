@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.ledgerbloom.budget.MonthlyBudgetService;
 import com.ledgerbloom.category.Category;
 import com.ledgerbloom.expense.Expense;
 import com.ledgerbloom.expense.ExpenseRepository;
@@ -15,6 +16,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +32,9 @@ class MonthlyDashboardServiceTest {
 
 	@Mock
 	private IncomeEntryRepository incomeEntryRepository;
+
+	@Mock
+	private MonthlyBudgetService monthlyBudgetService;
 
 	@InjectMocks
 	private MonthlyDashboardService monthlyDashboardService;
@@ -108,6 +113,7 @@ class MonthlyDashboardServiceTest {
 		assertThat(response.incomeBySource()).isEmpty();
 		assertThat(response.largestExpense()).isNull();
 		assertThat(response.largestIncome()).isNull();
+		assertThat(response.budget()).isNull();
 	}
 
 	@Test
@@ -249,6 +255,7 @@ class MonthlyDashboardServiceTest {
 			start,
 			endExclusive
 		)).thenReturn(expenses);
+		when(monthlyBudgetService.findOptionalByYearAndMonth(year, month)).thenReturn(Optional.empty());
 	}
 
 	private IncomeEntry income(Long id, String description, String source, String amount, LocalDate date)

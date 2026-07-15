@@ -1,0 +1,120 @@
+.budgets-page {
+  width: min(52rem, 100%);
+  margin: 0 auto;
+}
+
+.budget-summary-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  margin-bottom: 1.5rem;
+}
+
+.budget-card {
+  padding: 1rem 1.1rem;
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid #c7d5cb;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.budget-card h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #4c6356;
+}
+
+.budget-card-value {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1d2a24;
+  word-break: break-word;
+}
+
+.budget-card-value.negative {
+  color: #8b2e2e;
+}
+
+.budget-status {
+  margin: 0;
+  font-weight: 600;
+}
+
+.budget-status.on-track {
+  color: #2f6b45;
+}
+
+.budget-status.near-budget {
+  color: #8a6a12;
+}
+
+.budget-status.over-budget {
+  color: #8b2e2e;
+}
+
+.budget-section {
+  margin-bottom: 1.75rem;
+}
+
+.budget-section h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.15rem;
+}
+
+.budget-table-wrap {
+  overflow-x: auto;
+}
+
+.budget-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.budget-table th,
+.budget-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid #c7d5cb;
+  text-align: left;
+  vertical-align: top;
+}
+
+.budget-table th.numeric,
+.budget-table td.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.budget-table th[scope='col'] {
+  font-size: 0.85rem;
+  color: #4c6356;
+}
+
+.budget-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.budget-inline-form {
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid #c7d5cb;
+}
+
+.budget-inline-form h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+@media (max-width: 40rem) {
+  .budget-actions-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

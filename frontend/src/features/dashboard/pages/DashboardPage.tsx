@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
+import { budgetStatus, budgetStatusLabel } from '../../budgets/budgetStatus'
 import { getMonthlyDashboard } from '../api/dashboardApi'
 import { DashboardPeriodForm } from '../components/DashboardPeriodForm'
 import type { DashboardPeriod, MonthlyDashboard } from '../types'
 import '../dashboard.css'
 import '../../categories/categories.css'
+import '../../budgets/budgets.css'
 
 const MONTH_NAMES = [
   'January',
@@ -152,6 +155,57 @@ export function DashboardPage() {
                 <p className="dashboard-card-value">{dashboard.expenseEntryCount}</p>
               </article>
             </div>
+          </section>
+
+          <section className="dashboard-section" aria-labelledby="budget-overview-heading">
+            <h2 id="budget-overview-heading">Budget overview</h2>
+            {dashboard.budget ? (
+              <div className="dashboard-summary-grid">
+                <article className="dashboard-card">
+                  <h2>Total budget</h2>
+                  <p className="dashboard-card-value">{formatCurrency(dashboard.budget.totalLimit)}</p>
+                </article>
+                <article className="dashboard-card">
+                  <h2>Remaining budget</h2>
+                  <p
+                    className={
+                      dashboard.budget.remaining < 0
+                        ? 'dashboard-card-value negative'
+                        : 'dashboard-card-value'
+                    }
+                  >
+                    {formatCurrency(dashboard.budget.remaining)}
+                  </p>
+                </article>
+                <article className="dashboard-card">
+                  <h2>Percent used</h2>
+                  <p className="dashboard-card-value">{dashboard.budget.percentUsed.toFixed(2)}%</p>
+                </article>
+                <article className="dashboard-card">
+                  <h2>Budget status</h2>
+                  <p
+                    className={`budget-status ${budgetStatus(
+                      dashboard.budget.overBudget,
+                      dashboard.budget.percentUsed,
+                    )}`}
+                  >
+                    {budgetStatusLabel(
+                      budgetStatus(dashboard.budget.overBudget, dashboard.budget.percentUsed),
+                    )}
+                  </p>
+                </article>
+              </div>
+            ) : (
+              <div className="status-panel" role="status">
+                <p>No budget set for this month.</p>
+                <Link
+                  to={`/budgets/new?year=${dashboard.year}&month=${dashboard.month}`}
+                  className="button button-secondary"
+                >
+                  Create budget
+                </Link>
+              </div>
+            )}
           </section>
 
           <section className="dashboard-section" aria-labelledby="spending-by-category-heading">

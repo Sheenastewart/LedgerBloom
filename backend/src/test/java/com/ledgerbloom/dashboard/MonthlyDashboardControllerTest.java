@@ -85,6 +85,7 @@ class MonthlyDashboardControllerTest {
 				List.of(),
 				List.of(),
 				null,
+				null,
 				null
 			)
 		);
@@ -124,7 +125,8 @@ class MonthlyDashboardControllerTest {
 				new BigDecimal("3000.00"),
 				LocalDate.of(2026, 7, 1),
 				"Salary"
-			)
+			),
+			null
 		);
 	}
 }

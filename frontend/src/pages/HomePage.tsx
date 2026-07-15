@@ -45,6 +45,9 @@ export function HomePage() {
         <Link to="/dashboard" className="button button-primary">
           View dashboard
         </Link>
+        <Link to="/budgets" className="button button-secondary">
+          Manage budgets
+        </Link>
         <Link to="/categories" className="button button-secondary">
           Manage categories
         </Link>
