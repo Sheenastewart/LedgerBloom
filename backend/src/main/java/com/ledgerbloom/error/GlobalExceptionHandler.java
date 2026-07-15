@@ -4,6 +4,7 @@ import com.ledgerbloom.category.CategoryInUseException;
 import com.ledgerbloom.category.CategoryNameAlreadyExistsException;
 import com.ledgerbloom.category.CategoryNotFoundException;
 import com.ledgerbloom.category.InvalidCategoryDataException;
+import com.ledgerbloom.dashboard.InvalidDashboardFilterException;
 import com.ledgerbloom.expense.ExpenseNotFoundException;
 import com.ledgerbloom.expense.InvalidExpenseDataException;
 import com.ledgerbloom.expense.InvalidExpenseFilterException;
@@ -132,6 +133,19 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(InvalidIncomeFilterException.class)
 	public ResponseEntity<ApiErrorResponse> handleInvalidIncomeFilter(
 			InvalidIncomeFilterException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_REQUEST,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
+	@ExceptionHandler(InvalidDashboardFilterException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidDashboardFilter(
+			InvalidDashboardFilterException ex,
 			HttpServletRequest request) {
 		return build(
 			HttpStatus.BAD_REQUEST,

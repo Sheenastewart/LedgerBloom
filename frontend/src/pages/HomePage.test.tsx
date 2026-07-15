@@ -36,6 +36,10 @@ describe('HomePage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('health-status')).toHaveTextContent('API connected')
     })
+    expect(screen.getByRole('link', { name: 'View dashboard' })).toHaveAttribute(
+      'href',
+      '/dashboard',
+    )
     expect(screen.getByRole('link', { name: 'Manage categories' })).toHaveAttribute(
       'href',
       '/categories',

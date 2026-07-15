@@ -58,6 +58,14 @@ Stage 2B originally deferred Income; Income is delivered in Stage 3 below.
 
 Stage 3 does **not** include monthly totals, net cash flow, dashboards, budgets, recurring income, authentication, or bank connections.
 
+### Stage 4 — Monthly Financial Dashboard (reporting)
+
+- Reporting-only `GET /api/dashboard/monthly` combining Income and Expense totals for a selected month
+- Dashboard UI at `/dashboard` with summary cards, category spending, income-by-source, and largest entries
+- No changes to Income or Expense CRUD architecture or tables
+
+Stage 4 does **not** include charts/chart libraries, budgets, authentication, multi-month comparisons, exports, or pagination of underlying ledger rows.
+
 ## Repository structure
 
 ```text
@@ -425,9 +433,40 @@ Migration `V3__create_income_entries_table.sql` creates:
 
 ### Current limitations
 
-- No monthly totals or net cash flow yet (planned as a later reporting stage that will combine separate Income and Expense totals)
 - No budgets, recurring income, authentication, bank connections, receipts, search, or pagination
 - Source is free text (no dedicated source table in this stage)
+- Monthly reporting is provided separately by Stage 4 (`/dashboard`)
+
+## Monthly Dashboard (Stage 4)
+
+With PostgreSQL, the backend, and the Vite frontend running:
+
+1. Open `http://localhost:5173/dashboard` (or use nav **Dashboard** / home **View dashboard**)
+2. Select month and year, then **Update report**
+3. Review summary cards, category spending, income by source, and largest entries
+
+### Frontend route
+
+| Path | Page |
+| --- | --- |
+| `/dashboard` | Monthly financial dashboard |
+
+### Dashboard API
+
+| Method | Path | Success |
+| --- | --- | --- |
+| `GET` | `/api/dashboard/monthly?year=&month=` | `200` dashboard DTO / `400` invalid period |
+
+Required query params: `year` (1–9999) and `month` (1–12). Both must be provided.
+
+Response includes: `totalIncome`, `totalExpenses`, `netCashFlow` (income − expenses), entry counts, `spendingByCategory`, `incomeBySource`, `largestExpense`, `largestIncome`.
+
+Totals are calculated on the backend from existing Income and Expense repositories. Income and Expense CRUD tables/APIs are unchanged.
+
+### Current limitations
+
+- No chart libraries or multi-month comparisons
+- No budgets, exports, authentication, or drill-down editing from the dashboard cards
 
 ## Expense API (Stage 2A)
 
@@ -578,9 +617,9 @@ No wildcard origin is configured.
 
 ## Features intentionally deferred
 
-Deferred beyond Stage 3:
+Deferred beyond Stage 4:
 
-- Monthly aggregate totals and net cash flow (future reporting will combine separate Expense and Income totals: monthly income − monthly expenses)
+- Multi-month / year-to-date comparisons and charts
 - Category detail page, search, pagination, sorting UI controls
 - Budgets
 - Recurring expenses / subscriptions / recurring income

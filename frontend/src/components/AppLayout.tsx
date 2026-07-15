@@ -12,6 +12,12 @@ export function AppLayout() {
             Home
           </NavLink>
           <NavLink
+            to="/dashboard"
+            className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+          >
+            Dashboard
+          </NavLink>
+          <NavLink
             to="/categories"
             className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
           >

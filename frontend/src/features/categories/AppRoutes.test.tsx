@@ -17,6 +17,22 @@ vi.mock('./api/categoryApi', () => ({
   deleteCategory: vi.fn(),
 }))
 
+vi.mock('../dashboard/api/dashboardApi', () => ({
+  getMonthlyDashboard: vi.fn().mockResolvedValue({
+    year: 2026,
+    month: 7,
+    totalIncome: 0,
+    totalExpenses: 0,
+    netCashFlow: 0,
+    incomeEntryCount: 0,
+    expenseEntryCount: 0,
+    spendingByCategory: [],
+    incomeBySource: [],
+    largestExpense: null,
+    largestIncome: null,
+  }),
+}))
+
 describe('Category routes', () => {
   afterEach(() => {
     cleanup()

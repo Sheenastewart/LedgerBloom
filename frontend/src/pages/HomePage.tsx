@@ -42,7 +42,10 @@ export function HomePage() {
         {status === 'unavailable' && 'API unavailable'}
       </p>
       <div className="home-actions">
-        <Link to="/categories" className="button button-primary">
+        <Link to="/dashboard" className="button button-primary">
+          View dashboard
+        </Link>
+        <Link to="/categories" className="button button-secondary">
           Manage categories
         </Link>
         <Link to="/expenses" className="button button-secondary">

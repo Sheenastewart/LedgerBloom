@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/AppLayout'
 import { CategoriesPage } from './features/categories/pages/CategoriesPage'
 import { CategoryFormPage } from './features/categories/pages/CategoryFormPage'
+import { DashboardPage } from './features/dashboard/pages/DashboardPage'
 import { ExpenseFormPage } from './features/expenses/pages/ExpenseFormPage'
 import { ExpensesPage } from './features/expenses/pages/ExpensesPage'
 import { IncomeFormPage } from './features/income/pages/IncomeFormPage'
@@ -13,6 +14,7 @@ export function AppRoutes() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route path="/" element={<HomePage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
         <Route path="/categories/new" element={<CategoryFormPage mode="create" />} />
         <Route path="/categories/:id/edit" element={<CategoryFormPage mode="edit" />} />
