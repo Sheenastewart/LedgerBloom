@@ -1,0 +1,9 @@
+package com.ledgerbloom.error;
+
+public enum ErrorCode {
+	CATEGORY_NOT_FOUND,
+	CATEGORY_NAME_ALREADY_EXISTS,
+	VALIDATION_FAILED,
+	INVALID_REQUEST,
+	INTERNAL_SERVER_ERROR
+}
