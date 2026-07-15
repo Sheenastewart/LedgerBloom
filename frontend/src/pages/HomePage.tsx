@@ -54,6 +54,9 @@ export function HomePage() {
         <Link to="/expenses" className="button button-secondary">
           Manage expenses
         </Link>
+        <Link to="/recurring" className="button button-secondary">
+          Manage recurring
+        </Link>
         <Link to="/income" className="button button-secondary">
           Manage income
         </Link>

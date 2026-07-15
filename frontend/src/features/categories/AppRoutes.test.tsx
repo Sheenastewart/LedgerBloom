@@ -60,6 +60,17 @@ vi.mock('../income/api/incomeApi', () => ({
   deleteIncomeEntry: vi.fn(),
 }))
 
+
+vi.mock('../recurring/api/recurringApi', () => ({
+  getRecurringExpenses: vi.fn().mockResolvedValue([]),
+  getUpcomingRecurringExpenses: vi.fn().mockResolvedValue([]),
+  getRecurringExpense: vi.fn(),
+  createRecurringExpense: vi.fn(),
+  updateRecurringExpense: vi.fn(),
+  deleteRecurringExpense: vi.fn(),
+  markRecurringExpensePaid: vi.fn(),
+}))
+
 describe('Category routes', () => {
   afterEach(() => {
     cleanup()

@@ -2,9 +2,8 @@ import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiClientError } from '../../api/ApiClientError'
 import { AppRoutes } from '../../App'
-import * as budgetApi from './api/budgetApi'
+import * as recurringApi from './api/recurringApi'
 
 vi.mock('../../api/health', () => ({
   fetchHealth: vi.fn().mockResolvedValue({ status: 'UP', service: 'ledgerbloom-api' }),
@@ -34,6 +33,16 @@ vi.mock('../income/api/incomeApi', () => ({
   deleteIncomeEntry: vi.fn(),
 }))
 
+vi.mock('../budgets/api/budgetApi', () => ({
+  getMonthlyBudget: vi.fn(),
+  createMonthlyBudget: vi.fn(),
+  updateMonthlyBudget: vi.fn(),
+  deleteMonthlyBudget: vi.fn(),
+  createCategoryLimit: vi.fn(),
+  updateCategoryLimit: vi.fn(),
+  deleteCategoryLimit: vi.fn(),
+}))
+
 vi.mock('../dashboard/api/dashboardApi', () => ({
   getMonthlyDashboard: vi.fn().mockResolvedValue({
     year: 2026,
@@ -51,18 +60,7 @@ vi.mock('../dashboard/api/dashboardApi', () => ({
   }),
 }))
 
-vi.mock('./api/budgetApi', () => ({
-  getMonthlyBudget: vi.fn(),
-  createMonthlyBudget: vi.fn(),
-  updateMonthlyBudget: vi.fn(),
-  deleteMonthlyBudget: vi.fn(),
-  createCategoryLimit: vi.fn(),
-  updateCategoryLimit: vi.fn(),
-  deleteCategoryLimit: vi.fn(),
-}))
-
-
-vi.mock('../recurring/api/recurringApi', () => ({
+vi.mock('./api/recurringApi', () => ({
   getRecurringExpenses: vi.fn().mockResolvedValue([]),
   getUpcomingRecurringExpenses: vi.fn().mockResolvedValue([]),
   getRecurringExpense: vi.fn(),
@@ -72,19 +70,18 @@ vi.mock('../recurring/api/recurringApi', () => ({
   markRecurringExpensePaid: vi.fn(),
 }))
 
-describe('Budget routes', () => {
+describe('Recurring routes', () => {
   afterEach(() => {
     cleanup()
     vi.restoreAllMocks()
   })
 
   beforeEach(() => {
-    vi.mocked(budgetApi.getMonthlyBudget).mockRejectedValue(
-      new ApiClientError({ message: 'missing', code: 'BUDGET_NOT_FOUND', status: 404 }),
-    )
+    vi.mocked(recurringApi.getRecurringExpenses).mockResolvedValue([])
+    vi.mocked(recurringApi.getUpcomingRecurringExpenses).mockResolvedValue([])
   })
 
-  it('navigates from Home to Budgets via nav and CTA', async () => {
+  it('navigates from Home to Recurring via nav and CTA', async () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/']}>
@@ -93,11 +90,11 @@ describe('Budget routes', () => {
     )
 
     expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
-    await user.click(screen.getByRole('link', { name: 'Budgets' }))
-    expect(await screen.findByRole('heading', { name: 'Budgets' })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Recurring' }))
+    expect(await screen.findByRole('heading', { name: 'Recurring' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Home' }))
-    await user.click(screen.getByRole('link', { name: 'Manage budgets' }))
-    expect(await screen.findByRole('heading', { name: 'Budgets' })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Manage recurring' }))
+    expect(await screen.findByRole('heading', { name: 'Recurring' })).toBeInTheDocument()
   })
 })

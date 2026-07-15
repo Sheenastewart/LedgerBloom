@@ -75,6 +75,15 @@ Stage 4 does **not** include charts/chart libraries, authentication, multi-month
 
 Stage 5 does **not** include recurring budgets, rollovers, savings goals, notifications, charts, authentication, or annual/weekly budgets.
 
+### Stage 6 — Recurring Expenses / Subscriptions (full stack)
+
+- V5 `recurring_expenses` table for scheduled obligations
+- CRUD + upcoming payments + mark-paid creating a real Expense only after explicit confirmation
+- Recurring UI at `/recurring` with filters, upcoming section, and Mark Paid flow
+- Category deletion also blocked when referenced by a recurring item
+
+Stage 6 does **not** include automatic background expense creation, reminders/notifications, authentication, bank integrations, receipts, OCR, or recurring income.
+
 ## Repository structure
 
 ```text
@@ -307,7 +316,7 @@ Controller Bean Validation checks the inbound JSON. The service re-validates the
 }
 ```
 
-Stable codes include: `CATEGORY_NOT_FOUND`, `CATEGORY_NAME_ALREADY_EXISTS`, `CATEGORY_IN_USE`, `EXPENSE_NOT_FOUND`, `INVALID_EXPENSE_DATA`, `VALIDATION_FAILED`, `INVALID_REQUEST`, `INTERNAL_SERVER_ERROR`.
+Stable codes include: `CATEGORY_NOT_FOUND`, `CATEGORY_NAME_ALREADY_EXISTS`, `CATEGORY_IN_USE`, `EXPENSE_NOT_FOUND`, `INVALID_EXPENSE_DATA`, `RECURRING_EXPENSE_NOT_FOUND`, `INVALID_RECURRING_EXPENSE_DATA`, `INVALID_RECURRING_EXPENSE_FILTER`, `RECURRING_EXPENSE_PAYMENT_CONFLICT`, `VALIDATION_FAILED`, `INVALID_REQUEST`, `INTERNAL_SERVER_ERROR`.
 
 Validation failures may include a `fieldErrors` array of `{ "field", "message" }`.
 
@@ -526,6 +535,62 @@ Confirm with `psql` after startup:
 
 - No recurring budgets, automatic copying, rollovers, savings goals, notifications, charts, annual/weekly budgets, or authentication
 
+## Recurring Expenses (Stage 6)
+
+With PostgreSQL, the backend, and the Vite frontend running:
+
+1. Open `http://localhost:5173/recurring` (nav **Recurring** / home **Manage recurring**)
+2. Create weekly, monthly, and annual recurring items
+3. Filter by active status, category, and cadence
+4. Review upcoming payments (default next 30 days)
+5. Mark Paid with confirmation — creates one Expense and advances `nextPaymentDate`
+6. Confirm the new expense appears under **Expenses**
+
+`active` defaults to `true` in the database (`DEFAULT TRUE`) and the create form defaults the checkbox to checked. Past `nextPaymentDate` values are allowed (overdue items); dates are not auto-advanced without Mark Paid.
+
+### Frontend routes
+
+| Path | Page |
+| --- | --- |
+| `/recurring` | List, filters, upcoming, mark paid |
+| `/recurring/new` | Create recurring expense |
+| `/recurring/:id/edit` | Edit recurring expense |
+
+### Recurring API
+
+| Method | Path | Success |
+| --- | --- | --- |
+| `GET` | `/api/recurring-expenses` | `200` (filters: `active`, `categoryId`, `cadence`) |
+| `GET` | `/api/recurring-expenses/upcoming?days=` | `200` (default 30 days; active only) |
+| `GET` | `/api/recurring-expenses/{id}` | `200` / `404` |
+| `POST` | `/api/recurring-expenses` | `201` + `Location` |
+| `PUT` | `/api/recurring-expenses/{id}` | `200` |
+| `DELETE` | `/api/recurring-expenses/{id}` | `204` |
+| `POST` | `/api/recurring-expenses/{id}/mark-paid` | `200` `{ createdExpense, updatedRecurringExpense }` |
+
+Mark-paid request body (required):
+
+```json
+{
+  "expectedNextPaymentDate": "2026-08-01"
+}
+```
+
+`expectedNextPaymentDate` is required and must equal the row’s current `nextPaymentDate` at lock time. Missing/null → `400 VALIDATION_FAILED`; malformed → `400 INVALID_REQUEST`; mismatch (stale/duplicate) → `409 RECURRING_EXPENSE_PAYMENT_CONFLICT`.
+
+Mark-paid runs in one transaction: pessimistic write lock → compare expected date → create one Expense → advance `nextPaymentDate`. Cadence advances use `LocalDate.plusWeeks` / `plusMonths` / `plusYears` (Java end-of-month semantics, e.g. Jan 31 + 1 month → Feb 28/29).
+
+### Database (V5)
+
+- table `recurring_expenses`
+- `ck_recurring_expenses_amount_positive`, `ck_recurring_expenses_cadence`
+- `fk_recurring_expenses_category` `ON DELETE RESTRICT`
+- indexes on category, next payment date, active, cadence, and `(active, next_payment_date)`
+
+### Current limitations
+
+- No reminders, auto-posting, bank sync, receipts, OCR, proration, or recurring income
+
 ## Expense API (Stage 2A)
 
 The Expense UI consumes these backend endpoints.
@@ -675,12 +740,13 @@ No wildcard origin is configured.
 
 ## Features intentionally deferred
 
-Deferred beyond Stage 5:
+Deferred beyond Stage 6:
 
 - Multi-month / year-to-date comparisons and charts
 - Category detail page, search, pagination, sorting UI controls
 - Recurring budgets / budget rollover / savings goals
-- Recurring expenses / subscriptions / recurring income
+- Recurring income
+- Email or push reminders for recurring expenses
 - Authentication and users
 - Receipt upload and OCR
 - Reports and exports

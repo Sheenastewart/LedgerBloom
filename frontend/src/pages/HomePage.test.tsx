@@ -52,6 +52,10 @@ describe('HomePage', () => {
       'href',
       '/expenses',
     )
+    expect(screen.getByRole('link', { name: 'Manage recurring' })).toHaveAttribute(
+      'href',
+      '/recurring',
+    )
     expect(screen.getByRole('link', { name: 'Manage income' })).toHaveAttribute(
       'href',
       '/income',

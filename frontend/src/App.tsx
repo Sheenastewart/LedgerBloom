@@ -9,6 +9,8 @@ import { ExpenseFormPage } from './features/expenses/pages/ExpenseFormPage'
 import { ExpensesPage } from './features/expenses/pages/ExpensesPage'
 import { IncomeFormPage } from './features/income/pages/IncomeFormPage'
 import { IncomePage } from './features/income/pages/IncomePage'
+import { RecurringFormPage } from './features/recurring/pages/RecurringFormPage'
+import { RecurringPage } from './features/recurring/pages/RecurringPage'
 import { HomePage } from './pages/HomePage'
 
 export function AppRoutes() {
@@ -26,6 +28,9 @@ export function AppRoutes() {
         <Route path="/expenses" element={<ExpensesPage />} />
         <Route path="/expenses/new" element={<ExpenseFormPage mode="create" />} />
         <Route path="/expenses/:id/edit" element={<ExpenseFormPage mode="edit" />} />
+        <Route path="/recurring" element={<RecurringPage />} />
+        <Route path="/recurring/new" element={<RecurringFormPage mode="create" />} />
+        <Route path="/recurring/:id/edit" element={<RecurringFormPage mode="edit" />} />
         <Route path="/income" element={<IncomePage />} />
         <Route path="/income/new" element={<IncomeFormPage mode="create" />} />
         <Route path="/income/:id/edit" element={<IncomeFormPage mode="edit" />} />

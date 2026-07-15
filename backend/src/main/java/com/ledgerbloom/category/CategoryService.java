@@ -2,6 +2,7 @@ package com.ledgerbloom.category;
 
 import com.ledgerbloom.budget.CategoryBudgetLimitRepository;
 import com.ledgerbloom.expense.ExpenseRepository;
+import com.ledgerbloom.recurring.RecurringExpenseRepository;
 import java.util.List;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -14,14 +15,17 @@ public class CategoryService {
 	private final CategoryRepository categoryRepository;
 	private final ExpenseRepository expenseRepository;
 	private final CategoryBudgetLimitRepository categoryBudgetLimitRepository;
+	private final RecurringExpenseRepository recurringExpenseRepository;
 
 	public CategoryService(
 			CategoryRepository categoryRepository,
 			ExpenseRepository expenseRepository,
-			CategoryBudgetLimitRepository categoryBudgetLimitRepository) {
+			CategoryBudgetLimitRepository categoryBudgetLimitRepository,
+			RecurringExpenseRepository recurringExpenseRepository) {
 		this.categoryRepository = categoryRepository;
 		this.expenseRepository = expenseRepository;
 		this.categoryBudgetLimitRepository = categoryBudgetLimitRepository;
+		this.recurringExpenseRepository = recurringExpenseRepository;
 	}
 
 	@Transactional(readOnly = true)
@@ -58,7 +62,9 @@ public class CategoryService {
 
 	public void delete(Long id) {
 		Category category = getCategoryOrThrow(id);
-		if (expenseRepository.existsByCategory_Id(id) || categoryBudgetLimitRepository.existsByCategory_Id(id)) {
+		if (expenseRepository.existsByCategory_Id(id)
+				|| categoryBudgetLimitRepository.existsByCategory_Id(id)
+				|| recurringExpenseRepository.existsByCategory_Id(id)) {
 			throw new CategoryInUseException(id);
 		}
 		try {

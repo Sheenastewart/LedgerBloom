@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import com.ledgerbloom.budget.CategoryBudgetLimitRepository;
 import com.ledgerbloom.expense.ExpenseRepository;
+import com.ledgerbloom.recurring.RecurringExpenseRepository;
 
 @ExtendWith(MockitoExtension.class)
 class CategoryServiceTest {
@@ -33,6 +34,9 @@ class CategoryServiceTest {
 
 	@Mock
 	private CategoryBudgetLimitRepository categoryBudgetLimitRepository;
+
+	@Mock
+	private RecurringExpenseRepository recurringExpenseRepository;
 
 	@InjectMocks
 	private CategoryService categoryService;
@@ -175,6 +179,7 @@ class CategoryServiceTest {
 		when(categoryRepository.findById(1L)).thenReturn(Optional.of(existing));
 		when(expenseRepository.existsByCategory_Id(1L)).thenReturn(false);
 		when(categoryBudgetLimitRepository.existsByCategory_Id(1L)).thenReturn(false);
+		when(recurringExpenseRepository.existsByCategory_Id(1L)).thenReturn(false);
 
 		categoryService.delete(1L);
 
@@ -206,10 +211,24 @@ class CategoryServiceTest {
 	}
 
 	@Test
+	void deleteRejectsCategoryWithRecurringExpense() {
+		when(categoryRepository.findById(1L)).thenReturn(Optional.of(existing));
+		when(expenseRepository.existsByCategory_Id(1L)).thenReturn(false);
+		when(categoryBudgetLimitRepository.existsByCategory_Id(1L)).thenReturn(false);
+		when(recurringExpenseRepository.existsByCategory_Id(1L)).thenReturn(true);
+
+		assertThatThrownBy(() -> categoryService.delete(1L))
+			.isInstanceOf(CategoryInUseException.class);
+
+		verify(categoryRepository, never()).delete(any());
+	}
+
+	@Test
 	void deleteMapsIntegrityRaceToCategoryInUse() {
 		when(categoryRepository.findById(1L)).thenReturn(Optional.of(existing));
 		when(expenseRepository.existsByCategory_Id(1L)).thenReturn(false);
 		when(categoryBudgetLimitRepository.existsByCategory_Id(1L)).thenReturn(false);
+		when(recurringExpenseRepository.existsByCategory_Id(1L)).thenReturn(false);
 		org.mockito.Mockito.doThrow(new DataIntegrityViolationException("fk"))
 			.when(categoryRepository).delete(existing);
 
