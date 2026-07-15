@@ -139,6 +139,16 @@ class CategoryControllerTest {
 	}
 
 	@Test
+	void deleteInUseReturns409() throws Exception {
+		doThrow(new CategoryInUseException(1L)).when(categoryService).delete(1L);
+
+		mockMvc.perform(delete("/api/categories/1"))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("CATEGORY_IN_USE"))
+			.andExpect(jsonPath("$.status").value(409));
+	}
+
+	@Test
 	void deleteMissingReturns404() throws Exception {
 		doThrow(new CategoryNotFoundException(42L)).when(categoryService).delete(42L);
 

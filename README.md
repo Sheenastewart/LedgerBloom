@@ -27,7 +27,17 @@ LedgerBloom is a smart budget and receipt tracker portfolio application.
 - Native `fetch` client against Stage 1A endpoints
 - Client-side form validation plus structured API error display
 
-Stage 1B does **not** include a category detail page, search/pagination/sorting, expenses, budgets, authentication, receipts, OCR, reports, notifications, exports, or cloud deployment.
+Stage 1B does **not** include a category detail page, search/pagination/sorting, budgets, authentication, receipts, OCR, reports, notifications, exports, or cloud deployment.
+
+### Stage 2A — Expense Management API (backend only)
+
+- Flyway `V2__create_expenses_table.sql`
+- Expense CRUD REST API with category assignment
+- Optional filters by year/month and/or category
+- Newest-date-first ordering
+- Category deletion blocked while expenses reference the category
+
+Stage 2A does **not** include an Expense frontend, monthly aggregate totals, budgets, recurring expenses, income, receipts, OCR, authentication, or pagination/search.
 
 ## Repository structure
 
@@ -228,7 +238,7 @@ The Category UI consumes these backend endpoints.
 | `GET` | `/api/categories/{id}` | `200` / `404` |
 | `POST` | `/api/categories` | `201` + `Location` / `400` / `409` |
 | `PUT` | `/api/categories/{id}` | `200` / `400` / `404` / `409` |
-| `DELETE` | `/api/categories/{id}` | `204` / `404` |
+| `DELETE` | `/api/categories/{id}` | `204` / `404` / `409` (`CATEGORY_IN_USE`) |
 
 ### Example create body
 
@@ -261,9 +271,13 @@ Controller Bean Validation checks the inbound JSON. The service re-validates the
 }
 ```
 
-Stable codes include: `CATEGORY_NOT_FOUND`, `CATEGORY_NAME_ALREADY_EXISTS`, `VALIDATION_FAILED`, `INVALID_REQUEST`, `INTERNAL_SERVER_ERROR`.
+Stable codes include: `CATEGORY_NOT_FOUND`, `CATEGORY_NAME_ALREADY_EXISTS`, `CATEGORY_IN_USE`, `EXPENSE_NOT_FOUND`, `INVALID_EXPENSE_DATA`, `VALIDATION_FAILED`, `INVALID_REQUEST`, `INTERNAL_SERVER_ERROR`.
 
 Validation failures may include a `fieldErrors` array of `{ "field", "message" }`.
+
+### Category deletion protection
+
+Deleting a category that still has expenses returns `409` with code `CATEGORY_IN_USE`. The database foreign key uses `ON DELETE RESTRICT` as a final guard.
 
 ### Flyway V1
 
@@ -271,6 +285,105 @@ Migration `V1__create_categories_table.sql` creates:
 
 - `categories` (`id`, `name`, `description`, `created_at`, `updated_at`)
 - unique index `ux_categories_name_lower` on `LOWER(name)`
+
+## Expense API (Stage 2A)
+
+There is **no Expense UI** in Stage 2A. Use the backend endpoints below.
+
+### Endpoints
+
+| Method | Path | Success |
+| --- | --- | --- |
+| `GET` | `/api/expenses` | `200` — newest `expenseDate`, then `id` descending |
+| `GET` | `/api/expenses/{id}` | `200` / `404` |
+| `POST` | `/api/expenses` | `201` + `Location` / `400` / `404` |
+| `PUT` | `/api/expenses/{id}` | `200` / `400` / `404` |
+| `DELETE` | `/api/expenses/{id}` | `204` / `404` |
+
+### Filter query parameters
+
+Optional on `GET /api/expenses`:
+
+| Param | Rules |
+| --- | --- |
+| `year` + `month` | Must both be present or both absent; `month` 1–12; `year` 1–9999 |
+| `categoryId` | Optional; must be positive when provided |
+
+Examples:
+
+- `GET /api/expenses`
+- `GET /api/expenses?year=2026&month=7`
+- `GET /api/expenses?categoryId=3`
+- `GET /api/expenses?year=2026&month=7&categoryId=3`
+
+An unknown `categoryId` filter returns an empty list (not `404`). Missing category on create/update returns `404 CATEGORY_NOT_FOUND`.
+
+Month filtering uses half-open bounds: `expense_date >= first day of month` and `expense_date < first day of next month`.
+
+### Example create body
+
+```json
+{
+  "description": "Weekly shopping",
+  "merchant": "Local Market",
+  "amount": 45.50,
+  "expenseDate": "2026-07-10",
+  "categoryId": 1,
+  "notes": "Optional note"
+}
+```
+
+### Example response
+
+```json
+{
+  "id": 1,
+  "description": "Weekly shopping",
+  "merchant": "Local Market",
+  "amount": 45.50,
+  "expenseDate": "2026-07-10",
+  "category": { "id": 1, "name": "Groceries" },
+  "notes": "Optional note",
+  "createdAt": "2026-07-15T18:00:00Z",
+  "updatedAt": "2026-07-15T18:00:00Z"
+}
+```
+
+### Validation rules
+
+- `description`: required, not blank, max 160 characters (after trim)
+- `merchant`: optional, max 120 characters; blank becomes `null`
+- `amount`: required, `BigDecimal`, greater than zero, at most 2 decimal places, fits `NUMERIC(12,2)` — excess decimals are rejected (not rounded)
+- `expenseDate`: required (`YYYY-MM-DD`)
+- `categoryId`: required, positive, must exist
+- `notes`: optional `TEXT`; blank becomes `null`
+
+### Flyway V2
+
+Migration `V2__create_expenses_table.sql` creates:
+
+- `expenses` (`id`, `description`, `merchant`, `amount`, `expense_date`, `notes`, `category_id`, `created_at`, `updated_at`)
+- check `ck_expenses_amount_positive` (`amount > 0`)
+- foreign key `fk_expenses_category` → `categories(id)` `ON DELETE RESTRICT`
+- indexes `ix_expenses_expense_date`, `ix_expenses_category_id`, `ix_expenses_expense_date_category_id`
+
+### Manual Expense API verification
+
+With Postgres and the backend running:
+
+```bash
+curl -i -X POST http://localhost:8080/api/categories \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Groceries"}'
+
+curl -i -X POST http://localhost:8080/api/expenses \
+  -H 'Content-Type: application/json' \
+  -d '{"description":"Weekly shopping","merchant":"Market","amount":45.50,"expenseDate":"2026-07-10","categoryId":1}'
+
+curl -i 'http://localhost:8080/api/expenses?year=2026&month=7'
+curl -i 'http://localhost:8080/api/expenses?categoryId=1'
+curl -i -X DELETE http://localhost:8080/api/categories/1
+```
 
 ### Manual Category API verification
 
@@ -322,11 +435,14 @@ No wildcard origin is configured.
 
 ## Features intentionally deferred
 
-Deferred beyond Stage 1B:
+Deferred beyond Stage 2A:
 
+- Expense frontend UI
+- Monthly aggregate totals (future reporting will combine separate Expense and Income totals)
+- Income management API and UI (planned as a separate controlled stage before monthly financial summaries; Income will remain its own backend feature and database table — not a generic Transaction entity)
 - Category detail page, search, pagination, sorting UI controls
-- Expenses (including “category is in use” delete protection)
 - Budgets
+- Recurring expenses / subscriptions
 - Authentication and users
 - Receipt upload and OCR
 - Reports and exports

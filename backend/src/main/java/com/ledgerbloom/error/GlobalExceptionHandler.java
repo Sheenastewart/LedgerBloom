@@ -1,8 +1,12 @@
 package com.ledgerbloom.error;
 
+import com.ledgerbloom.category.CategoryInUseException;
 import com.ledgerbloom.category.CategoryNameAlreadyExistsException;
 import com.ledgerbloom.category.CategoryNotFoundException;
 import com.ledgerbloom.category.InvalidCategoryDataException;
+import com.ledgerbloom.expense.ExpenseNotFoundException;
+import com.ledgerbloom.expense.InvalidExpenseDataException;
+import com.ledgerbloom.expense.InvalidExpenseFilterException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.List;
@@ -18,10 +22,17 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
 	@ExceptionHandler(CategoryNotFoundException.class)
-	public ResponseEntity<ApiErrorResponse> handleNotFound(
+	public ResponseEntity<ApiErrorResponse> handleCategoryNotFound(
 			CategoryNotFoundException ex,
 			HttpServletRequest request) {
 		return build(HttpStatus.NOT_FOUND, ErrorCode.CATEGORY_NOT_FOUND, ex.getMessage(), request.getRequestURI(), null);
+	}
+
+	@ExceptionHandler(ExpenseNotFoundException.class)
+	public ResponseEntity<ApiErrorResponse> handleExpenseNotFound(
+			ExpenseNotFoundException ex,
+			HttpServletRequest request) {
+		return build(HttpStatus.NOT_FOUND, ErrorCode.EXPENSE_NOT_FOUND, ex.getMessage(), request.getRequestURI(), null);
 	}
 
 	@ExceptionHandler(CategoryNameAlreadyExistsException.class)
@@ -37,6 +48,19 @@ public class GlobalExceptionHandler {
 		);
 	}
 
+	@ExceptionHandler(CategoryInUseException.class)
+	public ResponseEntity<ApiErrorResponse> handleCategoryInUse(
+			CategoryInUseException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.CONFLICT,
+			ErrorCode.CATEGORY_IN_USE,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
 	@ExceptionHandler(InvalidCategoryDataException.class)
 	public ResponseEntity<ApiErrorResponse> handleInvalidCategoryData(
 			InvalidCategoryDataException ex,
@@ -44,6 +68,32 @@ public class GlobalExceptionHandler {
 		return build(
 			HttpStatus.BAD_REQUEST,
 			ErrorCode.VALIDATION_FAILED,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
+	@ExceptionHandler(InvalidExpenseDataException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidExpenseData(
+			InvalidExpenseDataException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_EXPENSE_DATA,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
+	@ExceptionHandler(InvalidExpenseFilterException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidExpenseFilter(
+			InvalidExpenseFilterException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_REQUEST,
 			ex.getMessage(),
 			request.getRequestURI(),
 			null

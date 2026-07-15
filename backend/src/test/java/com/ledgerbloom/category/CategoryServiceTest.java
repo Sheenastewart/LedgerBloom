@@ -19,12 +19,16 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import com.ledgerbloom.expense.ExpenseRepository;
 
 @ExtendWith(MockitoExtension.class)
 class CategoryServiceTest {
 
 	@Mock
 	private CategoryRepository categoryRepository;
+
+	@Mock
+	private ExpenseRepository expenseRepository;
 
 	@InjectMocks
 	private CategoryService categoryService;
@@ -165,10 +169,34 @@ class CategoryServiceTest {
 	@Test
 	void deleteExistingCategory() {
 		when(categoryRepository.findById(1L)).thenReturn(Optional.of(existing));
+		when(expenseRepository.existsByCategory_Id(1L)).thenReturn(false);
 
 		categoryService.delete(1L);
 
 		verify(categoryRepository).delete(existing);
+		verify(categoryRepository).flush();
+	}
+
+	@Test
+	void deleteRejectsCategoryInUse() {
+		when(categoryRepository.findById(1L)).thenReturn(Optional.of(existing));
+		when(expenseRepository.existsByCategory_Id(1L)).thenReturn(true);
+
+		assertThatThrownBy(() -> categoryService.delete(1L))
+			.isInstanceOf(CategoryInUseException.class);
+
+		verify(categoryRepository, never()).delete(any());
+	}
+
+	@Test
+	void deleteMapsIntegrityRaceToCategoryInUse() {
+		when(categoryRepository.findById(1L)).thenReturn(Optional.of(existing));
+		when(expenseRepository.existsByCategory_Id(1L)).thenReturn(false);
+		org.mockito.Mockito.doThrow(new DataIntegrityViolationException("fk"))
+			.when(categoryRepository).delete(existing);
+
+		assertThatThrownBy(() -> categoryService.delete(1L))
+			.isInstanceOf(CategoryInUseException.class);
 	}
 
 	@Test
