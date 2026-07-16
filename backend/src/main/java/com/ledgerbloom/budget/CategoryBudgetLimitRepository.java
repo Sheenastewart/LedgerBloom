@@ -8,9 +8,9 @@ public interface CategoryBudgetLimitRepository extends JpaRepository<CategoryBud
 
 	List<CategoryBudgetLimit> findByMonthlyBudget_IdOrderByIdAsc(Long monthlyBudgetId);
 
-	Optional<CategoryBudgetLimit> findByIdAndMonthlyBudget_Id(Long id, Long monthlyBudgetId);
+	Optional<CategoryBudgetLimit> findByIdAndMonthlyBudget_IdAndUser_Id(Long id, Long monthlyBudgetId, Long userId);
 
-	boolean existsByMonthlyBudget_IdAndCategory_Id(Long monthlyBudgetId, Long categoryId);
+	boolean existsByMonthlyBudget_IdAndCategory_IdAndUser_Id(Long monthlyBudgetId, Long categoryId, Long userId);
 
 	boolean existsByCategory_Id(Long categoryId);
 }

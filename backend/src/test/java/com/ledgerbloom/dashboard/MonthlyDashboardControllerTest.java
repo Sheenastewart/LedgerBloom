@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ledgerbloom.error.GlobalExceptionHandler;
+import com.ledgerbloom.support.SecurityTestConfig;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -16,11 +17,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = MonthlyDashboardController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, SecurityTestConfig.class})
+@WithMockUser(username = "user@example.com")
 class MonthlyDashboardControllerTest {
 
 	@Autowired

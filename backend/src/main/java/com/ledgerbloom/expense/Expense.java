@@ -1,6 +1,7 @@
 package com.ledgerbloom.expense;
 
 import com.ledgerbloom.category.Category;
+import com.ledgerbloom.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -23,6 +24,10 @@ public class Expense {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
+
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "user_id", nullable = false)
+	private User user;
 
 	@Column(nullable = false, length = 160)
 	private String description;
@@ -53,12 +58,14 @@ public class Expense {
 	}
 
 	public Expense(
+			User user,
 			String description,
 			String merchant,
 			BigDecimal amount,
 			LocalDate expenseDate,
 			String notes,
 			Category category) {
+		this.user = user;
 		this.description = description;
 		this.merchant = merchant;
 		this.amount = amount;
@@ -81,6 +88,10 @@ public class Expense {
 
 	public Long getId() {
 		return id;
+	}
+
+	public User getUser() {
+		return user;
 	}
 
 	public String getDescription() {

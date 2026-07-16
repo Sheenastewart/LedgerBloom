@@ -93,6 +93,11 @@ body {
   font-weight: 600;
 }
 
+.home-welcome {
+  margin: 0 0 1.25rem;
+  color: #4c6356;
+}
+
 .home-actions {
   display: flex;
   flex-wrap: wrap;

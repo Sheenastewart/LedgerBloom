@@ -1,17 +1,13 @@
+import { requestJson } from './apiClient'
+
 export type HealthResponse = {
   status: string
   service: string
 }
 
 export async function fetchHealth(
-  apiBaseUrl: string,
+  _apiBaseUrl: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<HealthResponse> {
-  const response = await fetchImpl(`${apiBaseUrl}/api/health`)
-
-  if (!response.ok) {
-    throw new Error(`Health check failed with status ${response.status}`)
-  }
-
-  return response.json() as Promise<HealthResponse>
+  return requestJson<HealthResponse>('/api/health', { method: 'GET' }, fetchImpl)
 }

@@ -1,5 +1,6 @@
 package com.ledgerbloom.report;
 
+import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.dashboard.CategorySpendingTotal;
 import com.ledgerbloom.dashboard.SourceIncomeTotal;
 import com.ledgerbloom.expense.Expense;
@@ -24,14 +25,17 @@ public class ExportService {
 	private final ExpenseRepository expenseRepository;
 	private final IncomeEntryRepository incomeEntryRepository;
 	private final ReportService reportService;
+	private final CurrentUser currentUser;
 
 	public ExportService(
 			ExpenseRepository expenseRepository,
 			IncomeEntryRepository incomeEntryRepository,
-			ReportService reportService) {
+			ReportService reportService,
+			CurrentUser currentUser) {
 		this.expenseRepository = expenseRepository;
 		this.incomeEntryRepository = incomeEntryRepository;
 		this.reportService = reportService;
+		this.currentUser = currentUser;
 	}
 
 	@Transactional(readOnly = true)
@@ -39,17 +43,20 @@ public class ExportService {
 		validatePeriod(year, month);
 
 		try {
+			Long userId = currentUser.requireUserId();
 			YearMonth yearMonth = YearMonth.of(year, month);
 			LocalDate start = yearMonth.atDay(1);
 			LocalDate endExclusive = start.plusMonths(1);
 
 			List<IncomeEntry> incomeEntries = incomeEntryRepository
-				.findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+				.findByUser_IdAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+					userId,
 					start,
 					endExclusive
 				);
 			List<Expense> expenses = expenseRepository
-				.findByExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+					userId,
 					start,
 					endExclusive
 				);
@@ -115,17 +122,20 @@ public class ExportService {
 			MonthlyComparisonResponse comparison = reportService.getMonthlyComparison(year, month, year, month);
 			MonthlyComparisonItem item = comparison.months().get(0);
 
+			Long userId = currentUser.requireUserId();
 			YearMonth yearMonth = YearMonth.of(year, month);
 			LocalDate start = yearMonth.atDay(1);
 			LocalDate endExclusive = start.plusMonths(1);
 
 			List<Expense> expenses = expenseRepository
-				.findByExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+					userId,
 					start,
 					endExclusive
 				);
 			List<IncomeEntry> incomeEntries = incomeEntryRepository
-				.findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+				.findByUser_IdAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+					userId,
 					start,
 					endExclusive
 				);

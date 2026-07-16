@@ -1,5 +1,6 @@
 package com.ledgerbloom.recurringincome;
 
+import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.income.IncomeEntryCreateRequest;
 import com.ledgerbloom.income.IncomeEntryResponse;
 import com.ledgerbloom.income.IncomeEntryService;
@@ -18,19 +19,23 @@ public class RecurringIncomeService {
 
 	private final RecurringIncomeRepository recurringIncomeRepository;
 	private final IncomeEntryService incomeEntryService;
+	private final CurrentUser currentUser;
 
 	public RecurringIncomeService(
 			RecurringIncomeRepository recurringIncomeRepository,
-			IncomeEntryService incomeEntryService) {
+			IncomeEntryService incomeEntryService,
+			CurrentUser currentUser) {
 		this.recurringIncomeRepository = recurringIncomeRepository;
 		this.incomeEntryService = incomeEntryService;
+		this.currentUser = currentUser;
 	}
 
 	@Transactional(readOnly = true)
 	public List<RecurringIncomeResponse> findAll(Boolean active, String cadence, String source) {
 		RecurringIncomeCadence cadenceEnum = parseCadenceFilter(cadence);
 		String normalizedSource = normalizeSourceFilter(source);
-		return recurringIncomeRepository.findFiltered(active, cadenceEnum, normalizedSource).stream()
+		Long userId = currentUser.requireUserId();
+		return recurringIncomeRepository.findFiltered(userId, active, cadenceEnum, normalizedSource).stream()
 			.map(this::toResponse)
 			.toList();
 	}
@@ -43,14 +48,15 @@ public class RecurringIncomeService {
 		}
 		LocalDate today = LocalDate.now();
 		LocalDate toInclusive = today.plusDays(windowDays);
-		return recurringIncomeRepository.findUpcoming(today, toInclusive).stream()
+		Long userId = currentUser.requireUserId();
+		return recurringIncomeRepository.findUpcoming(userId, today, toInclusive).stream()
 			.map(this::toResponse)
 			.toList();
 	}
 
 	@Transactional(readOnly = true)
 	public RecurringIncomeResponse findById(Long id) {
-		return toResponse(getOrThrow(id));
+		return toResponse(getOrThrow(id, currentUser.requireUserId()));
 	}
 
 	public RecurringIncomeResponse create(RecurringIncomeCreateRequest request) {
@@ -64,6 +70,7 @@ public class RecurringIncomeService {
 			request.notes()
 		);
 		RecurringIncome entity = new RecurringIncome(
+			currentUser.requireUserReference(),
 			data.description(),
 			data.source(),
 			data.amount(),
@@ -76,7 +83,7 @@ public class RecurringIncomeService {
 	}
 
 	public RecurringIncomeResponse update(Long id, RecurringIncomeUpdateRequest request) {
-		RecurringIncome entity = getOrThrow(id);
+		RecurringIncome entity = getOrThrow(id, currentUser.requireUserId());
 		NormalizedData data = normalize(
 			request.description(),
 			request.source(),
@@ -97,7 +104,7 @@ public class RecurringIncomeService {
 	}
 
 	public void delete(Long id) {
-		RecurringIncome entity = getOrThrow(id);
+		RecurringIncome entity = getOrThrow(id, currentUser.requireUserId());
 		recurringIncomeRepository.delete(entity);
 	}
 
@@ -108,7 +115,8 @@ public class RecurringIncomeService {
 	 * (row lock alone would otherwise allow another IncomeEntry after the date advanced).
 	 */
 	public MarkReceivedResponse markReceived(Long id, MarkReceivedRequest request) {
-		RecurringIncome entity = recurringIncomeRepository.findByIdForUpdate(id)
+		Long userId = currentUser.requireUserId();
+		RecurringIncome entity = recurringIncomeRepository.findByIdAndUser_IdForUpdate(id, userId)
 			.orElseThrow(() -> new RecurringIncomeNotFoundException(id));
 
 		LocalDate expected = request.expectedNextIncomeDate();
@@ -153,8 +161,8 @@ public class RecurringIncomeService {
 		return source + ". " + entity.getNotes();
 	}
 
-	private RecurringIncome getOrThrow(Long id) {
-		return recurringIncomeRepository.findById(id)
+	private RecurringIncome getOrThrow(Long id, Long userId) {
+		return recurringIncomeRepository.findByIdAndUser_Id(id, userId)
 			.orElseThrow(() -> new RecurringIncomeNotFoundException(id));
 	}
 

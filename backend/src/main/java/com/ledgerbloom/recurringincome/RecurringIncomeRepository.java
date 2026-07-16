@@ -11,41 +11,49 @@ import org.springframework.data.repository.query.Param;
 
 public interface RecurringIncomeRepository extends JpaRepository<RecurringIncome, Long> {
 
+	Optional<RecurringIncome> findByIdAndUser_Id(Long id, Long userId);
+
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
-	@Query("SELECT r FROM RecurringIncome r WHERE r.id = :id")
-	Optional<RecurringIncome> findByIdForUpdate(@Param("id") Long id);
+	@Query("SELECT r FROM RecurringIncome r WHERE r.id = :id AND r.user.id = :userId")
+	Optional<RecurringIncome> findByIdAndUser_IdForUpdate(@Param("id") Long id, @Param("userId") Long userId);
 
 	@Query("""
 			SELECT r FROM RecurringIncome r
-			WHERE (:active IS NULL OR r.active = :active)
+			WHERE r.user.id = :userId
+			AND (:active IS NULL OR r.active = :active)
 			AND (:cadence IS NULL OR r.cadence = :cadence)
 			AND (:source IS NULL OR LOWER(r.source) = LOWER(:source))
 			ORDER BY r.active DESC, r.nextIncomeDate ASC, r.id ASC
 			""")
 	List<RecurringIncome> findFiltered(
+			@Param("userId") Long userId,
 			@Param("active") Boolean active,
 			@Param("cadence") RecurringIncomeCadence cadence,
 			@Param("source") String source);
 
 	@Query("""
 			SELECT r FROM RecurringIncome r
-			WHERE r.active = true
+			WHERE r.user.id = :userId
+			AND r.active = true
 			AND r.nextIncomeDate >= :fromInclusive
 			AND r.nextIncomeDate <= :toInclusive
 			ORDER BY r.nextIncomeDate ASC, r.id ASC
 			""")
 	List<RecurringIncome> findUpcoming(
+			@Param("userId") Long userId,
 			@Param("fromInclusive") LocalDate fromInclusive,
 			@Param("toInclusive") LocalDate toInclusive);
 
 	@Query("""
 			SELECT r FROM RecurringIncome r
-			WHERE r.active = true
+			WHERE r.user.id = :userId
+			AND r.active = true
 			AND r.nextIncomeDate >= :monthStart
 			AND r.nextIncomeDate <= :monthEnd
 			ORDER BY r.nextIncomeDate ASC, r.id ASC
 			""")
 	List<RecurringIncome> findActiveInMonth(
+			@Param("userId") Long userId,
 			@Param("monthStart") LocalDate monthStart,
 			@Param("monthEnd") LocalDate monthEnd);
 }

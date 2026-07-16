@@ -13,12 +13,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ledgerbloom.error.GlobalExceptionHandler;
 import com.ledgerbloom.income.IncomeEntryResponse;
+import com.ledgerbloom.support.SecurityTestConfig;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -28,11 +30,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = RecurringIncomeController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, SecurityTestConfig.class})
+@WithMockUser(username = "user@example.com")
 class RecurringIncomeControllerTest {
 
 	@Autowired
@@ -61,6 +65,7 @@ class RecurringIncomeControllerTest {
 		when(recurringIncomeService.create(any(RecurringIncomeCreateRequest.class))).thenReturn(sample());
 
 		mockMvc.perform(post("/api/recurring-income")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -80,6 +85,7 @@ class RecurringIncomeControllerTest {
 	@Test
 	void createValidationReturns400() throws Exception {
 		mockMvc.perform(post("/api/recurring-income")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -144,6 +150,7 @@ class RecurringIncomeControllerTest {
 		when(recurringIncomeService.update(eq(10L), any(RecurringIncomeUpdateRequest.class))).thenReturn(sample());
 
 		mockMvc.perform(put("/api/recurring-income/10")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -163,7 +170,7 @@ class RecurringIncomeControllerTest {
 	void deleteReturns204() throws Exception {
 		doNothing().when(recurringIncomeService).delete(10L);
 
-		mockMvc.perform(delete("/api/recurring-income/10"))
+		mockMvc.perform(delete("/api/recurring-income/10").with(csrf()))
 			.andExpect(status().isNoContent());
 	}
 
@@ -171,7 +178,7 @@ class RecurringIncomeControllerTest {
 	void deleteMissingReturns404() throws Exception {
 		doThrow(new RecurringIncomeNotFoundException(42L)).when(recurringIncomeService).delete(42L);
 
-		mockMvc.perform(delete("/api/recurring-income/42"))
+		mockMvc.perform(delete("/api/recurring-income/42").with(csrf()))
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.code").value("RECURRING_INCOME_NOT_FOUND"));
 	}
@@ -195,6 +202,7 @@ class RecurringIncomeControllerTest {
 		);
 
 		mockMvc.perform(post("/api/recurring-income/10/mark-received")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -212,6 +220,7 @@ class RecurringIncomeControllerTest {
 			.thenThrow(new RecurringIncomeReceiptConflictException("Recurring income was already updated; refresh and try again"));
 
 		mockMvc.perform(post("/api/recurring-income/10/mark-received")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -225,6 +234,7 @@ class RecurringIncomeControllerTest {
 	@Test
 	void markReceivedMissingExpectedDateReturns400() throws Exception {
 		mockMvc.perform(post("/api/recurring-income/10/mark-received")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{}"))
 			.andExpect(status().isBadRequest())
@@ -236,6 +246,7 @@ class RecurringIncomeControllerTest {
 	@Test
 	void markReceivedNullExpectedDateReturns400() throws Exception {
 		mockMvc.perform(post("/api/recurring-income/10/mark-received")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -251,6 +262,7 @@ class RecurringIncomeControllerTest {
 	@Test
 	void markReceivedMalformedExpectedDateReturns400() throws Exception {
 		mockMvc.perform(post("/api/recurring-income/10/mark-received")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -266,6 +278,7 @@ class RecurringIncomeControllerTest {
 	@Test
 	void markReceivedMissingBodyReturns400() throws Exception {
 		mockMvc.perform(post("/api/recurring-income/10/mark-received")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));

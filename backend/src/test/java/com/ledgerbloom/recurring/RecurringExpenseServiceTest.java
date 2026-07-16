@@ -3,10 +3,12 @@ package com.ledgerbloom.recurring;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.category.Category;
 import com.ledgerbloom.category.CategoryNotFoundException;
 import com.ledgerbloom.category.CategoryRepository;
@@ -14,6 +16,7 @@ import com.ledgerbloom.expense.ExpenseCreateRequest;
 import com.ledgerbloom.expense.ExpenseResponse;
 import com.ledgerbloom.expense.ExpenseService;
 import com.ledgerbloom.expense.InvalidExpenseDataException;
+import com.ledgerbloom.user.User;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -31,6 +34,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class RecurringExpenseServiceTest {
 
+	private static final Long USER_ID = 1L;
+
 	@Mock
 	private RecurringExpenseRepository recurringExpenseRepository;
 
@@ -40,20 +45,29 @@ class RecurringExpenseServiceTest {
 	@Mock
 	private ExpenseService expenseService;
 
+	@Mock
+	private CurrentUser currentUser;
+
 	@InjectMocks
 	private RecurringExpenseService recurringExpenseService;
 
+	private User user;
 	private Category groceries;
 
 	@BeforeEach
 	void setUp() throws Exception {
-		groceries = new Category("Groceries", null);
+		user = new User("user@example.com", "hash", "Test User");
+		setId(user, USER_ID);
+		lenient().when(currentUser.requireUserId()).thenReturn(USER_ID);
+		lenient().when(currentUser.requireUserReference()).thenReturn(user);
+
+		groceries = new Category(user, "Groceries", null);
 		setId(groceries, 1L);
 	}
 
 	@Test
 	void createValidRecurringExpense() throws Exception {
-		when(categoryRepository.findById(1L)).thenReturn(Optional.of(groceries));
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
 		when(recurringExpenseRepository.saveAndFlush(any(RecurringExpense.class))).thenAnswer(invocation -> {
 			RecurringExpense entity = invocation.getArgument(0);
 			setId(entity, 10L);
@@ -83,7 +97,7 @@ class RecurringExpenseServiceTest {
 
 	@Test
 	void createNormalizesMerchantAndNotes() throws Exception {
-		when(categoryRepository.findById(1L)).thenReturn(Optional.of(groceries));
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
 		when(recurringExpenseRepository.saveAndFlush(any(RecurringExpense.class))).thenAnswer(invocation -> {
 			RecurringExpense entity = invocation.getArgument(0);
 			setId(entity, 11L);
@@ -140,7 +154,7 @@ class RecurringExpenseServiceTest {
 
 	@Test
 	void createRejectsMissingCategory() {
-		when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
+		when(categoryRepository.findByIdAndUser_Id(99L, USER_ID)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> recurringExpenseService.create(createRequest(
 			"Gym",
@@ -157,8 +171,8 @@ class RecurringExpenseServiceTest {
 	@Test
 	void getByIdAndMissing() throws Exception {
 		RecurringExpense entity = sampleEntity(10L, LocalDate.of(2026, 8, 1), true);
-		when(recurringExpenseRepository.findById(10L)).thenReturn(Optional.of(entity));
-		when(recurringExpenseRepository.findById(99L)).thenReturn(Optional.empty());
+		when(recurringExpenseRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(entity));
+		when(recurringExpenseRepository.findByIdAndUser_Id(99L, USER_ID)).thenReturn(Optional.empty());
 
 		assertThat(recurringExpenseService.findById(10L).description()).isEqualTo("Netflix");
 		assertThatThrownBy(() -> recurringExpenseService.findById(99L))
@@ -168,8 +182,8 @@ class RecurringExpenseServiceTest {
 	@Test
 	void updateAndDelete() throws Exception {
 		RecurringExpense entity = sampleEntity(10L, LocalDate.of(2026, 8, 1), true);
-		when(recurringExpenseRepository.findById(10L)).thenReturn(Optional.of(entity));
-		when(categoryRepository.findById(1L)).thenReturn(Optional.of(groceries));
+		when(recurringExpenseRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(entity));
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
 		when(recurringExpenseRepository.saveAndFlush(any(RecurringExpense.class)))
 			.thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -192,10 +206,10 @@ class RecurringExpenseServiceTest {
 
 	@Test
 	void filtersForwardToRepository() {
-		when(recurringExpenseRepository.findFiltered(true, 1L, RecurringExpenseCadence.MONTHLY))
+		when(recurringExpenseRepository.findFiltered(USER_ID, true, 1L, RecurringExpenseCadence.MONTHLY))
 			.thenReturn(List.of());
 		recurringExpenseService.findAll(true, 1L, "MONTHLY");
-		verify(recurringExpenseRepository).findFiltered(true, 1L, RecurringExpenseCadence.MONTHLY);
+		verify(recurringExpenseRepository).findFiltered(USER_ID, true, 1L, RecurringExpenseCadence.MONTHLY);
 	}
 
 	@Test
@@ -209,14 +223,14 @@ class RecurringExpenseServiceTest {
 	@Test
 	void upcomingDefaultAndCustomDays() {
 		LocalDate today = LocalDate.now();
-		when(recurringExpenseRepository.findUpcoming(today, today.plusDays(30))).thenReturn(List.of());
-		when(recurringExpenseRepository.findUpcoming(today, today.plusDays(7))).thenReturn(List.of());
+		when(recurringExpenseRepository.findUpcoming(USER_ID, today, today.plusDays(30))).thenReturn(List.of());
+		when(recurringExpenseRepository.findUpcoming(USER_ID, today, today.plusDays(7))).thenReturn(List.of());
 
 		recurringExpenseService.findUpcoming(null);
 		recurringExpenseService.findUpcoming(7);
 
-		verify(recurringExpenseRepository).findUpcoming(today, today.plusDays(30));
-		verify(recurringExpenseRepository).findUpcoming(today, today.plusDays(7));
+		verify(recurringExpenseRepository).findUpcoming(USER_ID, today, today.plusDays(30));
+		verify(recurringExpenseRepository).findUpcoming(USER_ID, today, today.plusDays(7));
 	}
 
 	@Test
@@ -246,7 +260,7 @@ class RecurringExpenseServiceTest {
 	void markPaidCreatesExpenseAndAdvancesDate() throws Exception {
 		LocalDate next = LocalDate.of(2026, 7, 15);
 		RecurringExpense entity = sampleEntity(10L, next, true);
-		when(recurringExpenseRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(entity));
+		when(recurringExpenseRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
 		when(expenseService.create(any(ExpenseCreateRequest.class))).thenReturn(sampleExpenseResponse());
 		when(recurringExpenseRepository.saveAndFlush(any(RecurringExpense.class)))
 			.thenAnswer(invocation -> invocation.getArgument(0));
@@ -272,7 +286,7 @@ class RecurringExpenseServiceTest {
 	@Test
 	void markPaidRejectsStaleExpectedDate() throws Exception {
 		RecurringExpense entity = sampleEntity(10L, LocalDate.of(2026, 8, 1), true);
-		when(recurringExpenseRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(entity));
+		when(recurringExpenseRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
 
 		assertThatThrownBy(() -> recurringExpenseService.markPaid(
 			10L,
@@ -287,7 +301,7 @@ class RecurringExpenseServiceTest {
 	void markPaidRepeatedOriginalExpectedDateDoesNotCreateSecondExpense() throws Exception {
 		LocalDate original = LocalDate.of(2026, 7, 15);
 		RecurringExpense entity = sampleEntity(10L, original, true);
-		when(recurringExpenseRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(entity));
+		when(recurringExpenseRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
 		when(expenseService.create(any(ExpenseCreateRequest.class))).thenReturn(sampleExpenseResponse());
 		when(recurringExpenseRepository.saveAndFlush(any(RecurringExpense.class)))
 			.thenAnswer(invocation -> invocation.getArgument(0));
@@ -305,7 +319,7 @@ class RecurringExpenseServiceTest {
 	@Test
 	void markPaidRollsBackWhenExpenseCreateFails() throws Exception {
 		RecurringExpense entity = sampleEntity(10L, LocalDate.of(2026, 7, 15), true);
-		when(recurringExpenseRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(entity));
+		when(recurringExpenseRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
 		when(expenseService.create(any(ExpenseCreateRequest.class)))
 			.thenThrow(new InvalidExpenseDataException("Amount must be greater than zero"));
 
@@ -360,6 +374,7 @@ class RecurringExpenseServiceTest {
 
 	private RecurringExpense sampleEntity(Long id, LocalDate nextPaymentDate, boolean active) throws Exception {
 		RecurringExpense entity = new RecurringExpense(
+			user,
 			"Netflix",
 			"Netflix Inc",
 			new BigDecimal("15.99"),

@@ -11,12 +11,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ledgerbloom.category.CategoryNotFoundException;
 import com.ledgerbloom.error.GlobalExceptionHandler;
+import com.ledgerbloom.support.SecurityTestConfig;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -25,11 +27,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = MonthlyBudgetController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, SecurityTestConfig.class})
+@WithMockUser(username = "user@example.com")
 class MonthlyBudgetControllerTest {
 
 	@Autowired
@@ -101,6 +105,7 @@ class MonthlyBudgetControllerTest {
 		when(monthlyBudgetService.create(any(MonthlyBudgetCreateRequest.class))).thenReturn(sampleResponse());
 
 		mockMvc.perform(post("/api/budgets/monthly")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -121,6 +126,7 @@ class MonthlyBudgetControllerTest {
 			.thenThrow(new MonthlyBudgetAlreadyExistsException(2026, 7));
 
 		mockMvc.perform(post("/api/budgets/monthly")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -136,6 +142,7 @@ class MonthlyBudgetControllerTest {
 	@Test
 	void createInvalidAmountReturns400() throws Exception {
 		mockMvc.perform(post("/api/budgets/monthly")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -154,6 +161,7 @@ class MonthlyBudgetControllerTest {
 		when(monthlyBudgetService.update(eq(10L), any(MonthlyBudgetUpdateRequest.class))).thenReturn(sampleResponse());
 
 		mockMvc.perform(put("/api/budgets/monthly/10")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -168,7 +176,7 @@ class MonthlyBudgetControllerTest {
 	void deleteReturns204() throws Exception {
 		doNothing().when(monthlyBudgetService).delete(10L);
 
-		mockMvc.perform(delete("/api/budgets/monthly/10"))
+		mockMvc.perform(delete("/api/budgets/monthly/10").with(csrf()))
 			.andExpect(status().isNoContent());
 
 		verify(monthlyBudgetService).delete(10L);
@@ -178,7 +186,7 @@ class MonthlyBudgetControllerTest {
 	void deleteMissingReturns404() throws Exception {
 		doThrow(new MonthlyBudgetNotFoundException(42L)).when(monthlyBudgetService).delete(42L);
 
-		mockMvc.perform(delete("/api/budgets/monthly/42"))
+		mockMvc.perform(delete("/api/budgets/monthly/42").with(csrf()))
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.code").value("BUDGET_NOT_FOUND"));
 	}
@@ -189,6 +197,7 @@ class MonthlyBudgetControllerTest {
 			.thenReturn(sampleResponse());
 
 		mockMvc.perform(post("/api/budgets/monthly/10/categories")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -207,6 +216,7 @@ class MonthlyBudgetControllerTest {
 			.thenThrow(new CategoryBudgetAlreadyExistsException(10L, 1L));
 
 		mockMvc.perform(post("/api/budgets/monthly/10/categories")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -224,6 +234,7 @@ class MonthlyBudgetControllerTest {
 			.thenThrow(new CategoryNotFoundException(99L));
 
 		mockMvc.perform(post("/api/budgets/monthly/10/categories")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -241,6 +252,7 @@ class MonthlyBudgetControllerTest {
 			.thenReturn(sampleResponse());
 
 		mockMvc.perform(put("/api/budgets/monthly/10/categories/50")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -257,6 +269,7 @@ class MonthlyBudgetControllerTest {
 			.thenThrow(new CategoryBudgetLimitNotFoundException(10L, 99L));
 
 		mockMvc.perform(put("/api/budgets/monthly/10/categories/99")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -271,7 +284,7 @@ class MonthlyBudgetControllerTest {
 	void deleteCategoryLimitReturnsBudget() throws Exception {
 		when(monthlyBudgetService.deleteCategoryLimit(10L, 50L)).thenReturn(sampleResponse());
 
-		mockMvc.perform(delete("/api/budgets/monthly/10/categories/50"))
+		mockMvc.perform(delete("/api/budgets/monthly/10/categories/50").with(csrf()))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.id").value(10));
 	}
@@ -282,6 +295,7 @@ class MonthlyBudgetControllerTest {
 			.thenThrow(new InvalidBudgetDataException("Total limit must be greater than zero"));
 
 		mockMvc.perform(put("/api/budgets/monthly/10")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{

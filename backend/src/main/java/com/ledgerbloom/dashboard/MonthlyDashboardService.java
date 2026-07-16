@@ -1,5 +1,6 @@
 package com.ledgerbloom.dashboard;
 
+import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.budget.MonthlyBudgetResponse;
 import com.ledgerbloom.budget.MonthlyBudgetService;
 import com.ledgerbloom.expense.Expense;
@@ -31,23 +32,27 @@ public class MonthlyDashboardService {
 	private final MonthlyBudgetService monthlyBudgetService;
 	private final RecurringExpenseRepository recurringExpenseRepository;
 	private final RecurringIncomeRepository recurringIncomeRepository;
+	private final CurrentUser currentUser;
 
 	public MonthlyDashboardService(
 			ExpenseRepository expenseRepository,
 			IncomeEntryRepository incomeEntryRepository,
 			MonthlyBudgetService monthlyBudgetService,
 			RecurringExpenseRepository recurringExpenseRepository,
-			RecurringIncomeRepository recurringIncomeRepository) {
+			RecurringIncomeRepository recurringIncomeRepository,
+			CurrentUser currentUser) {
 		this.expenseRepository = expenseRepository;
 		this.incomeEntryRepository = incomeEntryRepository;
 		this.monthlyBudgetService = monthlyBudgetService;
 		this.recurringExpenseRepository = recurringExpenseRepository;
 		this.recurringIncomeRepository = recurringIncomeRepository;
+		this.currentUser = currentUser;
 	}
 
 	@Transactional(readOnly = true)
 	public MonthlyDashboardResponse getMonthlyDashboard(Integer year, Integer month) {
 		validatePeriod(year, month);
+		Long userId = currentUser.requireUserId();
 
 		YearMonth yearMonth = YearMonth.of(year, month);
 		LocalDate start = yearMonth.atDay(1);
@@ -55,12 +60,14 @@ public class MonthlyDashboardService {
 		LocalDate monthEnd = yearMonth.atEndOfMonth();
 
 		List<IncomeEntry> incomeEntries = incomeEntryRepository
-			.findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+			.findByUser_IdAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+				userId,
 				start,
 				endExclusive
 			);
 		List<Expense> expenses = expenseRepository
-			.findByExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+			.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				userId,
 				start,
 				endExclusive
 			);
@@ -74,7 +81,7 @@ public class MonthlyDashboardService {
 			.map(this::toBudgetSummary)
 			.orElse(null);
 
-		DashboardCashFlowPlanning planning = buildPlanning(totalIncome, totalExpenses, start, monthEnd);
+		DashboardCashFlowPlanning planning = buildPlanning(userId, totalIncome, totalExpenses, start, monthEnd);
 
 		return new MonthlyDashboardResponse(
 			year,
@@ -94,12 +101,13 @@ public class MonthlyDashboardService {
 	}
 
 	private DashboardCashFlowPlanning buildPlanning(
+			Long userId,
 			BigDecimal actualIncome,
 			BigDecimal actualExpenses,
 			LocalDate monthStart,
 			LocalDate monthEnd) {
-		List<RecurringIncome> upcomingIncome = recurringIncomeRepository.findActiveInMonth(monthStart, monthEnd);
-		List<RecurringExpense> upcomingExpenses = recurringExpenseRepository.findActiveInMonth(monthStart, monthEnd);
+		List<RecurringIncome> upcomingIncome = recurringIncomeRepository.findActiveInMonth(userId, monthStart, monthEnd);
+		List<RecurringExpense> upcomingExpenses = recurringExpenseRepository.findActiveInMonth(userId, monthStart, monthEnd);
 
 		BigDecimal expectedIncome = sumAmounts(upcomingIncome.stream().map(RecurringIncome::getAmount).toList());
 		BigDecimal expectedExpenses = sumAmounts(upcomingExpenses.stream().map(RecurringExpense::getAmount).toList());

@@ -1,6 +1,7 @@
 package com.ledgerbloom.budget;
 
 import com.ledgerbloom.category.Category;
+import com.ledgerbloom.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -24,6 +25,10 @@ public class CategoryBudgetLimit {
 	private Long id;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "user_id", nullable = false)
+	private User user;
+
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "monthly_budget_id", nullable = false)
 	private MonthlyBudget monthlyBudget;
 
@@ -43,7 +48,8 @@ public class CategoryBudgetLimit {
 	protected CategoryBudgetLimit() {
 	}
 
-	public CategoryBudgetLimit(MonthlyBudget monthlyBudget, Category category, BigDecimal limitAmount) {
+	public CategoryBudgetLimit(User user, MonthlyBudget monthlyBudget, Category category, BigDecimal limitAmount) {
+		this.user = user;
 		this.monthlyBudget = monthlyBudget;
 		this.category = category;
 		this.limitAmount = limitAmount;
@@ -63,6 +69,10 @@ public class CategoryBudgetLimit {
 
 	public Long getId() {
 		return id;
+	}
+
+	public User getUser() {
+		return user;
 	}
 
 	public MonthlyBudget getMonthlyBudget() {

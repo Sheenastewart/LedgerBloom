@@ -2,9 +2,11 @@ package com.ledgerbloom.dashboard;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.budget.MonthlyBudgetService;
 import com.ledgerbloom.category.Category;
 import com.ledgerbloom.expense.Expense;
@@ -17,6 +19,7 @@ import com.ledgerbloom.recurring.RecurringExpenseRepository;
 import com.ledgerbloom.recurringincome.RecurringIncome;
 import com.ledgerbloom.recurringincome.RecurringIncomeCadence;
 import com.ledgerbloom.recurringincome.RecurringIncomeRepository;
+import com.ledgerbloom.user.User;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -33,6 +36,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class MonthlyDashboardServiceTest {
 
+	private static final Long USER_ID = 1L;
+
 	@Mock
 	private ExpenseRepository expenseRepository;
 
@@ -48,17 +53,25 @@ class MonthlyDashboardServiceTest {
 	@Mock
 	private RecurringIncomeRepository recurringIncomeRepository;
 
+	@Mock
+	private CurrentUser currentUser;
+
 	@InjectMocks
 	private MonthlyDashboardService monthlyDashboardService;
 
+	private User user;
 	private Category groceries;
 	private Category utilities;
 
 	@BeforeEach
 	void setUp() throws Exception {
-		groceries = new Category("Groceries", null);
+		user = new User("user@example.com", "hash", "Test User");
+		setId(user, USER_ID);
+		lenient().when(currentUser.requireUserId()).thenReturn(USER_ID);
+
+		groceries = new Category(user, "Groceries", null);
 		setId(groceries, 1L);
-		utilities = new Category("Utilities", null);
+		utilities = new Category(user, "Utilities", null);
 		setId(utilities, 2L);
 	}
 
@@ -86,14 +99,18 @@ class MonthlyDashboardServiceTest {
 		assertThat(response.netCashFlow()).isEqualByComparingTo("3050.25");
 		assertThat(response.incomeEntryCount()).isEqualTo(2);
 		assertThat(response.expenseEntryCount()).isEqualTo(2);
-		verify(incomeEntryRepository).findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
-			LocalDate.of(2026, 7, 1),
-			LocalDate.of(2026, 8, 1)
-		);
-		verify(expenseRepository).findByExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
-			LocalDate.of(2026, 7, 1),
-			LocalDate.of(2026, 8, 1)
-		);
+		verify(incomeEntryRepository)
+			.findByUser_IdAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+				USER_ID,
+				LocalDate.of(2026, 7, 1),
+				LocalDate.of(2026, 8, 1)
+			);
+		verify(expenseRepository)
+			.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				USER_ID,
+				LocalDate.of(2026, 7, 1),
+				LocalDate.of(2026, 8, 1)
+			);
 	}
 
 	@Test
@@ -232,10 +249,11 @@ class MonthlyDashboardServiceTest {
 			List.of(expense(2L, "Actual spend", "500.00", LocalDate.of(2026, 7, 2), groceries))
 		);
 
-		Category entertainment = new Category("Entertainment", null);
+		Category entertainment = new Category(user, "Entertainment", null);
 		setId(entertainment, 3L);
 
 		RecurringIncome scheduledIncome = new RecurringIncome(
+			user,
 			"Bonus",
 			"Employer",
 			new BigDecimal("300.00"),
@@ -247,6 +265,7 @@ class MonthlyDashboardServiceTest {
 		setId(scheduledIncome, 50L);
 
 		RecurringExpense scheduledExpense = new RecurringExpense(
+			user,
 			"Netflix",
 			null,
 			new BigDecimal("15.99"),
@@ -258,9 +277,9 @@ class MonthlyDashboardServiceTest {
 		);
 		setId(scheduledExpense, 60L);
 
-		when(recurringIncomeRepository.findActiveInMonth(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31)))
+		when(recurringIncomeRepository.findActiveInMonth(USER_ID, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31)))
 			.thenReturn(List.of(scheduledIncome));
-		when(recurringExpenseRepository.findActiveInMonth(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31)))
+		when(recurringExpenseRepository.findActiveInMonth(USER_ID, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31)))
 			.thenReturn(List.of(scheduledExpense));
 
 		MonthlyDashboardResponse response = monthlyDashboardService.getMonthlyDashboard(2026, 7);
@@ -325,29 +344,33 @@ class MonthlyDashboardServiceTest {
 		LocalDate start = YearMonth.of(year, month).atDay(1);
 		LocalDate endExclusive = start.plusMonths(1);
 		LocalDate monthEnd = YearMonth.of(year, month).atEndOfMonth();
-		when(incomeEntryRepository.findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
-			start,
-			endExclusive
-		)).thenReturn(incomeEntries);
-		when(expenseRepository.findByExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
-			start,
-			endExclusive
-		)).thenReturn(expenses);
+		when(incomeEntryRepository
+			.findByUser_IdAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+				USER_ID,
+				start,
+				endExclusive
+			)).thenReturn(incomeEntries);
+		when(expenseRepository
+			.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				USER_ID,
+				start,
+				endExclusive
+			)).thenReturn(expenses);
 		when(monthlyBudgetService.findOptionalByYearAndMonth(year, month)).thenReturn(Optional.empty());
-		when(recurringIncomeRepository.findActiveInMonth(start, monthEnd)).thenReturn(List.of());
-		when(recurringExpenseRepository.findActiveInMonth(start, monthEnd)).thenReturn(List.of());
+		when(recurringIncomeRepository.findActiveInMonth(USER_ID, start, monthEnd)).thenReturn(List.of());
+		when(recurringExpenseRepository.findActiveInMonth(USER_ID, start, monthEnd)).thenReturn(List.of());
 	}
 
 	private IncomeEntry income(Long id, String description, String source, String amount, LocalDate date)
 			throws Exception {
-		IncomeEntry entry = new IncomeEntry(description, source, new BigDecimal(amount), date, null);
+		IncomeEntry entry = new IncomeEntry(user, description, source, new BigDecimal(amount), date, null);
 		setId(entry, id);
 		return entry;
 	}
 
 	private Expense expense(Long id, String description, String amount, LocalDate date, Category category)
 			throws Exception {
-		Expense expenseEntity = new Expense(description, null, new BigDecimal(amount), date, null, category);
+		Expense expenseEntity = new Expense(user, description, null, new BigDecimal(amount), date, null, category);
 		setId(expenseEntity, id);
 		return expenseEntity;
 	}

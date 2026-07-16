@@ -9,6 +9,19 @@ vi.mock('../../api/health', () => ({
   fetchHealth: vi.fn().mockResolvedValue({ status: 'UP', service: 'ledgerbloom-api' }),
 }))
 
+vi.mock('../auth/api/authApi', () => ({
+  getMe: vi.fn().mockResolvedValue({
+    id: 1,
+    email: 'user@example.com',
+    displayName: 'Test User',
+    createdAt: '2026-01-01T00:00:00Z',
+    lastLoginAt: '2026-07-15T00:00:00Z',
+  }),
+  login: vi.fn(),
+  register: vi.fn(),
+  logout: vi.fn(),
+}))
+
 vi.mock('../categories/api/categoryApi', () => ({
   getCategories: vi.fn().mockResolvedValue([]),
   getCategory: vi.fn(),

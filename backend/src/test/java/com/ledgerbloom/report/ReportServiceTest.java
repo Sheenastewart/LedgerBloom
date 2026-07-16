@@ -2,8 +2,10 @@ package com.ledgerbloom.report;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
+import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.budget.MonthlyBudgetResponse;
 import com.ledgerbloom.budget.MonthlyBudgetService;
 import com.ledgerbloom.category.Category;
@@ -17,6 +19,7 @@ import com.ledgerbloom.recurring.RecurringExpenseRepository;
 import com.ledgerbloom.recurringincome.RecurringIncome;
 import com.ledgerbloom.recurringincome.RecurringIncomeCadence;
 import com.ledgerbloom.recurringincome.RecurringIncomeRepository;
+import com.ledgerbloom.user.User;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -34,6 +37,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class ReportServiceTest {
 
+	private static final Long USER_ID = 1L;
+
 	@Mock
 	private ExpenseRepository expenseRepository;
 
@@ -49,17 +54,25 @@ class ReportServiceTest {
 	@Mock
 	private RecurringIncomeRepository recurringIncomeRepository;
 
+	@Mock
+	private CurrentUser currentUser;
+
 	@InjectMocks
 	private ReportService reportService;
 
+	private User user;
 	private Category groceries;
 	private Category utilities;
 
 	@BeforeEach
 	void setUp() throws Exception {
-		groceries = new Category("Groceries", null);
+		user = new User("user@example.com", "hash", "Test User");
+		setId(user, USER_ID);
+		lenient().when(currentUser.requireUserId()).thenReturn(USER_ID);
+
+		groceries = new Category(user, "Groceries", null);
 		setId(groceries, 1L);
-		utilities = new Category("Utilities", null);
+		utilities = new Category(user, "Utilities", null);
 		setId(utilities, 2L);
 	}
 
@@ -183,17 +196,21 @@ class ReportServiceTest {
 	void includesBudgetSummaryWhenPresentAndNullWhenAbsent() {
 		LocalDate start = YearMonth.of(2026, 1).atDay(1);
 		LocalDate endExclusive = start.plusMonths(1);
-		when(incomeEntryRepository.findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
-			start,
-			endExclusive
-		)).thenReturn(List.of());
-		when(expenseRepository.findByExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
-			start,
-			endExclusive
-		)).thenReturn(List.of());
-		when(recurringIncomeRepository.findActiveInMonth(start, YearMonth.of(2026, 1).atEndOfMonth()))
+		when(incomeEntryRepository
+			.findByUser_IdAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+				USER_ID,
+				start,
+				endExclusive
+			)).thenReturn(List.of());
+		when(expenseRepository
+			.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				USER_ID,
+				start,
+				endExclusive
+			)).thenReturn(List.of());
+		when(recurringIncomeRepository.findActiveInMonth(USER_ID, start, YearMonth.of(2026, 1).atEndOfMonth()))
 			.thenReturn(List.of());
-		when(recurringExpenseRepository.findActiveInMonth(start, YearMonth.of(2026, 1).atEndOfMonth()))
+		when(recurringExpenseRepository.findActiveInMonth(USER_ID, start, YearMonth.of(2026, 1).atEndOfMonth()))
 			.thenReturn(List.of());
 		when(monthlyBudgetService.findOptionalByYearAndMonth(2026, 1)).thenReturn(Optional.of(
 			new MonthlyBudgetResponse(
@@ -238,6 +255,7 @@ class ReportServiceTest {
 		);
 
 		RecurringIncome scheduledIncome = new RecurringIncome(
+			user,
 			"Bonus",
 			"Employer",
 			new BigDecimal("300.00"),
@@ -248,6 +266,7 @@ class ReportServiceTest {
 		);
 		setId(scheduledIncome, 50L);
 		RecurringExpense scheduledExpense = new RecurringExpense(
+			user,
 			"Netflix",
 			null,
 			new BigDecimal("15.99"),
@@ -259,8 +278,10 @@ class ReportServiceTest {
 		);
 		setId(scheduledExpense, 60L);
 
-		when(recurringIncomeRepository.findActiveInMonth(monthStart, monthEnd)).thenReturn(List.of(scheduledIncome));
-		when(recurringExpenseRepository.findActiveInMonth(monthStart, monthEnd)).thenReturn(List.of(scheduledExpense));
+		when(recurringIncomeRepository.findActiveInMonth(USER_ID, monthStart, monthEnd))
+			.thenReturn(List.of(scheduledIncome));
+		when(recurringExpenseRepository.findActiveInMonth(USER_ID, monthStart, monthEnd))
+			.thenReturn(List.of(scheduledExpense));
 
 		MonthlyComparisonResponse response = reportService.getMonthlyComparison(2026, 7, 2026, 7);
 
@@ -352,17 +373,21 @@ class ReportServiceTest {
 
 		LocalDate yearStart = LocalDate.of(pastYear, 1, 1);
 		LocalDate yearEndExclusive = LocalDate.of(pastYear + 1, 1, 1);
-		when(expenseRepository.findByExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
-			yearStart,
-			yearEndExclusive
-		)).thenReturn(List.of(
+		when(expenseRepository
+			.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				USER_ID,
+				yearStart,
+				yearEndExclusive
+			)).thenReturn(List.of(
 			expense(2L, "Rent", "1000.00", LocalDate.of(pastYear, 1, 6), groceries),
 			expense(4L, "Repair", "4000.00", LocalDate.of(pastYear, 3, 6), utilities)
 		));
-		when(incomeEntryRepository.findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
-			yearStart,
-			yearEndExclusive
-		)).thenReturn(List.of(
+		when(incomeEntryRepository
+			.findByUser_IdAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+				USER_ID,
+				yearStart,
+				yearEndExclusive
+			)).thenReturn(List.of(
 			income(1L, "Pay", "Salary", "5000.00", LocalDate.of(pastYear, 1, 5)),
 			income(3L, "Pay", "Salary", "1000.00", LocalDate.of(pastYear, 3, 5))
 		));
@@ -412,14 +437,18 @@ class ReportServiceTest {
 
 		LocalDate yearStart = LocalDate.of(currentYear, 1, 1);
 		LocalDate endExclusive = YearMonth.of(currentYear, currentMonth).atDay(1).plusMonths(1);
-		when(expenseRepository.findByExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
-			yearStart,
-			endExclusive
-		)).thenReturn(List.of());
-		when(incomeEntryRepository.findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
-			yearStart,
-			endExclusive
-		)).thenReturn(List.of());
+		when(expenseRepository
+			.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				USER_ID,
+				yearStart,
+				endExclusive
+			)).thenReturn(List.of());
+		when(incomeEntryRepository
+			.findByUser_IdAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+				USER_ID,
+				yearStart,
+				endExclusive
+			)).thenReturn(List.of());
 
 		YearToDateResponse response = reportService.getYearToDate(currentYear);
 
@@ -434,17 +463,21 @@ class ReportServiceTest {
 		LocalDate start = YearMonth.of(year, month).atDay(1);
 		LocalDate endExclusive = start.plusMonths(1);
 		LocalDate monthEnd = YearMonth.of(year, month).atEndOfMonth();
-		when(incomeEntryRepository.findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
-			start,
-			endExclusive
-		)).thenReturn(incomeEntries);
-		when(expenseRepository.findByExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
-			start,
-			endExclusive
-		)).thenReturn(expenses);
+		when(incomeEntryRepository
+			.findByUser_IdAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+				USER_ID,
+				start,
+				endExclusive
+			)).thenReturn(incomeEntries);
+		when(expenseRepository
+			.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				USER_ID,
+				start,
+				endExclusive
+			)).thenReturn(expenses);
 		when(monthlyBudgetService.findOptionalByYearAndMonth(year, month)).thenReturn(Optional.empty());
-		when(recurringIncomeRepository.findActiveInMonth(start, monthEnd)).thenReturn(List.of());
-		when(recurringExpenseRepository.findActiveInMonth(start, monthEnd)).thenReturn(List.of());
+		when(recurringIncomeRepository.findActiveInMonth(USER_ID, start, monthEnd)).thenReturn(List.of());
+		when(recurringExpenseRepository.findActiveInMonth(USER_ID, start, monthEnd)).thenReturn(List.of());
 	}
 
 	private void overrideMonth(int year, int month, List<IncomeEntry> incomeEntries, List<Expense> expenses) {
@@ -457,14 +490,14 @@ class ReportServiceTest {
 
 	private IncomeEntry income(Long id, String description, String source, String amount, LocalDate date)
 			throws Exception {
-		IncomeEntry entry = new IncomeEntry(description, source, new BigDecimal(amount), date, null);
+		IncomeEntry entry = new IncomeEntry(user, description, source, new BigDecimal(amount), date, null);
 		setId(entry, id);
 		return entry;
 	}
 
 	private Expense expense(Long id, String description, String amount, LocalDate date, Category category)
 			throws Exception {
-		Expense expenseEntity = new Expense(description, null, new BigDecimal(amount), date, null, category);
+		Expense expenseEntity = new Expense(user, description, null, new BigDecimal(amount), date, null, category);
 		setId(expenseEntity, id);
 		return expenseEntity;
 	}

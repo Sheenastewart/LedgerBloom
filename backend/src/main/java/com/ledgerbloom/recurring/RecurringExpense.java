@@ -1,6 +1,7 @@
 package com.ledgerbloom.recurring;
 
 import com.ledgerbloom.category.Category;
+import com.ledgerbloom.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -25,6 +26,10 @@ public class RecurringExpense {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
+
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "user_id", nullable = false)
+	private User user;
 
 	@Column(nullable = false, length = 160)
 	private String description;
@@ -62,6 +67,7 @@ public class RecurringExpense {
 	}
 
 	public RecurringExpense(
+			User user,
 			String description,
 			String merchant,
 			BigDecimal amount,
@@ -70,6 +76,7 @@ public class RecurringExpense {
 			LocalDate nextPaymentDate,
 			boolean active,
 			String notes) {
+		this.user = user;
 		this.description = description;
 		this.merchant = merchant;
 		this.amount = amount;
@@ -94,6 +101,10 @@ public class RecurringExpense {
 
 	public Long getId() {
 		return id;
+	}
+
+	public User getUser() {
+		return user;
 	}
 
 	public String getDescription() {

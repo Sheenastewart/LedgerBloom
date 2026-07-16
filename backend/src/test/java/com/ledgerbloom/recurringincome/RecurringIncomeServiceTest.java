@@ -3,20 +3,24 @@ package com.ledgerbloom.recurringincome;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.income.IncomeEntryCreateRequest;
 import com.ledgerbloom.income.IncomeEntryResponse;
 import com.ledgerbloom.income.IncomeEntryService;
 import com.ledgerbloom.income.InvalidIncomeDataException;
+import com.ledgerbloom.user.User;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -27,14 +31,29 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class RecurringIncomeServiceTest {
 
+	private static final Long USER_ID = 1L;
+
 	@Mock
 	private RecurringIncomeRepository recurringIncomeRepository;
 
 	@Mock
 	private IncomeEntryService incomeEntryService;
 
+	@Mock
+	private CurrentUser currentUser;
+
 	@InjectMocks
 	private RecurringIncomeService recurringIncomeService;
+
+	private User user;
+
+	@BeforeEach
+	void setUp() throws Exception {
+		user = new User("user@example.com", "hash", "Test User");
+		setId(user, USER_ID);
+		lenient().when(currentUser.requireUserId()).thenReturn(USER_ID);
+		lenient().when(currentUser.requireUserReference()).thenReturn(user);
+	}
 
 	@Test
 	void createValidRecurringIncome() throws Exception {
@@ -133,8 +152,8 @@ class RecurringIncomeServiceTest {
 	@Test
 	void getByIdAndMissing() throws Exception {
 		RecurringIncome entity = sampleEntity(10L, LocalDate.of(2026, 8, 1), true);
-		when(recurringIncomeRepository.findById(10L)).thenReturn(Optional.of(entity));
-		when(recurringIncomeRepository.findById(99L)).thenReturn(Optional.empty());
+		when(recurringIncomeRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(entity));
+		when(recurringIncomeRepository.findByIdAndUser_Id(99L, USER_ID)).thenReturn(Optional.empty());
 
 		assertThat(recurringIncomeService.findById(10L).description()).isEqualTo("Salary");
 		assertThatThrownBy(() -> recurringIncomeService.findById(99L))
@@ -144,7 +163,7 @@ class RecurringIncomeServiceTest {
 	@Test
 	void updateAndDelete() throws Exception {
 		RecurringIncome entity = sampleEntity(10L, LocalDate.of(2026, 8, 1), true);
-		when(recurringIncomeRepository.findById(10L)).thenReturn(Optional.of(entity));
+		when(recurringIncomeRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(entity));
 		when(recurringIncomeRepository.saveAndFlush(any(RecurringIncome.class)))
 			.thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -166,10 +185,10 @@ class RecurringIncomeServiceTest {
 
 	@Test
 	void filtersForwardToRepository() {
-		when(recurringIncomeRepository.findFiltered(true, RecurringIncomeCadence.MONTHLY, "Acme Corp"))
+		when(recurringIncomeRepository.findFiltered(USER_ID, true, RecurringIncomeCadence.MONTHLY, "Acme Corp"))
 			.thenReturn(List.of());
 		recurringIncomeService.findAll(true, "MONTHLY", "Acme Corp");
-		verify(recurringIncomeRepository).findFiltered(true, RecurringIncomeCadence.MONTHLY, "Acme Corp");
+		verify(recurringIncomeRepository).findFiltered(USER_ID, true, RecurringIncomeCadence.MONTHLY, "Acme Corp");
 	}
 
 	@Test
@@ -181,14 +200,14 @@ class RecurringIncomeServiceTest {
 	@Test
 	void upcomingDefaultAndCustomDays() {
 		LocalDate today = LocalDate.now();
-		when(recurringIncomeRepository.findUpcoming(today, today.plusDays(30))).thenReturn(List.of());
-		when(recurringIncomeRepository.findUpcoming(today, today.plusDays(7))).thenReturn(List.of());
+		when(recurringIncomeRepository.findUpcoming(USER_ID, today, today.plusDays(30))).thenReturn(List.of());
+		when(recurringIncomeRepository.findUpcoming(USER_ID, today, today.plusDays(7))).thenReturn(List.of());
 
 		recurringIncomeService.findUpcoming(null);
 		recurringIncomeService.findUpcoming(7);
 
-		verify(recurringIncomeRepository).findUpcoming(today, today.plusDays(30));
-		verify(recurringIncomeRepository).findUpcoming(today, today.plusDays(7));
+		verify(recurringIncomeRepository).findUpcoming(USER_ID, today, today.plusDays(30));
+		verify(recurringIncomeRepository).findUpcoming(USER_ID, today, today.plusDays(7));
 	}
 
 	@Test
@@ -217,7 +236,7 @@ class RecurringIncomeServiceTest {
 	void markReceivedCreatesIncomeEntryAndAdvancesDate() throws Exception {
 		LocalDate next = LocalDate.of(2026, 7, 15);
 		RecurringIncome entity = sampleEntity(10L, next, true);
-		when(recurringIncomeRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(entity));
+		when(recurringIncomeRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
 		when(incomeEntryService.create(any(IncomeEntryCreateRequest.class))).thenReturn(sampleIncomeEntryResponse());
 		when(recurringIncomeRepository.saveAndFlush(any(RecurringIncome.class)))
 			.thenAnswer(invocation -> invocation.getArgument(0));
@@ -243,7 +262,7 @@ class RecurringIncomeServiceTest {
 	@Test
 	void markReceivedRejectsStaleExpectedDate() throws Exception {
 		RecurringIncome entity = sampleEntity(10L, LocalDate.of(2026, 8, 1), true);
-		when(recurringIncomeRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(entity));
+		when(recurringIncomeRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
 
 		assertThatThrownBy(() -> recurringIncomeService.markReceived(
 			10L,
@@ -258,7 +277,7 @@ class RecurringIncomeServiceTest {
 	void markReceivedRepeatedOriginalExpectedDateDoesNotCreateSecondIncomeEntry() throws Exception {
 		LocalDate original = LocalDate.of(2026, 7, 15);
 		RecurringIncome entity = sampleEntity(10L, original, true);
-		when(recurringIncomeRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(entity));
+		when(recurringIncomeRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
 		when(incomeEntryService.create(any(IncomeEntryCreateRequest.class))).thenReturn(sampleIncomeEntryResponse());
 		when(recurringIncomeRepository.saveAndFlush(any(RecurringIncome.class)))
 			.thenAnswer(invocation -> invocation.getArgument(0));
@@ -276,7 +295,7 @@ class RecurringIncomeServiceTest {
 	@Test
 	void markReceivedRollsBackWhenIncomeEntryCreateFails() throws Exception {
 		RecurringIncome entity = sampleEntity(10L, LocalDate.of(2026, 7, 15), true);
-		when(recurringIncomeRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(entity));
+		when(recurringIncomeRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
 		when(incomeEntryService.create(any(IncomeEntryCreateRequest.class)))
 			.thenThrow(new InvalidIncomeDataException("Amount must be greater than zero"));
 
@@ -329,6 +348,7 @@ class RecurringIncomeServiceTest {
 
 	private RecurringIncome sampleEntity(Long id, LocalDate nextIncomeDate, boolean active) throws Exception {
 		RecurringIncome entity = new RecurringIncome(
+			user,
 			"Salary",
 			"Acme Corp",
 			new BigDecimal("5000.00"),

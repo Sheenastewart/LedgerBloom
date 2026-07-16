@@ -1,5 +1,6 @@
 package com.ledgerbloom.budget;
 
+import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.category.Category;
 import com.ledgerbloom.category.CategoryNotFoundException;
 import com.ledgerbloom.category.CategoryRepository;
@@ -35,22 +36,26 @@ public class MonthlyBudgetService {
 	private final CategoryBudgetLimitRepository categoryBudgetLimitRepository;
 	private final CategoryRepository categoryRepository;
 	private final ExpenseRepository expenseRepository;
+	private final CurrentUser currentUser;
 
 	public MonthlyBudgetService(
 			MonthlyBudgetRepository monthlyBudgetRepository,
 			CategoryBudgetLimitRepository categoryBudgetLimitRepository,
 			CategoryRepository categoryRepository,
-			ExpenseRepository expenseRepository) {
+			ExpenseRepository expenseRepository,
+			CurrentUser currentUser) {
 		this.monthlyBudgetRepository = monthlyBudgetRepository;
 		this.categoryBudgetLimitRepository = categoryBudgetLimitRepository;
 		this.categoryRepository = categoryRepository;
 		this.expenseRepository = expenseRepository;
+		this.currentUser = currentUser;
 	}
 
 	@Transactional(readOnly = true)
 	public MonthlyBudgetResponse getByYearAndMonth(Integer year, Integer month) {
 		validatePeriod(year, month);
-		MonthlyBudget budget = monthlyBudgetRepository.findByBudgetYearAndBudgetMonth(year, month)
+		Long userId = currentUser.requireUserId();
+		MonthlyBudget budget = monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(userId, year, month)
 			.orElseThrow(() -> new MonthlyBudgetNotFoundException(year, month));
 		return toResponse(budget);
 	}
@@ -58,19 +63,21 @@ public class MonthlyBudgetService {
 	@Transactional(readOnly = true)
 	public Optional<MonthlyBudgetResponse> findOptionalByYearAndMonth(Integer year, Integer month) {
 		validatePeriod(year, month);
-		return monthlyBudgetRepository.findByBudgetYearAndBudgetMonth(year, month)
+		Long userId = currentUser.requireUserId();
+		return monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(userId, year, month)
 			.map(this::toResponse);
 	}
 
 	public MonthlyBudgetResponse create(MonthlyBudgetCreateRequest request) {
 		validatePeriod(request.year(), request.month());
 		BigDecimal totalLimit = validateAmount(request.totalLimit(), "Total limit");
+		Long userId = currentUser.requireUserId();
 
-		if (monthlyBudgetRepository.existsByBudgetYearAndBudgetMonth(request.year(), request.month())) {
+		if (monthlyBudgetRepository.existsByUser_IdAndBudgetYearAndBudgetMonth(userId, request.year(), request.month())) {
 			throw new MonthlyBudgetAlreadyExistsException(request.year(), request.month());
 		}
 
-		MonthlyBudget budget = new MonthlyBudget(request.year(), request.month(), totalLimit);
+		MonthlyBudget budget = new MonthlyBudget(currentUser.requireUserReference(), request.year(), request.month(), totalLimit);
 		try {
 			return toResponse(monthlyBudgetRepository.saveAndFlush(budget));
 		}
@@ -80,31 +87,32 @@ public class MonthlyBudgetService {
 	}
 
 	public MonthlyBudgetResponse update(Long id, MonthlyBudgetUpdateRequest request) {
-		MonthlyBudget budget = getBudgetOrThrow(id);
+		MonthlyBudget budget = getBudgetOrThrow(id, currentUser.requireUserId());
 		budget.setTotalLimit(validateAmount(request.totalLimit(), "Total limit"));
 		return toResponse(monthlyBudgetRepository.saveAndFlush(budget));
 	}
 
 	public void delete(Long id) {
-		MonthlyBudget budget = getBudgetOrThrow(id);
+		MonthlyBudget budget = getBudgetOrThrow(id, currentUser.requireUserId());
 		monthlyBudgetRepository.delete(budget);
 	}
 
 	public MonthlyBudgetResponse createCategoryLimit(Long budgetId, CategoryBudgetLimitCreateRequest request) {
-		MonthlyBudget budget = getBudgetOrThrow(budgetId);
+		Long userId = currentUser.requireUserId();
+		MonthlyBudget budget = getBudgetOrThrow(budgetId, userId);
 		Long categoryId = request.categoryId();
 		if (categoryId == null || categoryId <= 0) {
 			throw new InvalidBudgetDataException("Category id must be positive");
 		}
 		BigDecimal limitAmount = validateAmount(request.limitAmount(), "Limit amount");
-		Category category = categoryRepository.findById(categoryId)
+		Category category = categoryRepository.findByIdAndUser_Id(categoryId, userId)
 			.orElseThrow(() -> new CategoryNotFoundException(categoryId));
 
-		if (categoryBudgetLimitRepository.existsByMonthlyBudget_IdAndCategory_Id(budgetId, categoryId)) {
+		if (categoryBudgetLimitRepository.existsByMonthlyBudget_IdAndCategory_IdAndUser_Id(budgetId, categoryId, userId)) {
 			throw new CategoryBudgetAlreadyExistsException(budgetId, categoryId);
 		}
 
-		CategoryBudgetLimit limit = new CategoryBudgetLimit(budget, category, limitAmount);
+		CategoryBudgetLimit limit = new CategoryBudgetLimit(currentUser.requireUserReference(), budget, category, limitAmount);
 		try {
 			categoryBudgetLimitRepository.saveAndFlush(limit);
 		}
@@ -118,25 +126,27 @@ public class MonthlyBudgetService {
 			Long budgetId,
 			Long limitId,
 			CategoryBudgetLimitUpdateRequest request) {
-		getBudgetOrThrow(budgetId);
-		CategoryBudgetLimit limit = categoryBudgetLimitRepository.findByIdAndMonthlyBudget_Id(limitId, budgetId)
+		Long userId = currentUser.requireUserId();
+		getBudgetOrThrow(budgetId, userId);
+		CategoryBudgetLimit limit = categoryBudgetLimitRepository.findByIdAndMonthlyBudget_IdAndUser_Id(limitId, budgetId, userId)
 			.orElseThrow(() -> new CategoryBudgetLimitNotFoundException(budgetId, limitId));
 		limit.setLimitAmount(validateAmount(request.limitAmount(), "Limit amount"));
 		categoryBudgetLimitRepository.saveAndFlush(limit);
-		return toResponse(getBudgetOrThrow(budgetId));
+		return toResponse(getBudgetOrThrow(budgetId, userId));
 	}
 
 	public MonthlyBudgetResponse deleteCategoryLimit(Long budgetId, Long limitId) {
-		MonthlyBudget budget = getBudgetOrThrow(budgetId);
-		CategoryBudgetLimit limit = categoryBudgetLimitRepository.findByIdAndMonthlyBudget_Id(limitId, budgetId)
+		Long userId = currentUser.requireUserId();
+		MonthlyBudget budget = getBudgetOrThrow(budgetId, userId);
+		CategoryBudgetLimit limit = categoryBudgetLimitRepository.findByIdAndMonthlyBudget_IdAndUser_Id(limitId, budgetId, userId)
 			.orElseThrow(() -> new CategoryBudgetLimitNotFoundException(budgetId, limitId));
 		categoryBudgetLimitRepository.delete(limit);
 		categoryBudgetLimitRepository.flush();
 		return toResponse(budget);
 	}
 
-	private MonthlyBudget getBudgetOrThrow(Long id) {
-		return monthlyBudgetRepository.findById(id)
+	private MonthlyBudget getBudgetOrThrow(Long id, Long userId) {
+		return monthlyBudgetRepository.findByIdAndUser_Id(id, userId)
 			.orElseThrow(() -> new MonthlyBudgetNotFoundException(id));
 	}
 
@@ -173,7 +183,8 @@ public class MonthlyBudgetService {
 		LocalDate endExclusive = start.plusMonths(1);
 
 		List<Expense> expenses = expenseRepository
-			.findByExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+			.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				budget.getUser().getId(),
 				start,
 				endExclusive
 			);

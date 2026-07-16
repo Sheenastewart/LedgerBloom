@@ -1,5 +1,6 @@
 package com.ledgerbloom.report;
 
+import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.budget.MonthlyBudgetResponse;
 import com.ledgerbloom.budget.MonthlyBudgetService;
 import com.ledgerbloom.dashboard.CategorySpendingTotal;
@@ -39,18 +40,21 @@ public class ReportService {
 	private final MonthlyBudgetService monthlyBudgetService;
 	private final RecurringExpenseRepository recurringExpenseRepository;
 	private final RecurringIncomeRepository recurringIncomeRepository;
+	private final CurrentUser currentUser;
 
 	public ReportService(
 			ExpenseRepository expenseRepository,
 			IncomeEntryRepository incomeEntryRepository,
 			MonthlyBudgetService monthlyBudgetService,
 			RecurringExpenseRepository recurringExpenseRepository,
-			RecurringIncomeRepository recurringIncomeRepository) {
+			RecurringIncomeRepository recurringIncomeRepository,
+			CurrentUser currentUser) {
 		this.expenseRepository = expenseRepository;
 		this.incomeEntryRepository = incomeEntryRepository;
 		this.monthlyBudgetService = monthlyBudgetService;
 		this.recurringExpenseRepository = recurringExpenseRepository;
 		this.recurringIncomeRepository = recurringIncomeRepository;
+		this.currentUser = currentUser;
 	}
 
 	@Transactional(readOnly = true)
@@ -77,7 +81,8 @@ public class ReportService {
 			);
 		}
 
-		List<MonthlyComparisonItem> months = buildMonthsInRange(start, end);
+		Long userId = currentUser.requireUserId();
+		List<MonthlyComparisonItem> months = buildMonthsInRange(userId, start, end);
 
 		return new MonthlyComparisonResponse(startYear, startMonth, endYear, endMonth, months.size(), months);
 	}
@@ -100,7 +105,8 @@ public class ReportService {
 		YearMonth start = YearMonth.of(year, 1);
 		YearMonth end = YearMonth.of(year, endMonthValue);
 
-		List<MonthlyComparisonItem> monthSummaries = buildMonthsInRange(start, end);
+		Long userId = currentUser.requireUserId();
+		List<MonthlyComparisonItem> monthSummaries = buildMonthsInRange(userId, start, end);
 		int monthCount = monthSummaries.size();
 
 		BigDecimal totalIncome = sumAmounts(monthSummaries.stream().map(MonthlyComparisonItem::totalIncome).toList());
@@ -132,12 +138,14 @@ public class ReportService {
 		LocalDate yearStart = LocalDate.of(year, 1, 1);
 		LocalDate endExclusive = end.atDay(1).plusMonths(1);
 		List<Expense> yearExpenses = expenseRepository
-			.findByExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+			.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				userId,
 				yearStart,
 				endExclusive
 			);
 		List<IncomeEntry> yearIncome = incomeEntryRepository
-			.findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+			.findByUser_IdAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+				userId,
 				yearStart,
 				endExclusive
 			);
@@ -162,28 +170,30 @@ public class ReportService {
 		);
 	}
 
-	private List<MonthlyComparisonItem> buildMonthsInRange(YearMonth start, YearMonth end) {
+	private List<MonthlyComparisonItem> buildMonthsInRange(Long userId, YearMonth start, YearMonth end) {
 		List<MonthlyComparisonItem> months = new ArrayList<>();
 		YearMonth cursor = start;
 		while (!cursor.isAfter(end)) {
-			months.add(buildMonthItem(cursor));
+			months.add(buildMonthItem(userId, cursor));
 			cursor = cursor.plusMonths(1);
 		}
 		return List.copyOf(months);
 	}
 
-	private MonthlyComparisonItem buildMonthItem(YearMonth yearMonth) {
+	private MonthlyComparisonItem buildMonthItem(Long userId, YearMonth yearMonth) {
 		LocalDate monthStart = yearMonth.atDay(1);
 		LocalDate monthEndExclusive = monthStart.plusMonths(1);
 		LocalDate monthEnd = yearMonth.atEndOfMonth();
 
 		List<IncomeEntry> incomeEntries = incomeEntryRepository
-			.findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+			.findByUser_IdAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+				userId,
 				monthStart,
 				monthEndExclusive
 			);
 		List<Expense> expenses = expenseRepository
-			.findByExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+			.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				userId,
 				monthStart,
 				monthEndExclusive
 			);
@@ -199,8 +209,8 @@ public class ReportService {
 		BigDecimal budgetPercentUsed = budget.map(MonthlyBudgetResponse::percentUsed).orElse(null);
 		Boolean overBudget = budget.map(MonthlyBudgetResponse::overBudget).orElse(null);
 
-		List<RecurringIncome> upcomingIncome = recurringIncomeRepository.findActiveInMonth(monthStart, monthEnd);
-		List<RecurringExpense> upcomingExpenses = recurringExpenseRepository.findActiveInMonth(monthStart, monthEnd);
+		List<RecurringIncome> upcomingIncome = recurringIncomeRepository.findActiveInMonth(userId, monthStart, monthEnd);
+		List<RecurringExpense> upcomingExpenses = recurringExpenseRepository.findActiveInMonth(userId, monthStart, monthEnd);
 		BigDecimal expectedRecurringIncome = sumAmounts(
 			upcomingIncome.stream().map(RecurringIncome::getAmount).toList()
 		);

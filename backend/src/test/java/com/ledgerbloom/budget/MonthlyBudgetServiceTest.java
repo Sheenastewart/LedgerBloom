@@ -3,15 +3,18 @@ package com.ledgerbloom.budget;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.category.Category;
 import com.ledgerbloom.category.CategoryNotFoundException;
 import com.ledgerbloom.category.CategoryRepository;
 import com.ledgerbloom.expense.Expense;
 import com.ledgerbloom.expense.ExpenseRepository;
+import com.ledgerbloom.user.User;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -30,6 +33,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 @ExtendWith(MockitoExtension.class)
 class MonthlyBudgetServiceTest {
 
+	private static final Long USER_ID = 1L;
+
 	@Mock
 	private MonthlyBudgetRepository monthlyBudgetRepository;
 
@@ -42,27 +47,36 @@ class MonthlyBudgetServiceTest {
 	@Mock
 	private ExpenseRepository expenseRepository;
 
+	@Mock
+	private CurrentUser currentUser;
+
 	@InjectMocks
 	private MonthlyBudgetService monthlyBudgetService;
 
+	private User user;
 	private Category groceries;
 	private Category utilities;
 	private MonthlyBudget julyBudget;
 
 	@BeforeEach
 	void setUp() throws Exception {
-		groceries = new Category("Groceries", null);
+		user = new User("user@example.com", "hash", "Test User");
+		setUserId(user, USER_ID);
+		lenient().when(currentUser.requireUserId()).thenReturn(USER_ID);
+		lenient().when(currentUser.requireUserReference()).thenReturn(user);
+
+		groceries = new Category(user, "Groceries", null);
 		setId(groceries, 1L);
-		utilities = new Category("Utilities", null);
+		utilities = new Category(user, "Utilities", null);
 		setId(utilities, 2L);
-		julyBudget = new MonthlyBudget(2026, 7, new BigDecimal("1000.00"));
+		julyBudget = new MonthlyBudget(user, 2026, 7, new BigDecimal("1000.00"));
 		setId(julyBudget, 10L);
 		setTimestamps(julyBudget, Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z"));
 	}
 
 	@Test
 	void createBudget() throws Exception {
-		when(monthlyBudgetRepository.existsByBudgetYearAndBudgetMonth(2026, 7)).thenReturn(false);
+		when(monthlyBudgetRepository.existsByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7)).thenReturn(false);
 		when(monthlyBudgetRepository.saveAndFlush(any(MonthlyBudget.class))).thenAnswer(invocation -> {
 			MonthlyBudget budget = invocation.getArgument(0);
 			setId(budget, 10L);
@@ -88,7 +102,7 @@ class MonthlyBudgetServiceTest {
 
 	@Test
 	void createRejectsDuplicateMonth() {
-		when(monthlyBudgetRepository.existsByBudgetYearAndBudgetMonth(2026, 7)).thenReturn(true);
+		when(monthlyBudgetRepository.existsByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7)).thenReturn(true);
 
 		assertThatThrownBy(() -> monthlyBudgetService.create(
 			new MonthlyBudgetCreateRequest(2026, 7, new BigDecimal("1000.00"))
@@ -141,7 +155,8 @@ class MonthlyBudgetServiceTest {
 
 	@Test
 	void getExistingBudget() {
-		when(monthlyBudgetRepository.findByBudgetYearAndBudgetMonth(2026, 7)).thenReturn(Optional.of(julyBudget));
+		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
+			.thenReturn(Optional.of(julyBudget));
 		stubEmptyExpenses(2026, 7);
 		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L)).thenReturn(List.of());
 
@@ -153,7 +168,8 @@ class MonthlyBudgetServiceTest {
 
 	@Test
 	void getMissingBudgetThrows() {
-		when(monthlyBudgetRepository.findByBudgetYearAndBudgetMonth(2026, 8)).thenReturn(Optional.empty());
+		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 8))
+			.thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> monthlyBudgetService.getByYearAndMonth(2026, 8))
 			.isInstanceOf(MonthlyBudgetNotFoundException.class);
@@ -161,7 +177,7 @@ class MonthlyBudgetServiceTest {
 
 	@Test
 	void updateBudget() {
-		when(monthlyBudgetRepository.findById(10L)).thenReturn(Optional.of(julyBudget));
+		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
 		when(monthlyBudgetRepository.saveAndFlush(any(MonthlyBudget.class))).thenAnswer(invocation -> invocation.getArgument(0));
 		stubEmptyExpenses(2026, 7);
 		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L)).thenReturn(List.of());
@@ -179,7 +195,7 @@ class MonthlyBudgetServiceTest {
 
 	@Test
 	void deleteBudget() {
-		when(monthlyBudgetRepository.findById(10L)).thenReturn(Optional.of(julyBudget));
+		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
 
 		monthlyBudgetService.delete(10L);
 
@@ -188,9 +204,10 @@ class MonthlyBudgetServiceTest {
 
 	@Test
 	void createCategoryLimit() throws Exception {
-		when(monthlyBudgetRepository.findById(10L)).thenReturn(Optional.of(julyBudget));
-		when(categoryRepository.findById(1L)).thenReturn(Optional.of(groceries));
-		when(categoryBudgetLimitRepository.existsByMonthlyBudget_IdAndCategory_Id(10L, 1L)).thenReturn(false);
+		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
+		when(categoryBudgetLimitRepository.existsByMonthlyBudget_IdAndCategory_IdAndUser_Id(10L, 1L, USER_ID))
+			.thenReturn(false);
 		when(categoryBudgetLimitRepository.saveAndFlush(any(CategoryBudgetLimit.class))).thenAnswer(invocation -> {
 			CategoryBudgetLimit limit = invocation.getArgument(0);
 			setId(limit, 50L);
@@ -199,7 +216,7 @@ class MonthlyBudgetServiceTest {
 		});
 		stubEmptyExpenses(2026, 7);
 		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L)).thenAnswer(invocation -> {
-			CategoryBudgetLimit limit = new CategoryBudgetLimit(julyBudget, groceries, new BigDecimal("200.00"));
+			CategoryBudgetLimit limit = new CategoryBudgetLimit(user, julyBudget, groceries, new BigDecimal("200.00"));
 			setId(limit, 50L);
 			return List.of(limit);
 		});
@@ -216,9 +233,10 @@ class MonthlyBudgetServiceTest {
 
 	@Test
 	void createCategoryLimitRejectsDuplicate() {
-		when(monthlyBudgetRepository.findById(10L)).thenReturn(Optional.of(julyBudget));
-		when(categoryRepository.findById(1L)).thenReturn(Optional.of(groceries));
-		when(categoryBudgetLimitRepository.existsByMonthlyBudget_IdAndCategory_Id(10L, 1L)).thenReturn(true);
+		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
+		when(categoryBudgetLimitRepository.existsByMonthlyBudget_IdAndCategory_IdAndUser_Id(10L, 1L, USER_ID))
+			.thenReturn(true);
 
 		assertThatThrownBy(() -> monthlyBudgetService.createCategoryLimit(
 			10L,
@@ -230,8 +248,8 @@ class MonthlyBudgetServiceTest {
 
 	@Test
 	void createCategoryLimitRejectsMissingCategory() {
-		when(monthlyBudgetRepository.findById(10L)).thenReturn(Optional.of(julyBudget));
-		when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
+		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
+		when(categoryRepository.findByIdAndUser_Id(99L, USER_ID)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> monthlyBudgetService.createCategoryLimit(
 			10L,
@@ -241,10 +259,11 @@ class MonthlyBudgetServiceTest {
 
 	@Test
 	void updateCategoryLimit() throws Exception {
-		CategoryBudgetLimit limit = new CategoryBudgetLimit(julyBudget, groceries, new BigDecimal("200.00"));
+		CategoryBudgetLimit limit = new CategoryBudgetLimit(user, julyBudget, groceries, new BigDecimal("200.00"));
 		setId(limit, 50L);
-		when(monthlyBudgetRepository.findById(10L)).thenReturn(Optional.of(julyBudget));
-		when(categoryBudgetLimitRepository.findByIdAndMonthlyBudget_Id(50L, 10L)).thenReturn(Optional.of(limit));
+		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
+		when(categoryBudgetLimitRepository.findByIdAndMonthlyBudget_IdAndUser_Id(50L, 10L, USER_ID))
+			.thenReturn(Optional.of(limit));
 		when(categoryBudgetLimitRepository.saveAndFlush(any(CategoryBudgetLimit.class)))
 			.thenAnswer(invocation -> invocation.getArgument(0));
 		stubEmptyExpenses(2026, 7);
@@ -261,10 +280,11 @@ class MonthlyBudgetServiceTest {
 
 	@Test
 	void deleteCategoryLimit() throws Exception {
-		CategoryBudgetLimit limit = new CategoryBudgetLimit(julyBudget, groceries, new BigDecimal("200.00"));
+		CategoryBudgetLimit limit = new CategoryBudgetLimit(user, julyBudget, groceries, new BigDecimal("200.00"));
 		setId(limit, 50L);
-		when(monthlyBudgetRepository.findById(10L)).thenReturn(Optional.of(julyBudget));
-		when(categoryBudgetLimitRepository.findByIdAndMonthlyBudget_Id(50L, 10L)).thenReturn(Optional.of(limit));
+		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
+		when(categoryBudgetLimitRepository.findByIdAndMonthlyBudget_IdAndUser_Id(50L, 10L, USER_ID))
+			.thenReturn(Optional.of(limit));
 		stubEmptyExpenses(2026, 7);
 		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L)).thenReturn(List.of());
 
@@ -276,8 +296,9 @@ class MonthlyBudgetServiceTest {
 
 	@Test
 	void missingCategoryLimitThrows() {
-		when(monthlyBudgetRepository.findById(10L)).thenReturn(Optional.of(julyBudget));
-		when(categoryBudgetLimitRepository.findByIdAndMonthlyBudget_Id(99L, 10L)).thenReturn(Optional.empty());
+		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
+		when(categoryBudgetLimitRepository.findByIdAndMonthlyBudget_IdAndUser_Id(99L, 10L, USER_ID))
+			.thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> monthlyBudgetService.updateCategoryLimit(
 			10L,
@@ -288,7 +309,8 @@ class MonthlyBudgetServiceTest {
 
 	@Test
 	void calculatesOverallActualRemainingOverBudgetAndPercent() throws Exception {
-		when(monthlyBudgetRepository.findByBudgetYearAndBudgetMonth(2026, 7)).thenReturn(Optional.of(julyBudget));
+		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
+			.thenReturn(Optional.of(julyBudget));
 		stubExpenses(2026, 7, List.of(
 			expense(1L, "Food", "400.00", LocalDate.of(2026, 7, 2), groceries),
 			expense(2L, "Power", "200.00", LocalDate.of(2026, 7, 5), utilities)
@@ -306,7 +328,8 @@ class MonthlyBudgetServiceTest {
 
 	@Test
 	void calculatesOverallOverBudget() throws Exception {
-		when(monthlyBudgetRepository.findByBudgetYearAndBudgetMonth(2026, 7)).thenReturn(Optional.of(julyBudget));
+		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
+			.thenReturn(Optional.of(julyBudget));
 		stubExpenses(2026, 7, List.of(
 			expense(1L, "Big", "1200.00", LocalDate.of(2026, 7, 2), groceries)
 		));
@@ -322,9 +345,10 @@ class MonthlyBudgetServiceTest {
 
 	@Test
 	void calculatesCategoryActualRemainingOverBudgetAndPercent() throws Exception {
-		CategoryBudgetLimit groceriesLimit = new CategoryBudgetLimit(julyBudget, groceries, new BigDecimal("300.00"));
+		CategoryBudgetLimit groceriesLimit = new CategoryBudgetLimit(user, julyBudget, groceries, new BigDecimal("300.00"));
 		setId(groceriesLimit, 50L);
-		when(monthlyBudgetRepository.findByBudgetYearAndBudgetMonth(2026, 7)).thenReturn(Optional.of(julyBudget));
+		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
+			.thenReturn(Optional.of(julyBudget));
 		stubExpenses(2026, 7, List.of(
 			expense(1L, "Milk", "100.00", LocalDate.of(2026, 7, 1), groceries),
 			expense(2L, "Eggs", "50.00", LocalDate.of(2026, 7, 2), groceries),
@@ -344,9 +368,10 @@ class MonthlyBudgetServiceTest {
 
 	@Test
 	void calculatesCategoryOverBudget() throws Exception {
-		CategoryBudgetLimit groceriesLimit = new CategoryBudgetLimit(julyBudget, groceries, new BigDecimal("100.00"));
+		CategoryBudgetLimit groceriesLimit = new CategoryBudgetLimit(user, julyBudget, groceries, new BigDecimal("100.00"));
 		setId(groceriesLimit, 50L);
-		when(monthlyBudgetRepository.findByBudgetYearAndBudgetMonth(2026, 7)).thenReturn(Optional.of(julyBudget));
+		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
+			.thenReturn(Optional.of(julyBudget));
 		stubExpenses(2026, 7, List.of(
 			expense(1L, "Milk", "150.00", LocalDate.of(2026, 7, 1), groceries)
 		));
@@ -363,7 +388,7 @@ class MonthlyBudgetServiceTest {
 
 	@Test
 	void createMapsIntegrityViolationToDuplicateBudget() {
-		when(monthlyBudgetRepository.existsByBudgetYearAndBudgetMonth(2026, 7)).thenReturn(false);
+		when(monthlyBudgetRepository.existsByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7)).thenReturn(false);
 		when(monthlyBudgetRepository.saveAndFlush(any(MonthlyBudget.class)))
 			.thenThrow(new DataIntegrityViolationException("unique"));
 
@@ -379,7 +404,8 @@ class MonthlyBudgetServiceTest {
 	private void stubExpenses(int year, int month, List<Expense> expenses) {
 		LocalDate start = LocalDate.of(year, month, 1);
 		LocalDate endExclusive = start.plusMonths(1);
-		when(expenseRepository.findByExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+		when(expenseRepository.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+			USER_ID,
 			start,
 			endExclusive
 		)).thenReturn(expenses);
@@ -387,7 +413,7 @@ class MonthlyBudgetServiceTest {
 
 	private Expense expense(Long id, String description, String amount, LocalDate date, Category category)
 			throws Exception {
-		Expense expenseEntity = new Expense(description, null, new BigDecimal(amount), date, null, category);
+		Expense expenseEntity = new Expense(user, description, null, new BigDecimal(amount), date, null, category);
 		setId(expenseEntity, id);
 		return expenseEntity;
 	}
@@ -396,6 +422,12 @@ class MonthlyBudgetServiceTest {
 		Field field = entity.getClass().getDeclaredField("id");
 		field.setAccessible(true);
 		field.set(entity, id);
+	}
+
+	private static void setUserId(User user, Long id) throws Exception {
+		Field field = User.class.getDeclaredField("id");
+		field.setAccessible(true);
+		field.set(user, id);
 	}
 
 	private static void setTimestamps(MonthlyBudget budget, Instant createdAt, Instant updatedAt) throws Exception {

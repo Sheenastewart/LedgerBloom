@@ -1,5 +1,6 @@
 package com.ledgerbloom.income;
 
+import com.ledgerbloom.auth.CurrentUser;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -14,15 +15,18 @@ public class IncomeEntryService {
 	private static final BigDecimal MAX_AMOUNT = new BigDecimal("9999999999.99");
 
 	private final IncomeEntryRepository incomeEntryRepository;
+	private final CurrentUser currentUser;
 
-	public IncomeEntryService(IncomeEntryRepository incomeEntryRepository) {
+	public IncomeEntryService(IncomeEntryRepository incomeEntryRepository, CurrentUser currentUser) {
 		this.incomeEntryRepository = incomeEntryRepository;
+		this.currentUser = currentUser;
 	}
 
 	@Transactional(readOnly = true)
 	public List<IncomeEntryResponse> findAll(Integer year, Integer month, String source) {
 		String normalizedSource = normalizeSourceFilter(source);
 		validateFilter(year, month);
+		Long userId = currentUser.requireUserId();
 
 		boolean hasMonth = year != null || month != null;
 		boolean hasSource = normalizedSource != null;
@@ -32,7 +36,8 @@ public class IncomeEntryService {
 			LocalDate start = YearMonth.of(year, month).atDay(1);
 			LocalDate endExclusive = start.plusMonths(1);
 			entries = incomeEntryRepository
-				.findBySourceIgnoreCaseAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+				.findByUser_IdAndSourceIgnoreCaseAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+					userId,
 					normalizedSource,
 					start,
 					endExclusive
@@ -42,16 +47,18 @@ public class IncomeEntryService {
 			LocalDate start = YearMonth.of(year, month).atDay(1);
 			LocalDate endExclusive = start.plusMonths(1);
 			entries = incomeEntryRepository
-				.findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+				.findByUser_IdAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+					userId,
 					start,
 					endExclusive
 				);
 		}
 		else if (hasSource) {
-			entries = incomeEntryRepository.findBySourceIgnoreCaseOrderByIncomeDateDescIdDesc(normalizedSource);
+			entries = incomeEntryRepository
+				.findByUser_IdAndSourceIgnoreCaseOrderByIncomeDateDescIdDesc(userId, normalizedSource);
 		}
 		else {
-			entries = incomeEntryRepository.findAllByOrderByIncomeDateDescIdDesc();
+			entries = incomeEntryRepository.findByUser_IdOrderByIncomeDateDescIdDesc(userId);
 		}
 
 		return entries.stream().map(this::toResponse).toList();
@@ -59,7 +66,7 @@ public class IncomeEntryService {
 
 	@Transactional(readOnly = true)
 	public IncomeEntryResponse findById(Long id) {
-		return toResponse(getEntryOrThrow(id));
+		return toResponse(getEntryOrThrow(id, currentUser.requireUserId()));
 	}
 
 	public IncomeEntryResponse create(IncomeEntryCreateRequest request) {
@@ -71,6 +78,7 @@ public class IncomeEntryService {
 			request.notes()
 		);
 		IncomeEntry entry = new IncomeEntry(
+			currentUser.requireUserReference(),
 			data.description(),
 			data.source(),
 			data.amount(),
@@ -81,7 +89,7 @@ public class IncomeEntryService {
 	}
 
 	public IncomeEntryResponse update(Long id, IncomeEntryUpdateRequest request) {
-		IncomeEntry entry = getEntryOrThrow(id);
+		IncomeEntry entry = getEntryOrThrow(id, currentUser.requireUserId());
 		NormalizedIncomeData data = normalize(
 			request.description(),
 			request.source(),
@@ -98,12 +106,12 @@ public class IncomeEntryService {
 	}
 
 	public void delete(Long id) {
-		IncomeEntry entry = getEntryOrThrow(id);
+		IncomeEntry entry = getEntryOrThrow(id, currentUser.requireUserId());
 		incomeEntryRepository.delete(entry);
 	}
 
-	private IncomeEntry getEntryOrThrow(Long id) {
-		return incomeEntryRepository.findById(id)
+	private IncomeEntry getEntryOrThrow(Long id, Long userId) {
+		return incomeEntryRepository.findByIdAndUser_Id(id, userId)
 			.orElseThrow(() -> new IncomeEntryNotFoundException(id));
 	}
 

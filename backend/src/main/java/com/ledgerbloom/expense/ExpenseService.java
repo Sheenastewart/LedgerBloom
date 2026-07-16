@@ -1,5 +1,6 @@
 package com.ledgerbloom.expense;
 
+import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.category.Category;
 import com.ledgerbloom.category.CategoryNotFoundException;
 import com.ledgerbloom.category.CategoryRepository;
@@ -20,15 +21,21 @@ public class ExpenseService {
 
 	private final ExpenseRepository expenseRepository;
 	private final CategoryRepository categoryRepository;
+	private final CurrentUser currentUser;
 
-	public ExpenseService(ExpenseRepository expenseRepository, CategoryRepository categoryRepository) {
+	public ExpenseService(
+			ExpenseRepository expenseRepository,
+			CategoryRepository categoryRepository,
+			CurrentUser currentUser) {
 		this.expenseRepository = expenseRepository;
 		this.categoryRepository = categoryRepository;
+		this.currentUser = currentUser;
 	}
 
 	@Transactional(readOnly = true)
 	public List<ExpenseResponse> findAll(Integer year, Integer month, Long categoryId) {
 		validateFilter(year, month, categoryId);
+		Long userId = currentUser.requireUserId();
 
 		boolean hasMonth = year != null || month != null;
 		boolean hasCategory = categoryId != null;
@@ -38,7 +45,8 @@ public class ExpenseService {
 			LocalDate start = YearMonth.of(year, month).atDay(1);
 			LocalDate endExclusive = start.plusMonths(1);
 			expenses = expenseRepository
-				.findByCategory_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				.findByUser_IdAndCategory_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+					userId,
 					categoryId,
 					start,
 					endExclusive
@@ -48,16 +56,17 @@ public class ExpenseService {
 			LocalDate start = YearMonth.of(year, month).atDay(1);
 			LocalDate endExclusive = start.plusMonths(1);
 			expenses = expenseRepository
-				.findByExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+					userId,
 					start,
 					endExclusive
 				);
 		}
 		else if (hasCategory) {
-			expenses = expenseRepository.findByCategory_IdOrderByExpenseDateDescIdDesc(categoryId);
+			expenses = expenseRepository.findByUser_IdAndCategory_IdOrderByExpenseDateDescIdDesc(userId, categoryId);
 		}
 		else {
-			expenses = expenseRepository.findAllByOrderByExpenseDateDescIdDesc();
+			expenses = expenseRepository.findByUser_IdOrderByExpenseDateDescIdDesc(userId);
 		}
 
 		return expenses.stream().map(this::toResponse).toList();
@@ -65,15 +74,17 @@ public class ExpenseService {
 
 	@Transactional(readOnly = true)
 	public ExpenseResponse findById(Long id) {
-		return toResponse(getExpenseOrThrow(id));
+		return toResponse(getExpenseOrThrow(id, currentUser.requireUserId()));
 	}
 
 	public ExpenseResponse create(ExpenseCreateRequest request) {
+		Long userId = currentUser.requireUserId();
 		NormalizedExpenseData data = normalize(request.description(), request.merchant(), request.amount(),
 			request.expenseDate(), request.categoryId(), request.notes());
-		Category category = getCategoryOrThrow(data.categoryId());
+		Category category = getCategoryOrThrow(data.categoryId(), userId);
 
 		Expense expense = new Expense(
+			currentUser.requireUserReference(),
 			data.description(),
 			data.merchant(),
 			data.amount(),
@@ -85,10 +96,11 @@ public class ExpenseService {
 	}
 
 	public ExpenseResponse update(Long id, ExpenseUpdateRequest request) {
-		Expense expense = getExpenseOrThrow(id);
+		Long userId = currentUser.requireUserId();
+		Expense expense = getExpenseOrThrow(id, userId);
 		NormalizedExpenseData data = normalize(request.description(), request.merchant(), request.amount(),
 			request.expenseDate(), request.categoryId(), request.notes());
-		Category category = getCategoryOrThrow(data.categoryId());
+		Category category = getCategoryOrThrow(data.categoryId(), userId);
 
 		expense.setDescription(data.description());
 		expense.setMerchant(data.merchant());
@@ -100,7 +112,7 @@ public class ExpenseService {
 	}
 
 	public void delete(Long id) {
-		Expense expense = getExpenseOrThrow(id);
+		Expense expense = getExpenseOrThrow(id, currentUser.requireUserId());
 		expenseRepository.delete(expense);
 	}
 
@@ -133,13 +145,13 @@ public class ExpenseService {
 		return false;
 	}
 
-	private Expense getExpenseOrThrow(Long id) {
-		return expenseRepository.findById(id)
+	private Expense getExpenseOrThrow(Long id, Long userId) {
+		return expenseRepository.findByIdAndUser_Id(id, userId)
 			.orElseThrow(() -> new ExpenseNotFoundException(id));
 	}
 
-	private Category getCategoryOrThrow(Long categoryId) {
-		return categoryRepository.findById(categoryId)
+	private Category getCategoryOrThrow(Long categoryId, Long userId) {
+		return categoryRepository.findByIdAndUser_Id(categoryId, userId)
 			.orElseThrow(() -> new CategoryNotFoundException(categoryId));
 	}
 

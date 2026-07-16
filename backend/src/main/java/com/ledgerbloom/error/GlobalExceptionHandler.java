@@ -1,5 +1,9 @@
 package com.ledgerbloom.error;
 
+import com.ledgerbloom.auth.AuthenticationRequiredException;
+import com.ledgerbloom.auth.EmailAlreadyExistsException;
+import com.ledgerbloom.auth.InvalidCredentialsException;
+import com.ledgerbloom.auth.InvalidRegistrationDataException;
 import com.ledgerbloom.budget.CategoryBudgetAlreadyExistsException;
 import com.ledgerbloom.budget.CategoryBudgetLimitNotFoundException;
 import com.ledgerbloom.budget.InvalidBudgetDataException;
@@ -34,6 +38,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -393,6 +398,41 @@ public class GlobalExceptionHandler {
 			request.getRequestURI(),
 			null
 		);
+	}
+
+	@ExceptionHandler(EmailAlreadyExistsException.class)
+	public ResponseEntity<ApiErrorResponse> handleEmailAlreadyExists(
+			EmailAlreadyExistsException ex,
+			HttpServletRequest request) {
+		return build(HttpStatus.CONFLICT, ErrorCode.EMAIL_ALREADY_EXISTS, ex.getMessage(), request.getRequestURI(), null);
+	}
+
+	@ExceptionHandler(InvalidCredentialsException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidCredentials(
+			InvalidCredentialsException ex,
+			HttpServletRequest request) {
+		return build(HttpStatus.UNAUTHORIZED, ErrorCode.INVALID_CREDENTIALS, ex.getMessage(), request.getRequestURI(), null);
+	}
+
+	@ExceptionHandler(InvalidRegistrationDataException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidRegistrationData(
+			InvalidRegistrationDataException ex,
+			HttpServletRequest request) {
+		return build(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_FAILED, ex.getMessage(), request.getRequestURI(), null);
+	}
+
+	@ExceptionHandler(AuthenticationRequiredException.class)
+	public ResponseEntity<ApiErrorResponse> handleAuthenticationRequired(
+			AuthenticationRequiredException ex,
+			HttpServletRequest request) {
+		return build(HttpStatus.UNAUTHORIZED, ErrorCode.AUTHENTICATION_REQUIRED, ex.getMessage(), request.getRequestURI(), null);
+	}
+
+	@ExceptionHandler(AccessDeniedException.class)
+	public ResponseEntity<ApiErrorResponse> handleAccessDenied(
+			AccessDeniedException ex,
+			HttpServletRequest request) {
+		return build(HttpStatus.FORBIDDEN, ErrorCode.FORBIDDEN, "Access to this resource is forbidden", request.getRequestURI(), null);
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)

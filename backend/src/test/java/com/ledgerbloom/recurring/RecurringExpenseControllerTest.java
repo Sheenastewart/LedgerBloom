@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -20,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.ledgerbloom.error.GlobalExceptionHandler;
 import com.ledgerbloom.expense.ExpenseCategorySummary;
 import com.ledgerbloom.expense.ExpenseResponse;
+import com.ledgerbloom.support.SecurityTestConfig;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -29,11 +31,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = RecurringExpenseController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, SecurityTestConfig.class})
+@WithMockUser(username = "user@example.com")
 class RecurringExpenseControllerTest {
 
 	@Autowired
@@ -63,6 +67,7 @@ class RecurringExpenseControllerTest {
 		when(recurringExpenseService.create(any(RecurringExpenseCreateRequest.class))).thenReturn(sample());
 
 		mockMvc.perform(post("/api/recurring-expenses")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -83,6 +88,7 @@ class RecurringExpenseControllerTest {
 	@Test
 	void createValidationReturns400() throws Exception {
 		mockMvc.perform(post("/api/recurring-expenses")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -147,6 +153,7 @@ class RecurringExpenseControllerTest {
 		when(recurringExpenseService.update(eq(10L), any(RecurringExpenseUpdateRequest.class))).thenReturn(sample());
 
 		mockMvc.perform(put("/api/recurring-expenses/10")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -166,7 +173,7 @@ class RecurringExpenseControllerTest {
 	void deleteReturns204() throws Exception {
 		doNothing().when(recurringExpenseService).delete(10L);
 
-		mockMvc.perform(delete("/api/recurring-expenses/10"))
+		mockMvc.perform(delete("/api/recurring-expenses/10").with(csrf()))
 			.andExpect(status().isNoContent());
 	}
 
@@ -174,7 +181,7 @@ class RecurringExpenseControllerTest {
 	void deleteMissingReturns404() throws Exception {
 		doThrow(new RecurringExpenseNotFoundException(42L)).when(recurringExpenseService).delete(42L);
 
-		mockMvc.perform(delete("/api/recurring-expenses/42"))
+		mockMvc.perform(delete("/api/recurring-expenses/42").with(csrf()))
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.code").value("RECURRING_EXPENSE_NOT_FOUND"));
 	}
@@ -199,6 +206,7 @@ class RecurringExpenseControllerTest {
 		);
 
 		mockMvc.perform(post("/api/recurring-expenses/10/mark-paid")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -216,6 +224,7 @@ class RecurringExpenseControllerTest {
 			.thenThrow(new RecurringExpensePaymentConflictException("Recurring expense was already updated; refresh and try again"));
 
 		mockMvc.perform(post("/api/recurring-expenses/10/mark-paid")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -229,6 +238,7 @@ class RecurringExpenseControllerTest {
 	@Test
 	void markPaidMissingExpectedDateReturns400() throws Exception {
 		mockMvc.perform(post("/api/recurring-expenses/10/mark-paid")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{}"))
 			.andExpect(status().isBadRequest())
@@ -240,6 +250,7 @@ class RecurringExpenseControllerTest {
 	@Test
 	void markPaidNullExpectedDateReturns400() throws Exception {
 		mockMvc.perform(post("/api/recurring-expenses/10/mark-paid")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -255,6 +266,7 @@ class RecurringExpenseControllerTest {
 	@Test
 	void markPaidMalformedExpectedDateReturns400() throws Exception {
 		mockMvc.perform(post("/api/recurring-expenses/10/mark-paid")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -270,6 +282,7 @@ class RecurringExpenseControllerTest {
 	@Test
 	void markPaidMissingBodyReturns400() throws Exception {
 		mockMvc.perform(post("/api/recurring-expenses/10/mark-paid")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));

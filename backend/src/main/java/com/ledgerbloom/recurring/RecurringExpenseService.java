@@ -1,5 +1,6 @@
 package com.ledgerbloom.recurring;
 
+import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.category.Category;
 import com.ledgerbloom.category.CategoryNotFoundException;
 import com.ledgerbloom.category.CategoryRepository;
@@ -22,21 +23,25 @@ public class RecurringExpenseService {
 	private final RecurringExpenseRepository recurringExpenseRepository;
 	private final CategoryRepository categoryRepository;
 	private final ExpenseService expenseService;
+	private final CurrentUser currentUser;
 
 	public RecurringExpenseService(
 			RecurringExpenseRepository recurringExpenseRepository,
 			CategoryRepository categoryRepository,
-			ExpenseService expenseService) {
+			ExpenseService expenseService,
+			CurrentUser currentUser) {
 		this.recurringExpenseRepository = recurringExpenseRepository;
 		this.categoryRepository = categoryRepository;
 		this.expenseService = expenseService;
+		this.currentUser = currentUser;
 	}
 
 	@Transactional(readOnly = true)
 	public List<RecurringExpenseResponse> findAll(Boolean active, Long categoryId, String cadence) {
 		RecurringExpenseCadence cadenceEnum = parseCadenceFilter(cadence);
 		validateCategoryFilter(categoryId);
-		return recurringExpenseRepository.findFiltered(active, categoryId, cadenceEnum).stream()
+		Long userId = currentUser.requireUserId();
+		return recurringExpenseRepository.findFiltered(userId, active, categoryId, cadenceEnum).stream()
 			.map(this::toResponse)
 			.toList();
 	}
@@ -49,17 +54,19 @@ public class RecurringExpenseService {
 		}
 		LocalDate today = LocalDate.now();
 		LocalDate toInclusive = today.plusDays(windowDays);
-		return recurringExpenseRepository.findUpcoming(today, toInclusive).stream()
+		Long userId = currentUser.requireUserId();
+		return recurringExpenseRepository.findUpcoming(userId, today, toInclusive).stream()
 			.map(this::toResponse)
 			.toList();
 	}
 
 	@Transactional(readOnly = true)
 	public RecurringExpenseResponse findById(Long id) {
-		return toResponse(getOrThrow(id));
+		return toResponse(getOrThrow(id, currentUser.requireUserId()));
 	}
 
 	public RecurringExpenseResponse create(RecurringExpenseCreateRequest request) {
+		Long userId = currentUser.requireUserId();
 		NormalizedData data = normalize(
 			request.description(),
 			request.merchant(),
@@ -70,8 +77,9 @@ public class RecurringExpenseService {
 			request.active(),
 			request.notes()
 		);
-		Category category = getCategoryOrThrow(data.categoryId());
+		Category category = getCategoryOrThrow(data.categoryId(), userId);
 		RecurringExpense entity = new RecurringExpense(
+			currentUser.requireUserReference(),
 			data.description(),
 			data.merchant(),
 			data.amount(),
@@ -85,7 +93,8 @@ public class RecurringExpenseService {
 	}
 
 	public RecurringExpenseResponse update(Long id, RecurringExpenseUpdateRequest request) {
-		RecurringExpense entity = getOrThrow(id);
+		Long userId = currentUser.requireUserId();
+		RecurringExpense entity = getOrThrow(id, userId);
 		NormalizedData data = normalize(
 			request.description(),
 			request.merchant(),
@@ -96,7 +105,7 @@ public class RecurringExpenseService {
 			request.active(),
 			request.notes()
 		);
-		Category category = getCategoryOrThrow(data.categoryId());
+		Category category = getCategoryOrThrow(data.categoryId(), userId);
 		entity.setDescription(data.description());
 		entity.setMerchant(data.merchant());
 		entity.setAmount(data.amount());
@@ -109,7 +118,7 @@ public class RecurringExpenseService {
 	}
 
 	public void delete(Long id) {
-		RecurringExpense entity = getOrThrow(id);
+		RecurringExpense entity = getOrThrow(id, currentUser.requireUserId());
 		recurringExpenseRepository.delete(entity);
 	}
 
@@ -120,7 +129,8 @@ public class RecurringExpenseService {
 	 * (row lock alone would otherwise allow another Expense after the date advanced).
 	 */
 	public MarkPaidResponse markPaid(Long id, MarkPaidRequest request) {
-		RecurringExpense entity = recurringExpenseRepository.findByIdForUpdate(id)
+		Long userId = currentUser.requireUserId();
+		RecurringExpense entity = recurringExpenseRepository.findByIdAndUser_IdForUpdate(id, userId)
 			.orElseThrow(() -> new RecurringExpenseNotFoundException(id));
 
 		LocalDate expected = request.expectedNextPaymentDate();
@@ -166,13 +176,13 @@ public class RecurringExpenseService {
 		return source + ". " + entity.getNotes();
 	}
 
-	private RecurringExpense getOrThrow(Long id) {
-		return recurringExpenseRepository.findById(id)
+	private RecurringExpense getOrThrow(Long id, Long userId) {
+		return recurringExpenseRepository.findByIdAndUser_Id(id, userId)
 			.orElseThrow(() -> new RecurringExpenseNotFoundException(id));
 	}
 
-	private Category getCategoryOrThrow(Long categoryId) {
-		return categoryRepository.findById(categoryId)
+	private Category getCategoryOrThrow(Long categoryId, Long userId) {
+		return categoryRepository.findByIdAndUser_Id(categoryId, userId)
 			.orElseThrow(() -> new CategoryNotFoundException(categoryId));
 	}
 

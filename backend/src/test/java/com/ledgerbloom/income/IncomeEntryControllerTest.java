@@ -12,11 +12,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ledgerbloom.error.GlobalExceptionHandler;
+import com.ledgerbloom.support.SecurityTestConfig;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -26,11 +28,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = IncomeEntryController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, SecurityTestConfig.class})
+@WithMockUser(username = "user@example.com")
 class IncomeEntryControllerTest {
 
 	@Autowired
@@ -57,6 +61,7 @@ class IncomeEntryControllerTest {
 		when(incomeEntryService.create(any(IncomeEntryCreateRequest.class))).thenReturn(sampleResponse());
 
 		mockMvc.perform(post("/api/income")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -75,6 +80,7 @@ class IncomeEntryControllerTest {
 	@Test
 	void createBlankDescriptionReturns400() throws Exception {
 		mockMvc.perform(post("/api/income")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -94,6 +100,7 @@ class IncomeEntryControllerTest {
 	@Test
 	void createBlankSourceReturns400() throws Exception {
 		mockMvc.perform(post("/api/income")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -110,6 +117,7 @@ class IncomeEntryControllerTest {
 	@Test
 	void createInvalidAmountReturns400() throws Exception {
 		mockMvc.perform(post("/api/income")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -171,6 +179,7 @@ class IncomeEntryControllerTest {
 		when(incomeEntryService.update(eq(5L), any(IncomeEntryUpdateRequest.class))).thenReturn(sampleResponse());
 
 		mockMvc.perform(put("/api/income/5")
+				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
@@ -188,7 +197,7 @@ class IncomeEntryControllerTest {
 	void deleteReturns204() throws Exception {
 		doNothing().when(incomeEntryService).delete(5L);
 
-		mockMvc.perform(delete("/api/income/5"))
+		mockMvc.perform(delete("/api/income/5").with(csrf()))
 			.andExpect(status().isNoContent());
 
 		verify(incomeEntryService).delete(5L);
@@ -198,7 +207,7 @@ class IncomeEntryControllerTest {
 	void deleteMissingReturns404() throws Exception {
 		doThrow(new IncomeEntryNotFoundException(42L)).when(incomeEntryService).delete(42L);
 
-		mockMvc.perform(delete("/api/income/42"))
+		mockMvc.perform(delete("/api/income/42").with(csrf()))
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.code").value("INCOME_ENTRY_NOT_FOUND"));
 	}

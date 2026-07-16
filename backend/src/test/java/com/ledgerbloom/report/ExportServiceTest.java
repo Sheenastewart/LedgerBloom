@@ -2,13 +2,16 @@ package com.ledgerbloom.report;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
+import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.category.Category;
 import com.ledgerbloom.expense.Expense;
 import com.ledgerbloom.expense.ExpenseRepository;
 import com.ledgerbloom.income.IncomeEntry;
 import com.ledgerbloom.income.IncomeEntryRepository;
+import com.ledgerbloom.user.User;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -24,6 +27,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class ExportServiceTest {
 
+	private static final Long USER_ID = 1L;
+
 	@Mock
 	private ExpenseRepository expenseRepository;
 
@@ -33,17 +38,25 @@ class ExportServiceTest {
 	@Mock
 	private ReportService reportService;
 
+	@Mock
+	private CurrentUser currentUser;
+
 	@InjectMocks
 	private ExportService exportService;
 
+	private User user;
 	private Category groceries;
 	private Category utilities;
 
 	@BeforeEach
 	void setUp() throws Exception {
-		groceries = new Category("Groceries", null);
+		user = new User("user@example.com", "hash", "Test User");
+		setId(user, USER_ID);
+		lenient().when(currentUser.requireUserId()).thenReturn(USER_ID);
+
+		groceries = new Category(user, "Groceries", null);
 		setId(groceries, 1L);
-		utilities = new Category("Utilities", null);
+		utilities = new Category(user, "Utilities", null);
 		setId(utilities, 2L);
 	}
 
@@ -149,10 +162,12 @@ class ExportServiceTest {
 	void transactionsCsvWrapsUnexpectedFailure() {
 		LocalDate start = YearMonth.of(2026, 7).atDay(1);
 		LocalDate endExclusive = start.plusMonths(1);
-		when(incomeEntryRepository.findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
-			start,
-			endExclusive
-		)).thenThrow(new RuntimeException("db down"));
+		when(incomeEntryRepository
+			.findByUser_IdAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+				USER_ID,
+				start,
+				endExclusive
+			)).thenThrow(new RuntimeException("db down"));
 
 		assertThatThrownBy(() -> exportService.generateMonthlyTransactionsCsv(2026, 7))
 			.isInstanceOf(ExportGenerationFailedException.class);
@@ -239,19 +254,23 @@ class ExportServiceTest {
 	private void stubTransactionMonth(int year, int month, List<IncomeEntry> incomeEntries, List<Expense> expenses) {
 		LocalDate start = YearMonth.of(year, month).atDay(1);
 		LocalDate endExclusive = start.plusMonths(1);
-		when(incomeEntryRepository.findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
-			start,
-			endExclusive
-		)).thenReturn(incomeEntries);
-		when(expenseRepository.findByExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
-			start,
-			endExclusive
-		)).thenReturn(expenses);
+		when(incomeEntryRepository
+			.findByUser_IdAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+				USER_ID,
+				start,
+				endExclusive
+			)).thenReturn(incomeEntries);
+		when(expenseRepository
+			.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				USER_ID,
+				start,
+				endExclusive
+			)).thenReturn(expenses);
 	}
 
 	private IncomeEntry income(Long id, String description, String source, String amount, LocalDate date, String notes)
 			throws Exception {
-		IncomeEntry entry = new IncomeEntry(description, source, new BigDecimal(amount), date, notes);
+		IncomeEntry entry = new IncomeEntry(user, description, source, new BigDecimal(amount), date, notes);
 		setId(entry, id);
 		return entry;
 	}
@@ -264,7 +283,7 @@ class ExportServiceTest {
 			LocalDate date,
 			Category category,
 			String notes) throws Exception {
-		Expense expenseEntity = new Expense(description, merchant, new BigDecimal(amount), date, notes, category);
+		Expense expenseEntity = new Expense(user, description, merchant, new BigDecimal(amount), date, notes, category);
 		setId(expenseEntity, id);
 		return expenseEntity;
 	}

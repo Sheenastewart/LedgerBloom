@@ -116,6 +116,25 @@ Stage 8 does **not** include PDF libraries, scheduled/emailed reports, or chart 
 
 Stage 9 does **not** include a product tour, onboarding checklist, sample data, videos, or backend-managed help content.
 
+### Stage 10 — Authentication and Multi-User Ownership (backend only)
+
+- Flyway `V7__add_users_and_ownership.sql`: creates `users`, backfills a `legacy@local.dev` bootstrap account, and adds a `user_id` foreign key + per-user unique constraints to every financial table (`categories`, `expenses`, `income_entries`, `monthly_budgets`, `category_budget_limits`, `recurring_expenses`, `recurring_income`)
+- Session-cookie authentication (Spring Security + BCrypt), **not** JWT — see rationale below
+- `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`
+- Every existing endpoint under `/api/**` (except `/api/health`, `/api/auth/register`, `/api/auth/login`, and CORS preflight `OPTIONS`) now requires an authenticated session and is scoped to the caller's own data
+- CSRF protection via Spring Security's cookie-based SPA support (`XSRF-TOKEN` cookie readable by JS, echoed back as the `X-XSRF-TOKEN` header on mutating requests)
+- CORS updated with `allowCredentials(true)` so the Vite dev server (`http://localhost:5173`) can send/receive the session and CSRF cookies
+- New error codes: `UNAUTHORIZED` (401, missing/invalid session), `FORBIDDEN` (403), `EMAIL_ALREADY_EXISTS` (409), `INVALID_CREDENTIALS` (401), `AUTHENTICATION_REQUIRED` (401)
+- Cross-user access to another user's resource (e.g. `GET /api/categories/{id}`) returns **404 `RESOURCE_NOT_FOUND`-style `*_NOT_FOUND`**, never 403 — this avoids confirming that a given ID exists at all
+
+**Why session cookies instead of JWT:** no token-signing library, key rotation, or client-side token storage to manage; the SPA and API are effectively same-site during local development (`localhost:5173` / `localhost:8080`), so a `SameSite=Lax`, `HttpOnly` cookie sent with `credentials: 'include'` works cleanly and lets the server revoke a session instantly by deleting it server-side. Spring Security's session + CSRF cookie support is first-class and well-tested, whereas a hand-rolled JWT flow would re-implement the same guarantees with more code and more ways to get it wrong.
+
+**Ownership model:** every financial entity (`Category`, `Expense`, `IncomeEntry`, `MonthlyBudget`, `CategoryBudgetLimit`, `RecurringExpense`, `RecurringIncome`) has a required `user` (`ManyToOne` to `User`, `ON DELETE RESTRICT`). Every repository query used by services is scoped by `user_id` (e.g. `findByIdAndUser_Id`, `existsByUser_IdAndNameIgnoreCase`), and every service method resolves the current user from the `SecurityContext` via a `CurrentUser` helper before querying or writing. Category name uniqueness and monthly-budget (year, month) uniqueness are both per-user, not global.
+
+**Legacy data migration:** all rows that existed before this stage shipped are attributed to a bootstrap `legacy@local.dev` account (display name "Legacy Data") created by the `V7` migration with a BCrypt hash of a randomly generated password that was never recorded anywhere — this account cannot be logged into and exists solely so pre-existing rows satisfy the new `NOT NULL` `user_id` foreign key.
+
+Stage 10 does **not** include OAuth/social login, password reset/email verification flows, multi-factor authentication, role-based permissions beyond a single implicit user role, or any frontend login/register UI (frontend integration is out of scope for this stage).
+
 ## Repository structure
 
 ```text
@@ -349,6 +368,8 @@ Controller Bean Validation checks the inbound JSON. The service re-validates the
 ```
 
 Stable codes include: `CATEGORY_NOT_FOUND`, `CATEGORY_NAME_ALREADY_EXISTS`, `CATEGORY_IN_USE`, `EXPENSE_NOT_FOUND`, `INVALID_EXPENSE_DATA`, `RECURRING_EXPENSE_NOT_FOUND`, `INVALID_RECURRING_EXPENSE_DATA`, `INVALID_RECURRING_EXPENSE_FILTER`, `RECURRING_EXPENSE_PAYMENT_CONFLICT`, `RESOURCE_NOT_FOUND`, `VALIDATION_FAILED`, `INVALID_REQUEST`, `INTERNAL_SERVER_ERROR`.
+
+Stable codes added in Stage 10: `UNAUTHORIZED` (401, missing/invalid session), `FORBIDDEN` (403, includes CSRF failures), `EMAIL_ALREADY_EXISTS` (409), `INVALID_CREDENTIALS` (401), `AUTHENTICATION_REQUIRED` (401, defensive service-layer guard).
 
 Validation failures may include a `fieldErrors` array of `{ "field", "message" }`.
 
@@ -768,7 +789,53 @@ The backend allows only:
 
 `http://localhost:5173`
 
-No wildcard origin is configured.
+No wildcard origin is configured. `allowCredentials(true)` is set so the browser sends/receives the session cookie (`LEDGERBLOOM_SESSION`) and the CSRF cookie (`XSRF-TOKEN`) on cross-port requests from the Vite dev server; browsers reject `allowCredentials(true)` combined with a wildcard origin or wildcard headers, so both the origin list and the allowed-headers list stay explicit.
+
+## Authentication API (Stage 10)
+
+Session-cookie authentication (see [Stage 10](#stage-10--authentication-and-multi-user-ownership-backend-only) above for the rationale). All requests, including to public endpoints, must be sent with `credentials: 'include'` so the session and CSRF cookies travel with the request.
+
+### Endpoints
+
+| Method | Path | Auth required | Success |
+| --- | --- | --- | --- |
+| `POST` | `/api/auth/register` | No | `201` + user body / `400` validation / `409` `EMAIL_ALREADY_EXISTS` |
+| `POST` | `/api/auth/login` | No | `200` + user body / `401` `INVALID_CREDENTIALS` |
+| `POST` | `/api/auth/logout` | Yes | `204`, clears the session and cookies (handled by the security filter chain, not a controller) |
+| `GET` | `/api/auth/me` | Yes | `200` + user body / `401` `UNAUTHORIZED` |
+
+Every other `/api/**` endpoint now requires an authenticated session; unauthenticated requests receive `401 UNAUTHORIZED`. `/api/health` remains public.
+
+### Example register body
+
+```json
+{
+  "email": "jane@example.com",
+  "password": "correcthorsebattery",
+  "confirmPassword": "correcthorsebattery",
+  "displayName": "Jane Doe"
+}
+```
+
+`password` must be at least 8 characters; `password` and `confirmPassword` must match. The response never includes the password or its hash:
+
+```json
+{
+  "id": 2,
+  "email": "jane@example.com",
+  "displayName": "Jane Doe",
+  "createdAt": "2026-07-15T19:00:00Z",
+  "lastLoginAt": null
+}
+```
+
+### CSRF
+
+All mutating requests (`POST`/`PUT`/`PATCH`/`DELETE`, including `/api/auth/login` and `/api/auth/register`) require an `X-XSRF-TOKEN` header matching the value of the `XSRF-TOKEN` cookie, which the server sets on any prior request. A missing/invalid token returns `403 FORBIDDEN`.
+
+### Ownership
+
+Every category, expense, income entry, budget, and recurring item belongs to exactly one user. All list/read/write endpoints are scoped to the caller's own data; fetching another user's resource by ID returns the same `404 *_NOT_FOUND` response as a nonexistent ID, not a `403`, so IDs belonging to other accounts are never confirmed to exist.
 
 ## Reporting and Exports API (Stage 8)
 
@@ -806,7 +873,7 @@ Any cell value beginning with `=`, `+`, `-`, or `@` (after trimming) is prefixed
 
 ## Features intentionally deferred
 
-Deferred beyond Stage 9:
+Deferred beyond Stage 10:
 
 - Guided product tour, home onboarding checklist, sample/demo data, video tutorials
 - Backend-managed help content and admin help editor
@@ -814,10 +881,10 @@ Deferred beyond Stage 9:
 - Category detail page, search, pagination, sorting UI controls
 - Recurring budgets / budget rollover / savings goals
 - Email, SMS, or push reminders for recurring schedules
-- Authentication and users
+- Frontend login/register/logout UI, OAuth/social login, password reset, email verification, multi-factor authentication, role-based permissions
 - Receipt upload and OCR
 - Background jobs / automatic posting of recurring ledger rows
 - AWS or other cloud deployment
-- Spring Security and Actuator
+- Spring Boot Actuator
 
 Do not treat those as implemented until a later stage explicitly adds them.

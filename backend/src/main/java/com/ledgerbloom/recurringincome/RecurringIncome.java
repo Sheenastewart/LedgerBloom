@@ -1,12 +1,16 @@
 package com.ledgerbloom.recurringincome;
 
+import com.ledgerbloom.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -21,6 +25,10 @@ public class RecurringIncome {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
+
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "user_id", nullable = false)
+	private User user;
 
 	@Column(nullable = false, length = 160)
 	private String description;
@@ -54,6 +62,7 @@ public class RecurringIncome {
 	}
 
 	public RecurringIncome(
+			User user,
 			String description,
 			String source,
 			BigDecimal amount,
@@ -61,6 +70,7 @@ public class RecurringIncome {
 			LocalDate nextIncomeDate,
 			boolean active,
 			String notes) {
+		this.user = user;
 		this.description = description;
 		this.source = source;
 		this.amount = amount;
@@ -84,6 +94,10 @@ public class RecurringIncome {
 
 	public Long getId() {
 		return id;
+	}
+
+	public User getUser() {
+		return user;
 	}
 
 	public String getDescription() {

@@ -3,13 +3,16 @@ package com.ledgerbloom.expense;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.category.Category;
 import com.ledgerbloom.category.CategoryNotFoundException;
 import com.ledgerbloom.category.CategoryRepository;
+import com.ledgerbloom.user.User;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -29,29 +32,40 @@ import org.springframework.dao.DataIntegrityViolationException;
 @ExtendWith(MockitoExtension.class)
 class ExpenseServiceTest {
 
+	private static final Long USER_ID = 1L;
+
 	@Mock
 	private ExpenseRepository expenseRepository;
 
 	@Mock
 	private CategoryRepository categoryRepository;
 
+	@Mock
+	private CurrentUser currentUser;
+
 	@InjectMocks
 	private ExpenseService expenseService;
 
+	private User user;
 	private Category groceries;
 	private Category utilities;
 
 	@BeforeEach
 	void setUp() throws Exception {
-		groceries = new Category("Groceries", null);
+		user = new User("user@example.com", "hash", "Test User");
+		setUserId(user, USER_ID);
+		lenient().when(currentUser.requireUserId()).thenReturn(USER_ID);
+		lenient().when(currentUser.requireUserReference()).thenReturn(user);
+
+		groceries = new Category(user, "Groceries", null);
 		setId(groceries, 1L);
-		utilities = new Category("Utilities", null);
+		utilities = new Category(user, "Utilities", null);
 		setId(utilities, 2L);
 	}
 
 	@Test
 	void createValidExpense() throws Exception {
-		when(categoryRepository.findById(1L)).thenReturn(Optional.of(groceries));
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
 		when(expenseRepository.saveAndFlush(any(Expense.class))).thenAnswer(invocation -> {
 			Expense expense = invocation.getArgument(0);
 			setId(expense, 10L);
@@ -79,7 +93,7 @@ class ExpenseServiceTest {
 
 	@Test
 	void createTrimsDescription() throws Exception {
-		when(categoryRepository.findById(1L)).thenReturn(Optional.of(groceries));
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
 		when(expenseRepository.saveAndFlush(any(Expense.class))).thenAnswer(invocation -> {
 			Expense expense = invocation.getArgument(0);
 			setId(expense, 11L);
@@ -103,7 +117,7 @@ class ExpenseServiceTest {
 
 	@Test
 	void createConvertsBlankMerchantToNull() throws Exception {
-		when(categoryRepository.findById(1L)).thenReturn(Optional.of(groceries));
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
 		when(expenseRepository.saveAndFlush(any(Expense.class))).thenAnswer(invocation -> {
 			Expense expense = invocation.getArgument(0);
 			setId(expense, 12L);
@@ -125,7 +139,7 @@ class ExpenseServiceTest {
 
 	@Test
 	void createConvertsBlankNotesToNull() throws Exception {
-		when(categoryRepository.findById(1L)).thenReturn(Optional.of(groceries));
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
 		when(expenseRepository.saveAndFlush(any(Expense.class))).thenAnswer(invocation -> {
 			Expense expense = invocation.getArgument(0);
 			setId(expense, 13L);
@@ -185,7 +199,7 @@ class ExpenseServiceTest {
 
 	@Test
 	void createRejectsMissingCategory() {
-		when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
+		when(categoryRepository.findByIdAndUser_Id(99L, USER_ID)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> expenseService.create(new ExpenseCreateRequest(
 			"Milk",
@@ -201,7 +215,7 @@ class ExpenseServiceTest {
 
 	@Test
 	void createMapsForeignKeyRaceToCategoryNotFound() {
-		when(categoryRepository.findById(1L)).thenReturn(Optional.of(groceries));
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
 		when(expenseRepository.saveAndFlush(any(Expense.class)))
 			.thenThrow(new DataIntegrityViolationException(
 				"fk",
@@ -220,7 +234,7 @@ class ExpenseServiceTest {
 
 	@Test
 	void createRethrowsUnknownIntegrityViolation() {
-		when(categoryRepository.findById(1L)).thenReturn(Optional.of(groceries));
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
 		when(expenseRepository.saveAndFlush(any(Expense.class)))
 			.thenThrow(new DataIntegrityViolationException(
 				"check",
@@ -241,7 +255,7 @@ class ExpenseServiceTest {
 	@Test
 	void getExpenseById() throws Exception {
 		Expense expense = sampleExpense(5L, groceries, LocalDate.of(2026, 7, 5));
-		when(expenseRepository.findById(5L)).thenReturn(Optional.of(expense));
+		when(expenseRepository.findByIdAndUser_Id(5L, USER_ID)).thenReturn(Optional.of(expense));
 
 		ExpenseResponse response = expenseService.findById(5L);
 
@@ -251,7 +265,7 @@ class ExpenseServiceTest {
 
 	@Test
 	void getMissingExpenseThrows() {
-		when(expenseRepository.findById(99L)).thenReturn(Optional.empty());
+		when(expenseRepository.findByIdAndUser_Id(99L, USER_ID)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> expenseService.findById(99L))
 			.isInstanceOf(ExpenseNotFoundException.class);
@@ -260,8 +274,8 @@ class ExpenseServiceTest {
 	@Test
 	void updateValidExpense() throws Exception {
 		Expense expense = sampleExpense(5L, groceries, LocalDate.of(2026, 7, 5));
-		when(expenseRepository.findById(5L)).thenReturn(Optional.of(expense));
-		when(categoryRepository.findById(1L)).thenReturn(Optional.of(groceries));
+		when(expenseRepository.findByIdAndUser_Id(5L, USER_ID)).thenReturn(Optional.of(expense));
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
 		when(expenseRepository.saveAndFlush(any(Expense.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		ExpenseResponse response = expenseService.update(5L, new ExpenseUpdateRequest(
@@ -280,8 +294,8 @@ class ExpenseServiceTest {
 	@Test
 	void updateChangesCategory() throws Exception {
 		Expense expense = sampleExpense(5L, groceries, LocalDate.of(2026, 7, 5));
-		when(expenseRepository.findById(5L)).thenReturn(Optional.of(expense));
-		when(categoryRepository.findById(2L)).thenReturn(Optional.of(utilities));
+		when(expenseRepository.findByIdAndUser_Id(5L, USER_ID)).thenReturn(Optional.of(expense));
+		when(categoryRepository.findByIdAndUser_Id(2L, USER_ID)).thenReturn(Optional.of(utilities));
 		when(expenseRepository.saveAndFlush(any(Expense.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		ExpenseResponse response = expenseService.update(5L, new ExpenseUpdateRequest(
@@ -300,7 +314,7 @@ class ExpenseServiceTest {
 	@Test
 	void deleteExistingExpense() throws Exception {
 		Expense expense = sampleExpense(5L, groceries, LocalDate.of(2026, 7, 5));
-		when(expenseRepository.findById(5L)).thenReturn(Optional.of(expense));
+		when(expenseRepository.findByIdAndUser_Id(5L, USER_ID)).thenReturn(Optional.of(expense));
 
 		expenseService.delete(5L);
 
@@ -309,7 +323,7 @@ class ExpenseServiceTest {
 
 	@Test
 	void deleteMissingExpenseThrows() {
-		when(expenseRepository.findById(99L)).thenReturn(Optional.empty());
+		when(expenseRepository.findByIdAndUser_Id(99L, USER_ID)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> expenseService.delete(99L))
 			.isInstanceOf(ExpenseNotFoundException.class);
@@ -319,17 +333,18 @@ class ExpenseServiceTest {
 	void listAllUsesRepositoryOrder() throws Exception {
 		Expense newer = sampleExpense(2L, groceries, LocalDate.of(2026, 7, 10));
 		Expense older = sampleExpense(1L, utilities, LocalDate.of(2026, 6, 1));
-		when(expenseRepository.findAllByOrderByExpenseDateDescIdDesc()).thenReturn(List.of(newer, older));
+		when(expenseRepository.findByUser_IdOrderByExpenseDateDescIdDesc(USER_ID)).thenReturn(List.of(newer, older));
 
 		List<ExpenseResponse> response = expenseService.findAll(null, null, null);
 
 		assertThat(response).extracting(ExpenseResponse::id).containsExactly(2L, 1L);
-		verify(expenseRepository).findAllByOrderByExpenseDateDescIdDesc();
+		verify(expenseRepository).findByUser_IdOrderByExpenseDateDescIdDesc(USER_ID);
 	}
 
 	@Test
 	void filterByMonth() throws Exception {
-		when(expenseRepository.findByExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+		when(expenseRepository.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+			USER_ID,
 			LocalDate.of(2026, 7, 1),
 			LocalDate.of(2026, 8, 1)
 		)).thenReturn(List.of(sampleExpense(1L, groceries, LocalDate.of(2026, 7, 15))));
@@ -341,22 +356,25 @@ class ExpenseServiceTest {
 
 	@Test
 	void filterByCategory() throws Exception {
-		when(expenseRepository.findByCategory_IdOrderByExpenseDateDescIdDesc(1L))
+		when(expenseRepository.findByUser_IdAndCategory_IdOrderByExpenseDateDescIdDesc(USER_ID, 1L))
 			.thenReturn(List.of(sampleExpense(1L, groceries, LocalDate.of(2026, 7, 15))));
 
 		List<ExpenseResponse> response = expenseService.findAll(null, null, 1L);
 
 		assertThat(response).hasSize(1);
-		verify(expenseRepository).findByCategory_IdOrderByExpenseDateDescIdDesc(1L);
+		verify(expenseRepository).findByUser_IdAndCategory_IdOrderByExpenseDateDescIdDesc(USER_ID, 1L);
 	}
 
 	@Test
 	void filterByMonthAndCategory() throws Exception {
-		when(expenseRepository.findByCategory_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
-			1L,
-			LocalDate.of(2026, 7, 1),
-			LocalDate.of(2026, 8, 1)
-		)).thenReturn(List.of());
+		when(expenseRepository
+			.findByUser_IdAndCategory_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				USER_ID,
+				1L,
+				LocalDate.of(2026, 7, 1),
+				LocalDate.of(2026, 8, 1)
+			))
+			.thenReturn(List.of());
 
 		List<ExpenseResponse> response = expenseService.findAll(2026, 7, 1L);
 
@@ -389,6 +407,7 @@ class ExpenseServiceTest {
 
 	private Expense sampleExpense(Long id, Category category, LocalDate date) throws Exception {
 		Expense expense = new Expense(
+			user,
 			"Sample",
 			"Store",
 			new BigDecimal("10.00"),
@@ -411,6 +430,12 @@ class ExpenseServiceTest {
 		Field field = Expense.class.getDeclaredField("id");
 		field.setAccessible(true);
 		field.set(expense, id);
+	}
+
+	private static void setUserId(User user, Long id) throws Exception {
+		Field field = User.class.getDeclaredField("id");
+		field.setAccessible(true);
+		field.set(user, id);
 	}
 
 	private static void setTimestamps(Expense expense, Instant createdAt, Instant updatedAt) throws Exception {

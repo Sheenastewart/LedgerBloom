@@ -3,16 +3,20 @@ package com.ledgerbloom.income;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.ledgerbloom.auth.CurrentUser;
+import com.ledgerbloom.user.User;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -23,11 +27,26 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class IncomeEntryServiceTest {
 
+	private static final Long USER_ID = 1L;
+
 	@Mock
 	private IncomeEntryRepository incomeEntryRepository;
 
+	@Mock
+	private CurrentUser currentUser;
+
 	@InjectMocks
 	private IncomeEntryService incomeEntryService;
+
+	private User user;
+
+	@BeforeEach
+	void setUp() throws Exception {
+		user = new User("user@example.com", "hash", "Test User");
+		setUserId(user, USER_ID);
+		lenient().when(currentUser.requireUserId()).thenReturn(USER_ID);
+		lenient().when(currentUser.requireUserReference()).thenReturn(user);
+	}
 
 	@Test
 	void createValidIncomeEntry() throws Exception {
@@ -195,7 +214,7 @@ class IncomeEntryServiceTest {
 	@Test
 	void getIncomeEntryById() throws Exception {
 		IncomeEntry entry = sampleEntry(5L, LocalDate.of(2026, 7, 5));
-		when(incomeEntryRepository.findById(5L)).thenReturn(Optional.of(entry));
+		when(incomeEntryRepository.findByIdAndUser_Id(5L, USER_ID)).thenReturn(Optional.of(entry));
 
 		IncomeEntryResponse response = incomeEntryService.findById(5L);
 
@@ -205,7 +224,7 @@ class IncomeEntryServiceTest {
 
 	@Test
 	void getMissingIncomeEntryThrows() {
-		when(incomeEntryRepository.findById(99L)).thenReturn(Optional.empty());
+		when(incomeEntryRepository.findByIdAndUser_Id(99L, USER_ID)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> incomeEntryService.findById(99L))
 			.isInstanceOf(IncomeEntryNotFoundException.class);
@@ -214,7 +233,7 @@ class IncomeEntryServiceTest {
 	@Test
 	void updateValidIncomeEntry() throws Exception {
 		IncomeEntry entry = sampleEntry(5L, LocalDate.of(2026, 7, 5));
-		when(incomeEntryRepository.findById(5L)).thenReturn(Optional.of(entry));
+		when(incomeEntryRepository.findByIdAndUser_Id(5L, USER_ID)).thenReturn(Optional.of(entry));
 		when(incomeEntryRepository.saveAndFlush(any(IncomeEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		IncomeEntryResponse response = incomeEntryService.update(5L, new IncomeEntryUpdateRequest(
@@ -233,7 +252,7 @@ class IncomeEntryServiceTest {
 	@Test
 	void deleteExistingIncomeEntry() throws Exception {
 		IncomeEntry entry = sampleEntry(5L, LocalDate.of(2026, 7, 5));
-		when(incomeEntryRepository.findById(5L)).thenReturn(Optional.of(entry));
+		when(incomeEntryRepository.findByIdAndUser_Id(5L, USER_ID)).thenReturn(Optional.of(entry));
 
 		incomeEntryService.delete(5L);
 
@@ -242,7 +261,7 @@ class IncomeEntryServiceTest {
 
 	@Test
 	void deleteMissingIncomeEntryThrows() {
-		when(incomeEntryRepository.findById(99L)).thenReturn(Optional.empty());
+		when(incomeEntryRepository.findByIdAndUser_Id(99L, USER_ID)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> incomeEntryService.delete(99L))
 			.isInstanceOf(IncomeEntryNotFoundException.class);
@@ -252,20 +271,22 @@ class IncomeEntryServiceTest {
 	void listAllUsesRepositoryOrder() throws Exception {
 		IncomeEntry newer = sampleEntry(2L, LocalDate.of(2026, 7, 10));
 		IncomeEntry older = sampleEntry(1L, LocalDate.of(2026, 6, 1));
-		when(incomeEntryRepository.findAllByOrderByIncomeDateDescIdDesc()).thenReturn(List.of(newer, older));
+		when(incomeEntryRepository.findByUser_IdOrderByIncomeDateDescIdDesc(USER_ID)).thenReturn(List.of(newer, older));
 
 		List<IncomeEntryResponse> response = incomeEntryService.findAll(null, null, null);
 
 		assertThat(response).extracting(IncomeEntryResponse::id).containsExactly(2L, 1L);
-		verify(incomeEntryRepository).findAllByOrderByIncomeDateDescIdDesc();
+		verify(incomeEntryRepository).findByUser_IdOrderByIncomeDateDescIdDesc(USER_ID);
 	}
 
 	@Test
 	void filterByMonth() throws Exception {
-		when(incomeEntryRepository.findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
-			LocalDate.of(2026, 7, 1),
-			LocalDate.of(2026, 8, 1)
-		)).thenReturn(List.of(sampleEntry(1L, LocalDate.of(2026, 7, 15))));
+		when(incomeEntryRepository
+			.findByUser_IdAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+				USER_ID,
+				LocalDate.of(2026, 7, 1),
+				LocalDate.of(2026, 8, 1)
+			)).thenReturn(List.of(sampleEntry(1L, LocalDate.of(2026, 7, 15))));
 
 		List<IncomeEntryResponse> response = incomeEntryService.findAll(2026, 7, null);
 
@@ -274,30 +295,31 @@ class IncomeEntryServiceTest {
 
 	@Test
 	void filterBySource() throws Exception {
-		when(incomeEntryRepository.findBySourceIgnoreCaseOrderByIncomeDateDescIdDesc("Acme Corp"))
+		when(incomeEntryRepository.findByUser_IdAndSourceIgnoreCaseOrderByIncomeDateDescIdDesc(USER_ID, "Acme Corp"))
 			.thenReturn(List.of(sampleEntry(1L, LocalDate.of(2026, 7, 15))));
 
 		List<IncomeEntryResponse> response = incomeEntryService.findAll(null, null, "Acme Corp");
 
 		assertThat(response).hasSize(1);
-		verify(incomeEntryRepository).findBySourceIgnoreCaseOrderByIncomeDateDescIdDesc("Acme Corp");
+		verify(incomeEntryRepository).findByUser_IdAndSourceIgnoreCaseOrderByIncomeDateDescIdDesc(USER_ID, "Acme Corp");
 	}
 
 	@Test
 	void filterBySourceIsCaseInsensitive() throws Exception {
-		when(incomeEntryRepository.findBySourceIgnoreCaseOrderByIncomeDateDescIdDesc("acme corp"))
+		when(incomeEntryRepository.findByUser_IdAndSourceIgnoreCaseOrderByIncomeDateDescIdDesc(USER_ID, "acme corp"))
 			.thenReturn(List.of(sampleEntry(1L, LocalDate.of(2026, 7, 15))));
 
 		List<IncomeEntryResponse> response = incomeEntryService.findAll(null, null, "acme corp");
 
 		assertThat(response).hasSize(1);
-		verify(incomeEntryRepository).findBySourceIgnoreCaseOrderByIncomeDateDescIdDesc("acme corp");
+		verify(incomeEntryRepository).findByUser_IdAndSourceIgnoreCaseOrderByIncomeDateDescIdDesc(USER_ID, "acme corp");
 	}
 
 	@Test
 	void filterByMonthAndSource() throws Exception {
 		when(incomeEntryRepository
-			.findBySourceIgnoreCaseAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+			.findByUser_IdAndSourceIgnoreCaseAndIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDescIdDesc(
+				USER_ID,
 				"Acme Corp",
 				LocalDate.of(2026, 7, 1),
 				LocalDate.of(2026, 8, 1)
@@ -328,18 +350,19 @@ class IncomeEntryServiceTest {
 
 	@Test
 	void blankSourceFilterIsTreatedAsAbsent() throws Exception {
-		when(incomeEntryRepository.findAllByOrderByIncomeDateDescIdDesc())
+		when(incomeEntryRepository.findByUser_IdOrderByIncomeDateDescIdDesc(USER_ID))
 			.thenReturn(List.of(sampleEntry(1L, LocalDate.of(2026, 7, 15))));
 
 		List<IncomeEntryResponse> response = incomeEntryService.findAll(null, null, "   ");
 
 		assertThat(response).hasSize(1);
-		verify(incomeEntryRepository).findAllByOrderByIncomeDateDescIdDesc();
-		verify(incomeEntryRepository, never()).findBySourceIgnoreCaseOrderByIncomeDateDescIdDesc(any());
+		verify(incomeEntryRepository).findByUser_IdOrderByIncomeDateDescIdDesc(USER_ID);
+		verify(incomeEntryRepository, never()).findByUser_IdAndSourceIgnoreCaseOrderByIncomeDateDescIdDesc(any(), any());
 	}
 
 	private IncomeEntry sampleEntry(Long id, LocalDate date) throws Exception {
 		IncomeEntry entry = new IncomeEntry(
+			user,
 			"Sample",
 			"Acme Corp",
 			new BigDecimal("10.00"),
@@ -355,6 +378,12 @@ class IncomeEntryServiceTest {
 		Field field = IncomeEntry.class.getDeclaredField("id");
 		field.setAccessible(true);
 		field.set(entry, id);
+	}
+
+	private static void setUserId(User user, Long id) throws Exception {
+		Field field = User.class.getDeclaredField("id");
+		field.setAccessible(true);
+		field.set(user, id);
 	}
 
 	private static void onCreate(IncomeEntry entry) throws Exception {
