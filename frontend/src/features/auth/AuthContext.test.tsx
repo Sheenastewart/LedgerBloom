@@ -90,11 +90,12 @@ describe('AuthContext', () => {
     expect(result.current.user).toBeNull()
   })
 
-  it('register does not establish a session', async () => {
+  it('register creates the account then signs in', async () => {
     vi.mocked(authApi.getMe).mockRejectedValue(
       new ApiClientError({ message: 'Authentication required', code: 'UNAUTHORIZED', status: 401 }),
     )
     vi.mocked(authApi.register).mockResolvedValue(sampleUser)
+    vi.mocked(authApi.login).mockResolvedValue(sampleUser)
 
     const { result } = renderAuth()
     await waitFor(() => expect(result.current.loading).toBe(false))
@@ -110,7 +111,12 @@ describe('AuthContext', () => {
     })
 
     expect(response).toEqual(sampleUser)
-    expect(result.current.user).toBeNull()
+    expect(result.current.user).toEqual(sampleUser)
+    expect(authApi.register).toHaveBeenCalled()
+    expect(authApi.login).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      password: 'supersecret',
+    })
   })
 
   it('logout clears the current user', async () => {

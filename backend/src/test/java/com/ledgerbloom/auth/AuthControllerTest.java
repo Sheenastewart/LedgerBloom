@@ -171,9 +171,30 @@ class AuthControllerTest {
 
 	@Test
 	@WithAnonymousUser
-	void meWithoutAuthenticationReturns401() throws Exception {
-		mockMvc.perform(get("/api/auth/me"))
-			.andExpect(status().isUnauthorized())
-			.andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+	void loginWithoutCsrfReturns403() throws Exception {
+		mockMvc.perform(post("/api/auth/login")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"email":"user@example.com","password":"supersecret"}
+						"""))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.code").value("FORBIDDEN"));
+	}
+
+	@Test
+	@WithAnonymousUser
+	void registerWithoutCsrfReturns403() throws Exception {
+		mockMvc.perform(post("/api/auth/register")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "email":"user@example.com",
+						  "password":"supersecret",
+						  "confirmPassword":"supersecret",
+						  "displayName":"Jane Doe"
+						}
+						"""))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.code").value("FORBIDDEN"));
 	}
 }

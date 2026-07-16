@@ -16,7 +16,7 @@ function resolveRedirectTarget(search: string): string {
   if (from && from.startsWith('/') && !from.startsWith('//')) {
     return from
   }
-  return '/'
+  return '/dashboard'
 }
 
 function mapServerErrors(error: ApiClientError): LoginFormErrors {

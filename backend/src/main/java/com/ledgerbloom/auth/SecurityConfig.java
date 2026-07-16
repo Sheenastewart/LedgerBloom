@@ -29,6 +29,8 @@ import org.springframework.security.web.context.SecurityContextRepository;
  * modern equivalent of wiring CookieCsrfTokenRepository.withHttpOnlyFalse() +
  * SpaCsrfTokenRequestHandler by hand: the token is readable by JavaScript via the
  * XSRF-TOKEN cookie and the SPA echoes it back as the X-XSRF-TOKEN request header.
+ * CSRF is required for every mutating request, including register and login — the SPA
+ * must obtain the cookie first (for example via GET /api/health) before posting.
  */
 @Configuration
 @EnableWebSecurity
@@ -53,11 +55,7 @@ public class SecurityConfig {
 		http
 			.securityContext(context -> context.securityContextRepository(securityContextRepository))
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-			.csrf(csrf -> csrf
-				.spa()
-				// Login/register are anonymous and must work before the SPA has an XSRF cookie.
-				// Session fixation is mitigated by creating a fresh authenticated session on login.
-				.ignoringRequestMatchers("/api/auth/login", "/api/auth/register"))
+			.csrf(csrf -> csrf.spa())
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/health").permitAll()

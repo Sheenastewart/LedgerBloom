@@ -67,11 +67,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return me
   }, [])
 
-  // Registration does not establish a session; the caller is expected to
-  // redirect to /login afterwards, so `user` is intentionally left untouched.
-  const register = useCallback(async (data: RegisterRequest) => {
-    return registerRequest(data)
-  }, [])
+  // Register, then sign in so the new account is authenticated and ready for Dashboard.
+  const register = useCallback(
+    async (data: RegisterRequest) => {
+      await registerRequest(data)
+      const me = await loginRequest({ email: data.email, password: data.password })
+      setUser(me)
+      return me
+    },
+    [],
+  )
 
   const logout = useCallback(async () => {
     try {

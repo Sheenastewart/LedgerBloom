@@ -20,18 +20,34 @@ export function readCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null
 }
 
-function buildHeaders(init: RequestInit | undefined): HeadersInit {
+/**
+ * Ensures an XSRF-TOKEN cookie exists before mutating requests.
+ * Spring Security's SPA CSRF mode sets the cookie on GET /api/health (public).
+ */
+export async function ensureCsrfToken(fetchImpl: typeof fetch = fetch): Promise<string | null> {
+  const existing = readCookie('XSRF-TOKEN')
+  if (existing) {
+    return existing
+  }
+
+  await fetchImpl(`${getApiBaseUrl()}/api/health`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+  })
+
+  return readCookie('XSRF-TOKEN')
+}
+
+function buildHeaders(init: RequestInit | undefined, csrfToken: string | null): HeadersInit {
   const method = (init?.method ?? 'GET').toUpperCase()
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
   }
 
-  if (!SAFE_METHODS.has(method)) {
-    const csrfToken = readCookie('XSRF-TOKEN')
-    if (csrfToken) {
-      headers['X-XSRF-TOKEN'] = csrfToken
-    }
+  if (!SAFE_METHODS.has(method) && csrfToken) {
+    headers['X-XSRF-TOKEN'] = csrfToken
   }
 
   return { ...headers, ...init?.headers }
@@ -49,10 +65,13 @@ export async function requestJson<T>(
   fetchImpl: typeof fetch = fetch,
 ): Promise<T> {
   try {
+    const method = (init?.method ?? 'GET').toUpperCase()
+    const csrfToken = SAFE_METHODS.has(method) ? readCookie('XSRF-TOKEN') : await ensureCsrfToken(fetchImpl)
+
     const response = await fetchImpl(`${getApiBaseUrl()}${path}`, {
       ...init,
       credentials: 'include',
-      headers: buildHeaders(init),
+      headers: buildHeaders(init, csrfToken),
     })
 
     if (!response.ok) {
@@ -124,10 +143,16 @@ export async function requestBlob(
   fetchImpl: typeof fetch = fetch,
 ): Promise<BlobDownload> {
   try {
+    const method = (init?.method ?? 'GET').toUpperCase()
+    const csrfToken = SAFE_METHODS.has(method) ? readCookie('XSRF-TOKEN') : await ensureCsrfToken(fetchImpl)
+
     const response = await fetchImpl(`${getApiBaseUrl()}${path}`, {
       ...init,
       credentials: 'include',
-      headers: buildHeaders({ ...init, headers: { Accept: 'text/csv', ...init?.headers } }),
+      headers: buildHeaders(
+        { ...init, headers: { Accept: 'text/csv', ...init?.headers } },
+        csrfToken,
+      ),
     })
 
     if (!response.ok) {

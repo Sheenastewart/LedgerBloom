@@ -116,24 +116,25 @@ Stage 8 does **not** include PDF libraries, scheduled/emailed reports, or chart 
 
 Stage 9 does **not** include a product tour, onboarding checklist, sample data, videos, or backend-managed help content.
 
-### Stage 10 — Authentication and Multi-User Ownership (backend only)
+### Stage 10 — Authentication and Multi-User Ownership
 
-- Flyway `V7__add_users_and_ownership.sql`: creates `users`, backfills a `legacy@local.dev` bootstrap account, and adds a `user_id` foreign key + per-user unique constraints to every financial table (`categories`, `expenses`, `income_entries`, `monthly_budgets`, `category_budget_limits`, `recurring_expenses`, `recurring_income`)
+- Flyway `V7__add_users_and_ownership.sql`: creates `users`, backfills a non-loginable `legacy@local.dev` ownership placeholder for pre-existing rows, and adds a `user_id` foreign key + per-user unique constraints to every financial table
 - Session-cookie authentication (Spring Security + BCrypt), **not** JWT — see rationale below
 - `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`
-- Every existing endpoint under `/api/**` (except `/api/health`, `/api/auth/register`, `/api/auth/login`, and CORS preflight `OPTIONS`) now requires an authenticated session and is scoped to the caller's own data
-- CSRF protection via Spring Security's cookie-based SPA support (`XSRF-TOKEN` cookie readable by JS, echoed back as the `X-XSRF-TOKEN` header on mutating requests)
-- CORS updated with `allowCredentials(true)` so the Vite dev server (`http://localhost:5173`) can send/receive the session and CSRF cookies
-- New error codes: `UNAUTHORIZED` (401, missing/invalid session), `FORBIDDEN` (403), `EMAIL_ALREADY_EXISTS` (409), `INVALID_CREDENTIALS` (401), `AUTHENTICATION_REQUIRED` (401)
-- Cross-user access to another user's resource (e.g. `GET /api/categories/{id}`) returns **404 `RESOURCE_NOT_FOUND`-style `*_NOT_FOUND`**, never 403 — this avoids confirming that a given ID exists at all
+- Every existing endpoint under `/api/**` (except `/api/health`, `/api/auth/register`, `/api/auth/login`, and CORS preflight `OPTIONS`) requires an authenticated session and is scoped to the caller's own data
+- CSRF protection is enabled for **all** mutating requests including register and login (`XSRF-TOKEN` cookie + `X-XSRF-TOKEN` header; missing/invalid token → `403 FORBIDDEN`)
+- Frontend: Register, Login, Logout, protected routes, session restore via `/api/auth/me`, shared `apiClient` with `credentials: 'include'` and CSRF bootstrap
+- No default admin account and no committed credentials — users create accounts through registration
+- New error codes: `UNAUTHORIZED`, `FORBIDDEN`, `EMAIL_ALREADY_EXISTS`, `INVALID_CREDENTIALS`, `AUTHENTICATION_REQUIRED`
+- Cross-user access returns **404 `*_NOT_FOUND`**, never 403
 
-**Why session cookies instead of JWT:** no token-signing library, key rotation, or client-side token storage to manage; the SPA and API are effectively same-site during local development (`localhost:5173` / `localhost:8080`), so a `SameSite=Lax`, `HttpOnly` cookie sent with `credentials: 'include'` works cleanly and lets the server revoke a session instantly by deleting it server-side. Spring Security's session + CSRF cookie support is first-class and well-tested, whereas a hand-rolled JWT flow would re-implement the same guarantees with more code and more ways to get it wrong.
+**Why session cookies instead of JWT:** no token-signing library, key rotation, or client-side token storage; localhost SPA + API work with `SameSite=Lax` + `credentials: 'include'`; logout revokes the server session immediately.
 
-**Ownership model:** every financial entity (`Category`, `Expense`, `IncomeEntry`, `MonthlyBudget`, `CategoryBudgetLimit`, `RecurringExpense`, `RecurringIncome`) has a required `user` (`ManyToOne` to `User`, `ON DELETE RESTRICT`). Every repository query used by services is scoped by `user_id` (e.g. `findByIdAndUser_Id`, `existsByUser_IdAndNameIgnoreCase`), and every service method resolves the current user from the `SecurityContext` via a `CurrentUser` helper before querying or writing. Category name uniqueness and monthly-budget (year, month) uniqueness are both per-user, not global.
+**Ownership model:** every financial entity has a required `user`. Services resolve the caller via `CurrentUser` and scope every query. Category names and monthly budgets are unique per user.
 
-**Legacy data migration:** all rows that existed before this stage shipped are attributed to a bootstrap `legacy@local.dev` account (display name "Legacy Data") created by the `V7` migration with a BCrypt hash of a randomly generated password that was never recorded anywhere — this account cannot be logged into and exists solely so pre-existing rows satisfy the new `NOT NULL` `user_id` foreign key.
+**Legacy data placeholder:** rows that existed before Stage 10 are attributed to `legacy@local.dev` solely to satisfy `NOT NULL` foreign keys. That account has a BCrypt hash of an unrecorded random password and is not a usable login or admin account. Do not treat it as default credentials.
 
-Stage 10 does **not** include OAuth/social login, password reset/email verification flows, multi-factor authentication, role-based permissions beyond a single implicit user role, or any frontend login/register UI (frontend integration is out of scope for this stage).
+Stage 10 does **not** include OAuth/social login, password reset/email verification, MFA, or role-based admin permissions.
 
 ## Repository structure
 
@@ -793,31 +794,31 @@ No wildcard origin is configured. `allowCredentials(true)` is set so the browser
 
 ## Authentication API (Stage 10)
 
-Session-cookie authentication (see [Stage 10](#stage-10--authentication-and-multi-user-ownership-backend-only) above for the rationale). All requests, including to public endpoints, must be sent with `credentials: 'include'` so the session and CSRF cookies travel with the request.
+Session-cookie authentication (see Stage 10 above). Send `credentials: 'include'` on every API request.
 
 ### Endpoints
 
 | Method | Path | Auth required | Success |
 | --- | --- | --- | --- |
-| `POST` | `/api/auth/register` | No | `201` + user body / `400` validation / `409` `EMAIL_ALREADY_EXISTS` |
-| `POST` | `/api/auth/login` | No | `200` + user body / `401` `INVALID_CREDENTIALS` |
-| `POST` | `/api/auth/logout` | Yes | `204`, clears the session and cookies (handled by the security filter chain, not a controller) |
+| `POST` | `/api/auth/register` | No (CSRF required) | `201` + user body / `400` validation / `409` `EMAIL_ALREADY_EXISTS` / `403` CSRF |
+| `POST` | `/api/auth/login` | No (CSRF required) | `200` + user body / `401` `INVALID_CREDENTIALS` / `403` CSRF |
+| `POST` | `/api/auth/logout` | Yes (CSRF required) | `204`, clears the session and cookies |
 | `GET` | `/api/auth/me` | Yes | `200` + user body / `401` `UNAUTHORIZED` |
 
-Every other `/api/**` endpoint now requires an authenticated session; unauthenticated requests receive `401 UNAUTHORIZED`. `/api/health` remains public.
+Every other `/api/**` endpoint requires an authenticated session. `/api/health` remains public and is also used by the SPA to initialize the CSRF cookie.
 
-### Example register body
+### Register body shape
 
 ```json
 {
   "email": "jane@example.com",
-  "password": "correcthorsebattery",
-  "confirmPassword": "correcthorsebattery",
+  "password": "<choose-a-strong-password>",
+  "confirmPassword": "<choose-a-strong-password>",
   "displayName": "Jane Doe"
 }
 ```
 
-`password` must be at least 8 characters; `password` and `confirmPassword` must match. The response never includes the password or its hash:
+Do not commit real passwords. `password` must be at least 8 characters and must match `confirmPassword`. Responses never include the password or hash:
 
 ```json
 {
@@ -829,13 +830,18 @@ Every other `/api/**` endpoint now requires an authenticated session; unauthenti
 }
 ```
 
+Login failures always return a generic `INVALID_CREDENTIALS` message and never reveal whether the email exists.
+
 ### CSRF
 
-All mutating requests (`POST`/`PUT`/`PATCH`/`DELETE`, including `/api/auth/login` and `/api/auth/register`) require an `X-XSRF-TOKEN` header matching the value of the `XSRF-TOKEN` cookie, which the server sets on any prior request. A missing/invalid token returns `403 FORBIDDEN`.
+1. Call a safe GET such as `/api/health` with `credentials: 'include'` so the server sets the `XSRF-TOKEN` cookie.
+2. On `POST` / `PUT` / `PATCH` / `DELETE`, send header `X-XSRF-TOKEN` with that cookie value.
+3. Keep CSRF enabled for register, login, logout, and all other mutating APIs.
+4. Missing or invalid tokens return `403 FORBIDDEN` with a safe JSON body.
 
 ### Ownership
 
-Every category, expense, income entry, budget, and recurring item belongs to exactly one user. All list/read/write endpoints are scoped to the caller's own data; fetching another user's resource by ID returns the same `404 *_NOT_FOUND` response as a nonexistent ID, not a `403`, so IDs belonging to other accounts are never confirmed to exist.
+Every category, expense, income entry, budget, and recurring item belongs to exactly one user. Fetching another user's resource by ID returns the same `404 *_NOT_FOUND` response as a nonexistent ID.
 
 ## Reporting and Exports API (Stage 8)
 
@@ -881,7 +887,7 @@ Deferred beyond Stage 10:
 - Category detail page, search, pagination, sorting UI controls
 - Recurring budgets / budget rollover / savings goals
 - Email, SMS, or push reminders for recurring schedules
-- Frontend login/register/logout UI, OAuth/social login, password reset, email verification, multi-factor authentication, role-based permissions
+- OAuth/social login, password reset, email verification, multi-factor authentication, role-based permissions
 - Receipt upload and OCR
 - Background jobs / automatic posting of recurring ledger rows
 - AWS or other cloud deployment

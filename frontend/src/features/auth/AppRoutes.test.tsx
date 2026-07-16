@@ -238,12 +238,13 @@ describe('Auth routes', () => {
     expect(authApi.register).not.toHaveBeenCalled()
   })
 
-  it('registers successfully and redirects to login with a success message', async () => {
+  it('registers successfully, signs in, and navigates to the dashboard', async () => {
     const user = userEvent.setup()
     vi.mocked(authApi.getMe).mockRejectedValue(
       new ApiClientError({ message: 'Authentication required', code: 'UNAUTHORIZED', status: 401 }),
     )
     vi.mocked(authApi.register).mockResolvedValue(sampleUser)
+    vi.mocked(authApi.login).mockResolvedValue(sampleUser)
 
     render(
       <MemoryRouter initialEntries={['/register']}>
@@ -257,13 +258,16 @@ describe('Auth routes', () => {
     await user.type(screen.getByLabelText('Confirm password'), 'supersecret')
     await user.click(screen.getByRole('button', { name: 'Create account' }))
 
-    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
-    expect(screen.getByText('Account created. Please sign in.')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Monthly dashboard' })).toBeInTheDocument()
     expect(authApi.register).toHaveBeenCalledWith({
       email: 'user@example.com',
       password: 'supersecret',
       confirmPassword: 'supersecret',
       displayName: 'Jane Doe',
+    })
+    expect(authApi.login).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      password: 'supersecret',
     })
   })
 
@@ -274,7 +278,7 @@ describe('Auth routes', () => {
     )
     vi.mocked(authApi.register).mockRejectedValue(
       new ApiClientError({
-        message: "An account with email 'user@example.com' already exists",
+        message: 'An account with this email already exists',
         code: 'EMAIL_ALREADY_EXISTS',
         status: 409,
       }),
@@ -293,7 +297,7 @@ describe('Auth routes', () => {
     await user.click(screen.getByRole('button', { name: 'Create account' }))
 
     expect(
-      await screen.findByText("An account with email 'user@example.com' already exists"),
+      await screen.findByText('An account with this email already exists'),
     ).toBeInTheDocument()
   })
 

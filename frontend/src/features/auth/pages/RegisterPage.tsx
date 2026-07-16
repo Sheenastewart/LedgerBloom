@@ -98,9 +98,7 @@ export function RegisterPage() {
         confirmPassword: values.confirmPassword,
         displayName: values.displayName.trim(),
       })
-      navigate('/login', {
-        state: { successMessage: 'Account created. Please sign in.' },
-      })
+      navigate('/dashboard', { replace: true })
     } catch (error) {
       if (error instanceof ApiClientError) {
         setErrors(mapServerErrors(error))
