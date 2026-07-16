@@ -3,6 +3,7 @@ package com.ledgerbloom.category;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -303,6 +304,60 @@ class CategoryServiceTest {
 	void createRejectsBlankNormalizedName() {
 		assertThatThrownBy(() -> categoryService.create(new CategoryCreateRequest("   ", null)))
 			.isInstanceOf(InvalidCategoryDataException.class);
+	}
+
+	@Test
+	void createStarterSetForUserCreatesAllStarterCategoriesForNewAccount() {
+		when(categoryRepository.existsByUser_IdAndNameIgnoreCase(eq(USER_ID), any())).thenReturn(false);
+		when(categoryRepository.saveAndFlush(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		StarterCategoriesResponse response = categoryService.createStarterSetForUser(user);
+
+		assertThat(response.createdCount()).isEqualTo(StarterCategoryNames.ALL.size());
+		assertThat(response.createdNames()).containsExactlyElementsOf(StarterCategoryNames.ALL);
+		assertThat(response.skippedCount()).isZero();
+		assertThat(response.skippedNames()).isEmpty();
+		verify(categoryRepository, org.mockito.Mockito.times(StarterCategoryNames.ALL.size())).saveAndFlush(any());
+	}
+
+	@Test
+	void createStarterSetForUserSkipsExistingNamesCaseInsensitively() {
+		when(categoryRepository.existsByUser_IdAndNameIgnoreCase(USER_ID, "Groceries")).thenReturn(true);
+		when(categoryRepository.existsByUser_IdAndNameIgnoreCase(USER_ID, "Housing")).thenReturn(true);
+		when(categoryRepository.existsByUser_IdAndNameIgnoreCase(USER_ID, "Other")).thenReturn(false);
+		when(categoryRepository.existsByUser_IdAndNameIgnoreCase(eq(USER_ID), org.mockito.ArgumentMatchers.argThat(
+			name -> !"Groceries".equals(name) && !"Housing".equals(name) && !"Other".equals(name)
+		))).thenReturn(false);
+		when(categoryRepository.saveAndFlush(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		StarterCategoriesResponse response = categoryService.createStarterSetForUser(user);
+
+		assertThat(response.skippedNames()).contains("Groceries", "Housing");
+		assertThat(response.skippedCount()).isEqualTo(2);
+		assertThat(response.createdNames()).doesNotContain("Groceries", "Housing");
+		assertThat(response.createdCount()).isEqualTo(StarterCategoryNames.ALL.size() - 2);
+	}
+
+	@Test
+	void addStarterSetUsesAuthenticatedUser() {
+		when(categoryRepository.existsByUser_IdAndNameIgnoreCase(eq(USER_ID), any())).thenReturn(true);
+
+		StarterCategoriesResponse response = categoryService.addStarterSet();
+
+		assertThat(response.createdCount()).isZero();
+		assertThat(response.skippedCount()).isEqualTo(StarterCategoryNames.ALL.size());
+		verify(currentUser).requireUserReference();
+	}
+
+	@Test
+	void createStarterSetForUserDoesNotDuplicateOnSecondRequest() {
+		when(categoryRepository.existsByUser_IdAndNameIgnoreCase(eq(USER_ID), any())).thenReturn(true);
+
+		StarterCategoriesResponse response = categoryService.createStarterSetForUser(user);
+
+		assertThat(response.createdCount()).isZero();
+		assertThat(response.skippedCount()).isEqualTo(StarterCategoryNames.ALL.size());
+		verify(categoryRepository, never()).saveAndFlush(any());
 	}
 
 	private static void setId(Category category, Long id) throws Exception {

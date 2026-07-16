@@ -4,6 +4,8 @@ import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.budget.CategoryBudgetLimitRepository;
 import com.ledgerbloom.expense.ExpenseRepository;
 import com.ledgerbloom.recurring.RecurringExpenseRepository;
+import com.ledgerbloom.user.User;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -65,6 +67,37 @@ public class CategoryService {
 		category.setName(name);
 		category.setDescription(description);
 		return toResponse(saveCategory(category, name));
+	}
+
+	public StarterCategoriesResponse addStarterSet() {
+		return createStarterSetForUser(currentUser.requireUserReference());
+	}
+
+	/**
+	 * Creates user-owned starter categories that do not already exist for the account.
+	 * Name matching is case-insensitive so user-created or renamed categories are preserved.
+	 */
+	public StarterCategoriesResponse createStarterSetForUser(User user) {
+		Long userId = user.getId();
+		List<String> createdNames = new ArrayList<>();
+		List<String> skippedNames = new ArrayList<>();
+
+		for (String name : StarterCategoryNames.ALL) {
+			if (categoryRepository.existsByUser_IdAndNameIgnoreCase(userId, name)) {
+				skippedNames.add(name);
+				continue;
+			}
+			Category category = new Category(user, name, null);
+			saveCategory(category, name);
+			createdNames.add(name);
+		}
+
+		return new StarterCategoriesResponse(
+			createdNames.size(),
+			List.copyOf(createdNames),
+			skippedNames.size(),
+			List.copyOf(skippedNames)
+		);
 	}
 
 	public void delete(Long id) {

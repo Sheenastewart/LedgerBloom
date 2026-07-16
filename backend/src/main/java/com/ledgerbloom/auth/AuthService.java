@@ -1,5 +1,6 @@
 package com.ledgerbloom.auth;
 
+import com.ledgerbloom.category.CategoryService;
 import com.ledgerbloom.user.User;
 import com.ledgerbloom.user.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,14 +22,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
 	private final UserRepository userRepository;
+	private final CategoryService categoryService;
 	private final PasswordEncoder passwordEncoder;
 	private final SecurityContextRepository securityContextRepository;
 
 	public AuthService(
 			UserRepository userRepository,
+			CategoryService categoryService,
 			PasswordEncoder passwordEncoder,
 			SecurityContextRepository securityContextRepository) {
 		this.userRepository = userRepository;
+		this.categoryService = categoryService;
 		this.passwordEncoder = passwordEncoder;
 		this.securityContextRepository = securityContextRepository;
 	}
@@ -49,6 +53,7 @@ public class AuthService {
 		catch (DataIntegrityViolationException ex) {
 			throw new EmailAlreadyExistsException(email);
 		}
+		categoryService.createStarterSetForUser(user);
 		return toResponse(user);
 	}
 

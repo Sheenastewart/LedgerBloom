@@ -9,6 +9,7 @@ import { CategoriesPage } from './CategoriesPage'
 vi.mock('../api/categoryApi', () => ({
   getCategories: vi.fn(),
   deleteCategory: vi.fn(),
+  addStarterCategories: vi.fn(),
 }))
 
 const sampleCategories = [
@@ -47,6 +48,7 @@ describe('CategoriesPage', () => {
   beforeEach(() => {
     vi.mocked(categoryApi.getCategories).mockReset()
     vi.mocked(categoryApi.deleteCategory).mockReset()
+    vi.mocked(categoryApi.addStarterCategories).mockReset()
   })
 
   it('shows a loading state while categories load', () => {
@@ -151,5 +153,78 @@ describe('CategoriesPage', () => {
     expect(
       await screen.findByText('Created category "Travel".'),
     ).toBeInTheDocument()
+  })
+
+  it('does not add starter categories when confirmation is cancelled', async () => {
+    const user = userEvent.setup()
+    vi.mocked(categoryApi.getCategories).mockResolvedValue([])
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    renderPage()
+
+    await screen.findByText(/No categories yet/i)
+    await user.click(screen.getAllByRole('button', { name: 'Add starter categories' })[0])
+    expect(categoryApi.addStarterCategories).not.toHaveBeenCalled()
+  })
+
+  it('adds starter categories after confirmation and refreshes the list', async () => {
+    const user = userEvent.setup()
+    vi.mocked(categoryApi.getCategories)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(sampleCategories)
+    vi.mocked(categoryApi.addStarterCategories).mockResolvedValue({
+      createdCount: 22,
+      createdNames: ['Housing', 'Utilities'],
+      skippedCount: 0,
+      skippedNames: [],
+    })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderPage()
+
+    await screen.findByText(/No categories yet/i)
+    await user.click(screen.getAllByRole('button', { name: 'Add starter categories' })[0])
+
+    await waitFor(() => {
+      expect(categoryApi.addStarterCategories).toHaveBeenCalledTimes(1)
+    })
+    expect(await screen.findByRole('heading', { name: 'bills' })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(/Added 22 starter categories/i)
+    expect(categoryApi.getCategories).toHaveBeenCalledTimes(2)
+  })
+
+  it('reports when starter categories already exist', async () => {
+    const user = userEvent.setup()
+    vi.mocked(categoryApi.getCategories).mockResolvedValue(sampleCategories)
+    vi.mocked(categoryApi.addStarterCategories).mockResolvedValue({
+      createdCount: 0,
+      createdNames: [],
+      skippedCount: 22,
+      skippedNames: ['Housing'],
+    })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderPage()
+
+    await screen.findByRole('heading', { name: 'bills' })
+    await user.click(screen.getByRole('button', { name: 'Add starter categories' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      /All starter categories already exist/i,
+    )
+  })
+
+  it('shows an error when adding starter categories fails', async () => {
+    const user = userEvent.setup()
+    vi.mocked(categoryApi.getCategories).mockResolvedValue(sampleCategories)
+    vi.mocked(categoryApi.addStarterCategories).mockRejectedValue(
+      new ApiClientError({ message: 'nope', code: 'UNEXPECTED_ERROR' }),
+    )
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderPage()
+
+    await screen.findByRole('heading', { name: 'bills' })
+    await user.click(screen.getByRole('button', { name: 'Add starter categories' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /Unable to add starter categories/i,
+    )
   })
 })

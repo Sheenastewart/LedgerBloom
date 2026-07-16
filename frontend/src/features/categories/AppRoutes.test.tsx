@@ -28,6 +28,7 @@ vi.mock('./api/categoryApi', () => ({
   createCategory: vi.fn(),
   updateCategory: vi.fn(),
   deleteCategory: vi.fn(),
+  addStarterCategories: vi.fn(),
 }))
 
 vi.mock('../dashboard/api/dashboardApi', () => ({

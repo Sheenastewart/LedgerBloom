@@ -173,4 +173,22 @@ class CategoryControllerTest {
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.code").value("CATEGORY_NOT_FOUND"));
 	}
+
+	@Test
+	void addStarterSetReturnsCreatedAndSkippedSummary() throws Exception {
+		when(categoryService.addStarterSet()).thenReturn(new StarterCategoriesResponse(
+			2,
+			List.of("Housing", "Utilities"),
+			1,
+			List.of("Groceries")
+		));
+
+		mockMvc.perform(post("/api/categories/starter-set").with(csrf()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.createdCount").value(2))
+			.andExpect(jsonPath("$.createdNames[0]").value("Housing"))
+			.andExpect(jsonPath("$.createdNames[1]").value("Utilities"))
+			.andExpect(jsonPath("$.skippedCount").value(1))
+			.andExpect(jsonPath("$.skippedNames[0]").value("Groceries"));
+	}
 }

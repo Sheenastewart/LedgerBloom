@@ -36,6 +36,11 @@ public class CategoryController {
 		return categoryService.findById(id);
 	}
 
+	@PostMapping("/starter-set")
+	public StarterCategoriesResponse addStarterSet() {
+		return categoryService.addStarterSet();
+	}
+
 	@PostMapping
 	public ResponseEntity<CategoryResponse> create(@Valid @RequestBody CategoryCreateRequest request) {
 		CategoryResponse created = categoryService.create(request);

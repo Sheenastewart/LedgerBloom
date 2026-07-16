@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { isAbortError } from '../../../api/ApiClientError'
 import { HelpLink } from '../../guidance/HelpLink'
-import { deleteCategory, getCategories } from '../api/categoryApi'
+import { deleteCategory, getCategories, addStarterCategories } from '../api/categoryApi'
 import { CategoryList } from '../components/CategoryList'
 import type { Category } from '../types'
 import '../categories.css'
@@ -21,6 +21,8 @@ export function CategoriesPage() {
   const [deletingCategoryId, setDeletingCategoryId] = useState<number | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [addingStarter, setAddingStarter] = useState(false)
+  const [starterError, setStarterError] = useState<string | null>(null)
 
   const incomingSuccess = (location.state as LocationSuccessState | null)?.successMessage
 
@@ -60,6 +62,35 @@ export function CategoriesPage() {
     return () => controller.abort()
   }, [loadCategories])
 
+  async function handleAddStarterCategories() {
+    const confirmed = window.confirm(
+      'Add common everyday expense categories such as Housing, Groceries, and Utilities? Existing categories with the same name will be kept.',
+    )
+    if (!confirmed) {
+      return
+    }
+
+    setStarterError(null)
+    setAddingStarter(true)
+    try {
+      const result = await addStarterCategories()
+      await loadCategories()
+      if (result.createdCount === 0) {
+        setSuccessMessage('All starter categories already exist. Nothing was added.')
+      } else {
+        const skippedSuffix =
+          result.skippedCount > 0
+            ? ` Skipped ${result.skippedCount} that already existed.`
+            : ''
+        setSuccessMessage(`Added ${result.createdCount} starter categories.${skippedSuffix}`)
+      }
+    } catch {
+      setStarterError('Unable to add starter categories. Please try again.')
+    } finally {
+      setAddingStarter(false)
+    }
+  }
+
   async function handleDelete(category: Category) {
     const confirmed = window.confirm(
       `Delete category "${category.name}"? This cannot be undone.`,
@@ -91,10 +122,26 @@ export function CategoriesPage() {
             Why can’t I delete this category?
           </HelpLink>
         </div>
-        <Link to="/categories/new" className="button button-primary">
-          Add category
-        </Link>
+        <div className="page-header-actions">
+          <button
+            type="button"
+            className="button button-secondary"
+            disabled={addingStarter}
+            onClick={() => void handleAddStarterCategories()}
+          >
+            {addingStarter ? 'Adding starter categories…' : 'Add starter categories'}
+          </button>
+          <Link to="/categories/new" className="button button-primary">
+            Add category
+          </Link>
+        </div>
       </div>
+
+      {starterError ? (
+        <p className="status-banner error" role="alert">
+          {starterError}
+        </p>
+      ) : null}
 
       {successMessage ? (
         <p className="status-banner success" role="status" aria-live="polite">
@@ -129,10 +176,20 @@ export function CategoriesPage() {
 
       {!loading && !error && categories.length === 0 ? (
         <div className="status-panel" role="status">
-          <p>No categories yet. Create your first category to get started.</p>
-          <Link to="/categories/new" className="button button-primary">
-            Add category
-          </Link>
+          <p>No categories yet. Add starter categories for common everyday spending, or create your own.</p>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="button button-secondary"
+              disabled={addingStarter}
+              onClick={() => void handleAddStarterCategories()}
+            >
+              Add starter categories
+            </button>
+            <Link to="/categories/new" className="button button-primary">
+              Add category
+            </Link>
+          </div>
         </div>
       ) : null}
 

@@ -25,6 +25,13 @@
   color: #4c6356;
 }
 
+.page-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
 .status-banner {
   margin: 0 0 1rem;
   padding: 0.85rem 1rem;

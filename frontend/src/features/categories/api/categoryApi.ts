@@ -1,5 +1,5 @@
 import { ApiClientError, requestJson } from '../../../api/apiClient'
-import type { Category, CategoryWriteRequest } from '../types'
+import type { Category, CategoryWriteRequest, StarterCategoriesResult } from '../types'
 
 export async function getCategories(signal?: AbortSignal): Promise<Category[]> {
   return requestJson<Category[]>('/api/categories', { method: 'GET', signal })
@@ -28,6 +28,12 @@ export async function updateCategory(
 
 export async function deleteCategory(id: number): Promise<void> {
   await requestJson<void>(`/api/categories/${id}`, { method: 'DELETE' })
+}
+
+export async function addStarterCategories(): Promise<StarterCategoriesResult> {
+  return requestJson<StarterCategoriesResult>('/api/categories/starter-set', {
+    method: 'POST',
+  })
 }
 
 export { ApiClientError }

@@ -13,6 +13,13 @@ export type CategoryWriteRequest = {
   description: string | null
 }
 
+export type StarterCategoriesResult = {
+  createdCount: number
+  createdNames: string[]
+  skippedCount: number
+  skippedNames: string[]
+}
+
 export type CategoryFormValues = {
   name: string
   description: string

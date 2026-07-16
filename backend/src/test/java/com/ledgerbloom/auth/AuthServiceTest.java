@@ -3,15 +3,20 @@ package com.ledgerbloom.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.ledgerbloom.category.CategoryService;
+import com.ledgerbloom.category.StarterCategoriesResponse;
+import com.ledgerbloom.category.StarterCategoryNames;
 import com.ledgerbloom.user.User;
 import com.ledgerbloom.user.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +37,9 @@ class AuthServiceTest {
 	private UserRepository userRepository;
 
 	@Mock
+	private CategoryService categoryService;
+
+	@Mock
 	private SecurityContextRepository securityContextRepository;
 
 	@Mock
@@ -48,7 +56,59 @@ class AuthServiceTest {
 	void setUp() {
 		// Real BCryptPasswordEncoder (not mocked) so hash-format assertions below are meaningful.
 		passwordEncoder = new BCryptPasswordEncoder();
-		authService = new AuthService(userRepository, passwordEncoder, securityContextRepository);
+		authService = new AuthService(userRepository, categoryService, passwordEncoder, securityContextRepository);
+		org.mockito.Mockito.lenient()
+			.when(categoryService.createStarterSetForUser(any(User.class)))
+			.thenReturn(new StarterCategoriesResponse(22, StarterCategoryNames.ALL, 0, List.of()));
+	}
+
+	@Test
+	void registerCreatesStarterCategoriesForNewUser() {
+		when(userRepository.existsByEmailIgnoreCase("user@example.com")).thenReturn(false);
+		when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
+			User user = invocation.getArgument(0);
+			setId(user, 1L);
+			onCreate(user);
+			return user;
+		});
+		when(categoryService.createStarterSetForUser(any(User.class)))
+			.thenReturn(new StarterCategoriesResponse(22, List.of("Housing"), 0, List.of()));
+
+		authService.register(new RegisterRequest("user@example.com", "supersecret", "supersecret", "Jane Doe"));
+
+		ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+		verify(categoryService).createStarterSetForUser(captor.capture());
+		assertThat(captor.getValue().getId()).isEqualTo(1L);
+	}
+
+	@Test
+	void registerPropagatesStarterCategoryFailureWithoutReturningUser() {
+		when(userRepository.existsByEmailIgnoreCase("user@example.com")).thenReturn(false);
+		when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
+			User user = invocation.getArgument(0);
+			setId(user, 1L);
+			onCreate(user);
+			return user;
+		});
+		doThrow(new RuntimeException("category seed failed"))
+			.when(categoryService).createStarterSetForUser(any(User.class));
+
+		assertThatThrownBy(() -> authService.register(
+			new RegisterRequest("user@example.com", "supersecret", "supersecret", "Jane Doe")
+		)).isInstanceOf(RuntimeException.class)
+			.hasMessage("category seed failed");
+	}
+
+	@Test
+	void loginDoesNotRecreateStarterCategories() throws Exception {
+		User user = sampleUser(1L, "user@example.com", "supersecret");
+		when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
+		when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		authService.login(new LoginRequest("user@example.com", "supersecret"), httpRequest, httpResponse);
+
+		verify(categoryService, never()).createStarterSetForUser(any());
+		verify(categoryService, never()).addStarterSet();
 	}
 
 	@Test
