@@ -48,10 +48,10 @@ export function RecurringIncomeFilters({
   }
 
   return (
-    <form className="dashboard-period" onSubmit={handleSubmit} noValidate>
+    <form className="recurring-filters" onSubmit={handleSubmit} noValidate>
       <fieldset>
-        <legend>Filters</legend>
-        <div className="dashboard-period-grid">
+        <legend>Filter schedules</legend>
+        <div className="recurring-filters-grid">
           <div className="field">
             <label htmlFor="recurring-income-filter-active">Status</label>
             <select
@@ -89,14 +89,14 @@ export function RecurringIncomeFilters({
               id="recurring-income-filter-source"
               type="text"
               value={draft.source}
-              placeholder="Any source"
+              placeholder="Employer, bank…"
               onChange={(event) =>
                 setDraft((current) => ({ ...current, source: event.target.value }))
               }
             />
           </div>
         </div>
-        <div className="dashboard-period-actions">
+        <div className="recurring-filters-actions">
           <button type="submit" className="button button-primary">
             Apply filters
           </button>

@@ -22,6 +22,7 @@ const sampleCategories = [
     id: 1,
     name: 'Groceries',
     description: null,
+    color: null,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
   },
@@ -92,7 +93,7 @@ describe('ExpenseFormPage', () => {
     renderCreate()
     await screen.findByRole('heading', { name: 'Add expense' })
 
-    await user.type(screen.getByLabelText('Description'), 'Lunch')
+    await user.type(screen.getByLabelText('Payment source'), 'Lunch')
     await user.type(screen.getByLabelText('Amount'), '12.50')
     await user.type(screen.getByLabelText('Expense date'), '2026-07-10')
     await user.selectOptions(screen.getByLabelText('Category'), '1')

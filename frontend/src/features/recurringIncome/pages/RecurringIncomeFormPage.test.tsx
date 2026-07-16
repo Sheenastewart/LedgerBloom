@@ -22,6 +22,7 @@ function renderCreate() {
     <MemoryRouter initialEntries={['/transactions/recurring-income/new']}>
       <Routes>
         <Route path="/transactions/recurring-income/new" element={<RecurringIncomeFormPage mode="create" />} />
+        <Route path="/transactions/income" element={<p>Recurring income hub</p>} />
         <Route path="/transactions/recurring-income" element={<p>Recurring income hub</p>} />
       </Routes>
     </MemoryRouter>,

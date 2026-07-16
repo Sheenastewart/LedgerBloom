@@ -160,8 +160,12 @@ export function RecurringFormPage({ mode }: RecurringFormPageProps) {
     try {
       if (mode === 'create') {
         const created = await createRecurringExpense(toRecurringCreateRequest(values))
-        const title = expenseDisplayTitle(created.description, created.category.name)
-        navigate('/transactions/recurring-expenses', {
+        const title = expenseDisplayTitle({
+          merchant: created.merchant,
+          description: created.description,
+          categoryName: created.category.name,
+        })
+        navigate('/transactions/expenses', {
           state: { successMessage: `Created recurring expense "${title}".` },
         })
         return
@@ -170,8 +174,12 @@ export function RecurringFormPage({ mode }: RecurringFormPageProps) {
         routeId as number,
         toRecurringWriteRequest(values),
       )
-      const title = expenseDisplayTitle(updated.description, updated.category.name)
-      navigate('/transactions/recurring-expenses', {
+      const title = expenseDisplayTitle({
+        merchant: updated.merchant,
+        description: updated.description,
+        categoryName: updated.category.name,
+      })
+      navigate('/transactions/expenses', {
         state: { successMessage: `Updated recurring expense "${title}".` },
       })
     } catch (error) {
@@ -231,7 +239,7 @@ export function RecurringFormPage({ mode }: RecurringFormPageProps) {
           submitting={submitting}
           previewOccurrences={previewRecurringExpenseOccurrences}
           onSubmit={(values) => void handleSubmit(values)}
-          onCancel={() => navigate('/transactions/recurring-expenses')}
+          onCancel={() => navigate('/transactions/expenses')}
         />
       ) : null}
     </main>

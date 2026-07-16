@@ -51,9 +51,10 @@ vi.mock('../budgets/api/budgetApi', () => ({
   createMonthlyBudget: vi.fn(),
   updateMonthlyBudget: vi.fn(),
   deleteMonthlyBudget: vi.fn(),
-  createCategoryLimit: vi.fn(),
-  updateCategoryLimit: vi.fn(),
-  deleteCategoryLimit: vi.fn(),
+  createGroupLimit: vi.fn(),
+  updateGroupLimit: vi.fn(),
+  deleteGroupLimit: vi.fn(),
+  generateMonthlyBudget: vi.fn(),
 }))
 
 vi.mock('../dashboard/api/dashboardApi', () => ({
@@ -161,7 +162,8 @@ describe('Recurring income routes', () => {
     expect(screen.queryByRole('link', { name: 'Income' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Recurring Income' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Transactions' }))
-    await user.click(screen.getByRole('link', { name: 'Recurring Income' }))
-    expect(await screen.findByText(/Loading recurring income|No recurring income/)).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Income' }))
+    expect(await screen.findByRole('heading', { name: 'Income' })).toBeInTheDocument()
+    expect(screen.getByLabelText('All recurring income')).toBeInTheDocument()
   })
 })

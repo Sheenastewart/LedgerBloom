@@ -7,6 +7,7 @@ import {
   SimpleCompareChart,
 } from '../../../components/charts/SimpleCharts'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
+import { incomeDisplayParts, incomeSourceLabel } from '../../../utils/incomeDisplay'
 import { budgetStatus, budgetStatusLabel } from '../../budgets/budgetStatus'
 import { DashboardPeriodForm } from '../../dashboard/components/DashboardPeriodForm'
 import { getMonthlyDashboard } from '../../dashboard/api/dashboardApi'
@@ -305,12 +306,20 @@ export function MonthlyReportPage() {
                   </p>
                 ) : (
                   <ul className="dashboard-compact-list">
-                    {dashboard.planning.upcomingIncomeItems.map((item) => (
-                      <li key={item.id}>
-                        <strong>{item.description}</strong> · {formatCurrency(item.amount)} ·{' '}
-                        {formatIsoDate(item.nextIncomeDate)} · {item.source}
-                      </li>
-                    ))}
+                    {dashboard.planning.upcomingIncomeItems.map((item) => {
+                      const display = incomeDisplayParts({
+                        description: item.description,
+                        source: item.source,
+                      })
+                      const fromLabel = incomeSourceLabel(display.source)
+                      return (
+                        <li key={item.id}>
+                          <strong>{display.title}</strong> · {formatCurrency(item.amount)} ·{' '}
+                          {formatIsoDate(item.nextIncomeDate)}
+                          {fromLabel ? ` · ${fromLabel}` : null}
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
               </div>
@@ -407,7 +416,15 @@ export function MonthlyReportPage() {
                   <>
                     <p className="amount">{formatCurrency(dashboard.largestIncome.amount)}</p>
                     <p>
-                      {dashboard.largestIncome.description} · {dashboard.largestIncome.source}
+                      {
+                        incomeDisplayParts({
+                          description: dashboard.largestIncome.description,
+                          source: dashboard.largestIncome.source,
+                        }).title
+                      }
+                      {incomeSourceLabel(dashboard.largestIncome.source)
+                        ? ` · ${incomeSourceLabel(dashboard.largestIncome.source)}`
+                        : null}
                     </p>
                     <p className="label">{formatIsoDate(dashboard.largestIncome.incomeDate)}</p>
                   </>

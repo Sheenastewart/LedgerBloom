@@ -115,7 +115,7 @@ export function IncomeForm({
           autoComplete="off"
         />
         <p id="income-description-hint" className="field-hint">
-          Up to 160 characters
+          Main title in lists and reports — for example Paycheck or Freelance invoice
         </p>
         {descriptionError ? (
           <p id="income-description-error" className="field-error" role="alert">
@@ -140,7 +140,7 @@ export function IncomeForm({
           autoComplete="off"
         />
         <p id="income-source-hint" className="field-hint">
-          Up to 120 characters
+          Where it came from — employer, client, bank, or account
         </p>
         {sourceError ? (
           <p id="income-source-error" className="field-error" role="alert">

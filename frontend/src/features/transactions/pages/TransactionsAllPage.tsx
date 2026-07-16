@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom'
 import { isAbortError } from '../../../api/ApiClientError'
 import { ActivityRowList, type ActivityRowItem } from '../../../components/ActivityRowList'
 import { ErrorPanel, LoadingState } from '../../../components/ui/Feedback'
-import { expenseDisplayTitle } from '../../../utils/expenseDisplay'
+import { expenseDisplayParts } from '../../../utils/expenseDisplay'
+import { incomeDisplayParts } from '../../../utils/incomeDisplay'
+import { formatCurrency } from '../../../utils/moneyUtils'
 import { paths } from '../../../routes/paths'
 import { getExpenses } from '../../expenses/api/expenseApi'
 import type { Expense } from '../../expenses/types'
@@ -13,6 +15,7 @@ import { DashboardPeriodForm } from '../../dashboard/components/DashboardPeriodF
 import type { DashboardPeriod } from '../../dashboard/types'
 import '../../dashboard/dashboard.css'
 import '../../expenses/expenses.css'
+import '../../recurring/recurring.css'
 
 function currentPeriod(): DashboardPeriod {
   const now = new Date()
@@ -54,32 +57,55 @@ export function TransactionsAllPage() {
   }, [load, period])
 
   const items = useMemo<ActivityRowItem[]>(() => {
-    const expenseItems: ActivityRowItem[] = expenses.map((expense) => ({
-      id: `expense-${expense.id}`,
-      kind: 'expense',
-      title: expenseDisplayTitle(expense.description, expense.category.name),
-      merchant: expense.merchant,
-      categoryName: expense.category.name,
-      date: expense.expenseDate,
-      amount: expense.amount,
-      href: paths.transactionsExpenseEdit(expense.id),
-      recurring: false,
-    }))
-    const incomeItems: ActivityRowItem[] = incomes.map((income) => ({
-      id: `income-${income.id}`,
-      kind: 'income',
-      title: income.description,
-      merchant: income.source,
-      categoryName: income.source,
-      date: income.incomeDate,
-      amount: income.amount,
-      href: paths.transactionsIncomeEdit(income.id),
-      recurring: income.recurringIncomeId != null,
-    }))
+    const expenseItems: ActivityRowItem[] = expenses.map((expense) => {
+      const display = expenseDisplayParts({
+        merchant: expense.merchant,
+        description: expense.description,
+        categoryName: expense.category.name,
+      })
+      return {
+        id: `expense-${expense.id}`,
+        kind: 'expense',
+        title: display.title,
+        subtitle: display.paymentSource,
+        categoryName: display.categoryName ?? expense.category.name,
+        categoryColor: expense.category.color,
+        date: expense.expenseDate,
+        amount: expense.amount,
+        href: paths.transactionsExpenseEdit(expense.id),
+        recurring: false,
+      }
+    })
+    const incomeItems: ActivityRowItem[] = incomes.map((income) => {
+      const display = incomeDisplayParts({
+        description: income.description,
+        source: income.source,
+      })
+      return {
+        id: `income-${income.id}`,
+        kind: 'income',
+        title: display.title,
+        subtitle: display.source,
+        categoryName: display.source ?? 'Income',
+        date: income.incomeDate,
+        amount: income.amount,
+        href: paths.transactionsIncomeEdit(income.id),
+        recurring: income.recurringIncomeId != null,
+      }
+    })
     return [...expenseItems, ...incomeItems].sort((a, b) =>
       a.date < b.date ? 1 : a.date > b.date ? -1 : a.id.localeCompare(b.id),
     )
   }, [expenses, incomes])
+
+  const netTotal = useMemo(
+    () =>
+      items.reduce(
+        (sum, item) => sum + (item.kind === 'income' ? item.amount : -item.amount),
+        0,
+      ),
+    [items],
+  )
 
   return (
     <main className="content-page">
@@ -104,12 +130,30 @@ export function TransactionsAllPage() {
       {loading ? <LoadingState>Loading transactions…</LoadingState> : null}
 
       {!loading && !error ? (
-        <section className="lb-surface" aria-label="All transactions">
-          <ActivityRowList
-            items={items}
-            emptyMessage="No expenses or income in this month yet."
-          />
-        </section>
+        <details className="upcoming-period ledger-fold">
+          <summary className="upcoming-period__summary">
+            <span className="upcoming-period__title">
+              <span className="upcoming-period__label">Transactions this month</span>
+              <span className="upcoming-period__range">
+                Expand to review expenses and income, newest first
+              </span>
+            </span>
+            <span className="upcoming-period__stats">
+              <span className="upcoming-period__count">
+                {items.length} {items.length === 1 ? 'entry' : 'entries'}
+              </span>
+              {items.length > 0 ? (
+                <span className="upcoming-period__total">{formatCurrency(netTotal)}</span>
+              ) : null}
+            </span>
+          </summary>
+          <div className="upcoming-period__body">
+            <ActivityRowList
+              items={items}
+              emptyMessage="No expenses or income in this month yet."
+            />
+          </div>
+        </details>
       ) : null}
     </main>
   )

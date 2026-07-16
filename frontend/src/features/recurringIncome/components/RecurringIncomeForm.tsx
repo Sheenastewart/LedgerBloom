@@ -259,11 +259,18 @@ export function RecurringIncomeForm({
           disabled={submitting}
           autoComplete="off"
           aria-invalid={merged.description ? true : undefined}
-          aria-describedby={merged.description ? 'recurring-income-description-error' : undefined}
+          aria-describedby={
+            merged.description
+              ? 'recurring-income-description-error'
+              : 'recurring-income-description-hint'
+          }
           onChange={(event) =>
             setValues((current) => ({ ...current, description: event.target.value }))
           }
         />
+        <p id="recurring-income-description-hint" className="field-hint">
+          Main title in lists and reports — for example Paycheck or Side gig
+        </p>
         {merged.description ? (
           <p id="recurring-income-description-error" className="field-error" role="alert">
             {merged.description}
@@ -279,9 +286,14 @@ export function RecurringIncomeForm({
           disabled={submitting}
           autoComplete="off"
           aria-invalid={merged.source ? true : undefined}
-          aria-describedby={merged.source ? 'recurring-income-source-error' : undefined}
+          aria-describedby={
+            merged.source ? 'recurring-income-source-error' : 'recurring-income-source-hint'
+          }
           onChange={(event) => setValues((current) => ({ ...current, source: event.target.value }))}
         />
+        <p id="recurring-income-source-hint" className="field-hint">
+          Where it came from — employer, client, bank, or account
+        </p>
         {merged.source ? (
           <p id="recurring-income-source-error" className="field-error" role="alert">
             {merged.source}

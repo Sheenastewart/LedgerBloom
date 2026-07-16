@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { isAbortError } from '../../../api/ApiClientError'
 import { OccurrenceChecklist } from '../../../components/OccurrenceChecklist'
 import { isPastDate } from '../../../utils/dueDateUtils'
@@ -8,6 +9,7 @@ import {
   normalizeAmountInput,
   validateAmount,
 } from '../../../utils/moneyUtils'
+import { paths } from '../../../routes/paths'
 import type { Category } from '../../categories/types'
 import {
   CADENCE_OPTIONS,
@@ -52,14 +54,14 @@ function validateValues(
     errors.categoryId = 'Category is required.'
   }
 
-  if (isOtherCategoryName(categoryName) && !trimmedDescription) {
-    errors.description = 'Description is required when category is Other.'
-  } else if (trimmedDescription.length > 160) {
-    errors.description = 'Description must be at most 160 characters.'
+  if (isOtherCategoryName(categoryName) && !values.merchant.trim()) {
+    errors.merchant = 'Merchant is required when category is Other.'
+  } else if (values.merchant.trim().length > 120) {
+    errors.merchant = 'Merchant must be at most 120 characters.'
   }
 
-  if (values.merchant.trim().length > 120) {
-    errors.merchant = 'Merchant must be at most 120 characters.'
+  if (trimmedDescription.length > 160) {
+    errors.description = 'Payment source must be at most 160 characters.'
   }
   const amountError = validateAmount(values.amount)
   if (amountError) {
@@ -289,31 +291,9 @@ export function RecurringForm({
             {merged.categoryId}
           </p>
         ) : null}
-      </div>
-
-      <div className="field">
-        <label htmlFor="recurring-description">Description</label>
-        <input
-          id="recurring-description"
-          value={values.description}
-          disabled={submitting}
-          autoComplete="off"
-          aria-invalid={merged.description ? true : undefined}
-          aria-describedby={
-            merged.description ? 'recurring-description-error' : 'recurring-description-hint'
-          }
-          onChange={(event) => setValues((current) => ({ ...current, description: event.target.value }))}
-        />
-        <p id="recurring-description-hint" className="field-hint">
-          {otherSelected
-            ? 'Required when category is Other'
-            : 'Optional — leave blank to use the category name'}
+        <p className="field-hint">
+          <Link to={paths.budgetsCategories}>Manage categories</Link>
         </p>
-        {merged.description ? (
-          <p id="recurring-description-error" className="field-error" role="alert">
-            {merged.description}
-          </p>
-        ) : null}
       </div>
 
       <div className="field">
@@ -328,11 +308,36 @@ export function RecurringForm({
           onChange={(event) => setValues((current) => ({ ...current, merchant: event.target.value }))}
         />
         <p id="recurring-merchant-hint" className="field-hint">
-          Optional, up to 120 characters
+          {otherSelected
+            ? 'Required when category is Other'
+            : 'Who was paid — for example Netflix or the power company'}
         </p>
         {merged.merchant ? (
           <p id="recurring-merchant-error" className="field-error" role="alert">
             {merged.merchant}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="field">
+        <label htmlFor="recurring-description">Payment source</label>
+        <input
+          id="recurring-description"
+          value={values.description}
+          disabled={submitting}
+          autoComplete="off"
+          aria-invalid={merged.description ? true : undefined}
+          aria-describedby={
+            merged.description ? 'recurring-description-error' : 'recurring-description-hint'
+          }
+          onChange={(event) => setValues((current) => ({ ...current, description: event.target.value }))}
+        />
+        <p id="recurring-description-hint" className="field-hint">
+          Optional — which card or account this comes from
+        </p>
+        {merged.description ? (
+          <p id="recurring-description-error" className="field-error" role="alert">
+            {merged.description}
           </p>
         ) : null}
       </div>

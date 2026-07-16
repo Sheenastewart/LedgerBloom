@@ -6,10 +6,14 @@ import {
 import { ActionMenu, confirmDestructive } from '../../../components/ui/ActionMenu'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { paths } from '../../../routes/paths'
-import { daysUntil, dueDateStatus, isPastDate } from '../../../utils/dueDateUtils'
-import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
+import { isPastDate } from '../../../utils/dueDateUtils'
+import { incomeDisplayParts, incomeSourceLabel } from '../../../utils/incomeDisplay'
+import {
+  displayRecurringAmount,
+  perOccurrenceLabel,
+} from '../../../utils/monthlyEquivalent'
+import { formatCurrency } from '../../../utils/moneyUtils'
 import { CALCULATION_DEFS } from '../../guidance/calculationDefs'
-import { HelpLink } from '../../guidance/HelpLink'
 import { cadenceLabel, type RecurringIncome, type RecurringIncomeCatchUpResult } from '../types'
 
 type RecurringIncomeListProps = {
@@ -22,23 +26,6 @@ type RecurringIncomeListProps = {
   onPreviewCatchUp: (item: RecurringIncome, signal: AbortSignal) => Promise<CatchUpPreviewResult>
   onSubmitCatchUp: (item: RecurringIncome, occurrenceDates: string[]) => Promise<RecurringIncomeCatchUpResult>
   onCatchUpRecorded: (item: RecurringIncome, result: RecurringIncomeCatchUpResult) => void
-}
-
-function incomeStatus(
-  item: RecurringIncome,
-  todayIso: string,
-): { label: string; className: string; tone: 'success' | 'warning' | 'danger' | 'info' | 'neutral' } {
-  if (!item.active) {
-    return { label: 'Inactive', className: 'inactive', tone: 'neutral' }
-  }
-  const status = dueDateStatus(daysUntil(item.nextIncomeDate, todayIso))
-  const tone =
-    status.className === 'overdue'
-      ? 'danger'
-      : status.className === 'due-today' || status.className === 'due-soon'
-        ? 'warning'
-        : 'info'
-  return { ...status, tone }
 }
 
 export function RecurringIncomeList({
@@ -55,34 +42,39 @@ export function RecurringIncomeList({
   return (
     <ul className="recurring-list">
       {items.map((item) => {
-        const status = incomeStatus(item, todayIso)
         const overdue = item.active && isPastDate(item.nextIncomeDate, todayIso)
         const catchUpId = `recurring-income-catchup-${item.id}`
+        const display = incomeDisplayParts({
+          description: item.description,
+          source: item.source,
+        })
+        const fromLabel = incomeSourceLabel(display.source)
+        const displayAmount = displayRecurringAmount(item.amount, item.cadence)
+        const eachLabel = perOccurrenceLabel(item.amount, item.cadence)
         return (
           <li key={item.id} className="recurring-item list-row">
             <div className="list-row__main">
               <div className="recurring-item-header">
-                <h3 className="list-row__title">{item.description}</h3>
-                <strong className="list-row__amount">{formatCurrency(item.amount)}</strong>
+                <h3 className="list-row__title">{display.title}</h3>
+                <strong className="list-row__amount">
+                  {formatCurrency(displayAmount)}
+                  {eachLabel ? '/mo' : null}
+                </strong>
               </div>
               <p className="recurring-meta list-row__meta">
-                {item.source} ·{' '}
+                {fromLabel ? `${fromLabel} · ` : null}
                 <span className="cadence-with-info">
                   {cadenceLabel(item.cadence)}
                   <InfoTooltip label="About cadence">{CALCULATION_DEFS.cadence.short}</InfoTooltip>
-                </span>{' '}
-                · Next {formatIsoDate(item.nextIncomeDate)}
+                </span>
+                {eachLabel ? ` · ${eachLabel}` : null}
               </p>
               {item.notes ? <p className="recurring-meta list-row__meta">{item.notes}</p> : null}
-              <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
-              <InfoTooltip label="About Mark Received">
-                {CALCULATION_DEFS.markReceived.short}{' '}
-                <HelpLink to="/settings/help?topic=how-mark-received-works">Learn more</HelpLink>
-              </InfoTooltip>
+              {!item.active ? <StatusBadge tone="neutral">Inactive</StatusBadge> : null}
             </div>
             <div className="recurring-actions list-row__actions">
               <ActionMenu
-                label={`Actions for ${item.description}`}
+                label={`Actions for ${display.title}`}
                 items={[
                   {
                     id: 'edit',
@@ -120,7 +112,7 @@ export function RecurringIncomeList({
                     onSelect: () => {
                       if (
                         confirmDestructive(
-                          `Delete recurring income “${item.description}”? This cannot be undone.`,
+                          `Delete recurring income “${display.title}”? This cannot be undone.`,
                         )
                       ) {
                         onDelete(item)

@@ -147,7 +147,7 @@ describe('DashboardPage', () => {
       'href',
       '/transactions/expenses/add',
     )
-    expect(screen.getByRole('heading', { name: 'Recent activity' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Recent financial activity' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Upcoming' })).toBeInTheDocument()
     expect(screen.getByText('Remaining budget')).toBeInTheDocument()
     expect(screen.getByText('Safe to spend')).toBeInTheDocument()

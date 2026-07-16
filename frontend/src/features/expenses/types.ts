@@ -1,6 +1,7 @@
 export type ExpenseCategoryRef = {
   id: number
   name: string
+  color?: string | null
 }
 
 export type Expense = {

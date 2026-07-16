@@ -99,22 +99,20 @@ describe('IncomePage', () => {
     )
   })
 
-  it('redirects section=recurring to the recurring income hub', async () => {
+  it('keeps section=recurring on the income page with recurring panel', async () => {
+    vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue([])
     vi.mocked(recurringIncomeApi.getRecurringIncome).mockResolvedValue([sampleRecurring])
     vi.mocked(recurringIncomeApi.getUpcomingRecurringIncome).mockResolvedValue([])
     render(
       <MemoryRouter initialEntries={['/transactions/income?section=recurring']}>
         <Routes>
           <Route path="/transactions/income" element={<IncomePage />} />
-          <Route
-            path="/transactions/recurring-income"
-            element={<p>Recurring income hub</p>}
-          />
         </Routes>
       </MemoryRouter>,
     )
 
-    expect(await screen.findByText('Recurring income hub')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Income' })).toBeInTheDocument()
+    expect(screen.getAllByText('Expected income').length).toBeGreaterThan(0)
   })
 
   it('shows empty received state with add income action', async () => {
@@ -193,6 +191,6 @@ describe('IncomePage', () => {
     await waitFor(() => {
       expect(incomeApi.undoReceivedIncomeEntry).toHaveBeenCalledWith(2)
     })
-    expect(await screen.findByRole('status')).toHaveTextContent(/Undid receiving "Salary"/i)
+    expect(await screen.findByText(/Undid receiving "Salary"/i)).toBeInTheDocument()
   })
 })

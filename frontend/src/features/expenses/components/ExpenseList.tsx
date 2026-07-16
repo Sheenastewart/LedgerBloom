@@ -1,6 +1,7 @@
 import { ActionMenu, confirmDestructive } from '../../../components/ui/ActionMenu'
 import { paths } from '../../../routes/paths'
-import { expenseDisplayTitle } from '../../../utils/expenseDisplay'
+import { resolveCategoryColor, softColorFromHex } from '../../../utils/categoryColor'
+import { expenseDisplayParts } from '../../../utils/expenseDisplay'
 import { userFacingNotes } from '../../../utils/notesUtils'
 import { formatCurrency, formatExpenseDate } from '../amountUtils'
 import type { Expense } from '../types'
@@ -17,23 +18,38 @@ export function ExpenseList({ expenses, deletingExpenseId, onDelete }: ExpenseLi
       {expenses.map((expense) => {
         const isDeleting = deletingExpenseId === expense.id
         const notes = userFacingNotes(expense.notes)
-        const title = expenseDisplayTitle(expense.description, expense.category.name)
+        const display = expenseDisplayParts({
+          merchant: expense.merchant,
+          description: expense.description,
+          categoryName: expense.category.name,
+        })
+        const accent = resolveCategoryColor(expense.category.name, expense.category.color)
         return (
-          <li key={expense.id} className="expense-row list-row">
+          <li
+            key={expense.id}
+            className="expense-row list-row"
+            style={{
+              ['--row-accent' as string]: accent,
+              ['--row-accent-soft' as string]: softColorFromHex(accent),
+            }}
+          >
             <div className="expense-main list-row__main">
-              <h2 className="expense-description list-row__title">{title}</h2>
-              <p className="expense-amount list-row__amount">{formatCurrency(expense.amount)}</p>
-              <p className="expense-meta list-row__meta">
-                {formatExpenseDate(expense.expenseDate)} · {expense.category.name}
+              <h2 className="expense-description list-row__title">{display.title}</h2>
+              <p className="expense-amount list-row__amount is-expense">
+                {formatCurrency(expense.amount)}
               </p>
-              {expense.merchant ? (
-                <p className="expense-meta list-row__meta">Merchant: {expense.merchant}</p>
+              <p className="expense-meta list-row__meta">
+                {formatExpenseDate(expense.expenseDate)}
+                {display.categoryName ? ` · ${display.categoryName}` : null}
+              </p>
+              {display.paymentSource ? (
+                <p className="expense-meta list-row__meta">Paid from {display.paymentSource}</p>
               ) : null}
               {notes ? <p className="expense-meta list-row__meta">Notes: {notes}</p> : null}
             </div>
             <div className="expense-actions list-row__actions">
               <ActionMenu
-                label={`Actions for ${title}`}
+                label={`Actions for ${display.title}`}
                 items={[
                   {
                     id: 'edit',
@@ -84,7 +100,7 @@ export function ExpenseList({ expenses, deletingExpenseId, onDelete }: ExpenseLi
                     onSelect: () => {
                       if (
                         confirmDestructive(
-                          `Delete expense “${title}”? This cannot be undone.`,
+                          `Delete expense “${display.title}”? This cannot be undone.`,
                         )
                       ) {
                         onDelete(expense)

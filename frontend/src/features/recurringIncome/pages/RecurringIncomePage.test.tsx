@@ -1,6 +1,7 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { paths } from '../../../routes/paths'
 import { RecurringIncomePage } from './RecurringIncomePage'
 
 vi.mock('../api/recurringIncomeApi', () => ({
@@ -17,16 +18,19 @@ describe('RecurringIncomePage', () => {
     cleanup()
   })
 
-  it('renders the recurring income schedules panel', async () => {
+  it('redirects the legacy list URL to the income page', async () => {
     render(
       <MemoryRouter initialEntries={['/transactions/recurring-income']}>
         <Routes>
           <Route path="/transactions/recurring-income" element={<RecurringIncomePage />} />
+          <Route path={paths.transactionsIncome} element={<p>Income home</p>} />
         </Routes>
       </MemoryRouter>,
     )
 
-    expect(await screen.findByRole('heading', { name: 'Recurring schedules' })).toBeInTheDocument()
-    expect(screen.getByText('No recurring income schedules yet.')).toBeInTheDocument()
+    expect(await screen.findByText('Income home')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByText('Recurring schedules')).not.toBeInTheDocument()
+    })
   })
 })

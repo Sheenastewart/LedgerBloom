@@ -1,6 +1,9 @@
 import { InfoTooltip } from '../../../components/InfoTooltip'
-import { daysUntil, dueDateStatus } from '../../../utils/dueDateUtils'
+import { PeriodDetails } from '../../../components/PeriodDetails'
+import { daysUntil, expectedIncomeStatus } from '../../../utils/dueDateUtils'
+import { incomeDisplayParts, incomeSourceLabel } from '../../../utils/incomeDisplay'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
+import { groupUpcomingByNextDate } from '../../recurring/upcomingPaymentGroups'
 import { cadenceLabel, type RecurringIncome } from '../types'
 
 type UpcomingIncomeProps = {
@@ -9,37 +12,92 @@ type UpcomingIncomeProps = {
 }
 
 export function UpcomingIncome({ items, todayIso }: UpcomingIncomeProps) {
+  const groups = groupUpcomingByNextDate(items, todayIso, (item) => item.nextIncomeDate, {
+    thisMonth: "This month's expected",
+    nextMonth: "Next month's expected",
+  })
+
   return (
-    <section className="recurring-section" aria-labelledby="upcoming-income-heading">
-      <h2 id="upcoming-income-heading" className="metric-heading">
-        Upcoming income
-        <InfoTooltip label="About upcoming income">
-          Active recurring income schedules due in the selected window.
-        </InfoTooltip>
-      </h2>
-      {items.length === 0 ? (
+    <section className="recurring-section" aria-label="Expected income by month">
+      {groups.length === 0 ? (
         <p className="dashboard-empty" role="status">
-          No upcoming income in the next 30 days.
+          No expected income this month or next month.
         </p>
       ) : (
-        <ul className="upcoming-list">
-          {items.map((item) => {
-            const status = dueDateStatus(daysUntil(item.nextIncomeDate, todayIso))
+        <div className="upcoming-periods">
+          {groups.map((group) => {
+            const isPreview = group.id === 'nextMonth'
             return (
-              <li key={item.id} className="upcoming-item">
-                <p className="recurring-item-header">
-                  <strong>{item.description}</strong>
-                  <span>{formatCurrency(item.amount)}</span>
-                </p>
-                <p className="recurring-meta">
-                  {formatIsoDate(item.nextIncomeDate)} · {item.source} ·{' '}
-                  {cadenceLabel(item.cadence)}
-                </p>
-                <p className={`recurring-status ${status.className}`}>{status.label}</p>
-              </li>
+              <PeriodDetails
+                key={group.id}
+                className={`upcoming-period${isPreview ? ' upcoming-period--preview' : ''}`}
+                defaultOpen={group.defaultOpen}
+              >
+                <summary className="upcoming-period__summary">
+                  <span className="upcoming-period__title">
+                    <span className="upcoming-period__label">
+                      {isPreview ? "Next month's expected" : group.label}
+                      {isPreview ? (
+                        <span className="upcoming-period__preview-badge">Preview</span>
+                      ) : null}
+                    </span>
+                    <span className="upcoming-period__range">
+                      {isPreview
+                        ? `${group.rangeLabel} · not in expected total`
+                        : group.rangeLabel}
+                    </span>
+                  </span>
+                  <span className="upcoming-period__stats">
+                    <span className="upcoming-period__count">
+                      {group.items.length} {group.items.length === 1 ? 'paycheck' : 'paychecks'}
+                    </span>
+                    {isPreview ? (
+                      <span className="upcoming-period__total upcoming-period__total--preview">
+                        {formatCurrency(group.totalAmount)}
+                      </span>
+                    ) : (
+                      <span className="upcoming-period__total">
+                        {formatCurrency(group.totalAmount)}
+                      </span>
+                    )}
+                  </span>
+                </summary>
+                {isPreview ? (
+                  <p className="upcoming-period__preview-note">
+                    Sneak peek only — these amounts are not included in Expected income.
+                    <InfoTooltip label="About next month preview">
+                      Use this to spot quarterly or annual pay coming soon. Your expected total
+                      above counts this month only.
+                    </InfoTooltip>
+                  </p>
+                ) : null}
+                <ul className="upcoming-list">
+                  {group.items.map((item) => {
+                    const status = expectedIncomeStatus(daysUntil(item.nextIncomeDate, todayIso))
+                    const display = incomeDisplayParts({
+                      description: item.description,
+                      source: item.source,
+                    })
+                    const fromLabel = incomeSourceLabel(display.source)
+                    return (
+                      <li key={`${item.id}-${item.nextIncomeDate}`} className="upcoming-item">
+                        <p className="recurring-item-header">
+                          <strong>{display.title}</strong>
+                          <span>{formatCurrency(item.amount)}</span>
+                        </p>
+                        <p className="recurring-meta">
+                          {formatIsoDate(item.nextIncomeDate)}
+                          {fromLabel ? ` · ${fromLabel}` : null} · {cadenceLabel(item.cadence)}
+                        </p>
+                        <p className={`recurring-status ${status.className}`}>{status.label}</p>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </PeriodDetails>
             )
           })}
-        </ul>
+        </div>
       )}
     </section>
   )

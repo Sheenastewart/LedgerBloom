@@ -8,9 +8,6 @@ const TABS = [
   { to: paths.transactionsAll, label: 'All' },
   { to: paths.transactionsExpenses, label: 'Expenses' },
   { to: paths.transactionsIncome, label: 'Income' },
-  { to: paths.transactionsRecurringExpenses, label: 'Recurring Expenses' },
-  { to: paths.transactionsRecurringIncome, label: 'Recurring Income' },
-  { to: paths.transactionsCategories, label: 'Categories' },
 ]
 
 export function TransactionsLayout() {
@@ -19,7 +16,7 @@ export function TransactionsLayout() {
       <div className="hub-header">
         <PageHeader
           title="Transactions"
-          description="Review activity, manage schedules, and organize categories."
+          description="Review activity and manage expenses and income in one place."
         />
       </div>
       <SectionTabs ariaLabel="Transactions sections" tabs={TABS} />

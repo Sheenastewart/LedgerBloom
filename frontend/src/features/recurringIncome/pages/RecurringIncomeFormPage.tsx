@@ -147,7 +147,7 @@ export function RecurringIncomeFormPage({ mode }: RecurringIncomeFormPageProps) 
     try {
       if (mode === 'create') {
         const created = await createRecurringIncome(toRecurringIncomeCreateRequest(values))
-        navigate('/transactions/recurring-income', {
+        navigate('/transactions/income', {
           state: { successMessage: `Created recurring income "${created.description}".` },
         })
         return
@@ -156,7 +156,7 @@ export function RecurringIncomeFormPage({ mode }: RecurringIncomeFormPageProps) 
         routeId as number,
         toRecurringIncomeWriteRequest(values),
       )
-      navigate('/transactions/recurring-income', {
+      navigate('/transactions/income', {
         state: { successMessage: `Updated recurring income "${updated.description}".` },
       })
     } catch (error) {
@@ -217,7 +217,7 @@ export function RecurringIncomeFormPage({ mode }: RecurringIncomeFormPageProps) 
           submitting={submitting}
           previewOccurrences={previewRecurringIncomeOccurrences}
           onSubmit={(values) => void handleSubmit(values)}
-          onCancel={() => navigate('/transactions/recurring-income')}
+          onCancel={() => navigate('/transactions/income')}
         />
       ) : null}
     </main>

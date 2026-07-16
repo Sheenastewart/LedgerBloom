@@ -33,3 +33,17 @@ export function dueDateStatus(delta: number): DueDateStatus {
   }
   return { label: 'Upcoming', className: 'upcoming' }
 }
+
+/** Income-friendly status labels (expected pay, not bills due). */
+export function expectedIncomeStatus(delta: number): DueDateStatus {
+  if (delta < 0) {
+    return { label: 'Late', className: 'overdue' }
+  }
+  if (delta === 0) {
+    return { label: 'Expect today', className: 'due-today' }
+  }
+  if (delta <= 7) {
+    return { label: 'Expect soon', className: 'due-soon' }
+  }
+  return { label: 'Upcoming', className: 'upcoming' }
+}

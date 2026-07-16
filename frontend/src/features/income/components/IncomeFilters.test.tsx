@@ -5,35 +5,65 @@ import { IncomeFilters, validateIncomeFilterDraft } from './IncomeFilters'
 
 describe('validateIncomeFilterDraft', () => {
   it('requires month and year together', () => {
-    const result = validateIncomeFilterDraft({ month: '7', year: '', source: '' })
+    const result = validateIncomeFilterDraft({ scope: 'all', month: '7', year: '', source: '' })
     expect(result.errors.form).toMatch(/both month and year/i)
     expect(result.filters).toBeNull()
   })
 
   it('accepts month and year together', () => {
-    const result = validateIncomeFilterDraft({ month: '7', year: '2026', source: '' })
+    const result = validateIncomeFilterDraft({
+      scope: 'all',
+      month: '7',
+      year: '2026',
+      source: '',
+    })
     expect(result.errors).toEqual({})
-    expect(result.filters).toEqual({ year: 2026, month: 7 })
+    expect(result.filters).toEqual({ scope: 'all', year: 2026, month: 7 })
   })
 
   it('accepts source-only filters', () => {
-    const result = validateIncomeFilterDraft({ month: '', year: '', source: 'Employer' })
+    const result = validateIncomeFilterDraft({
+      scope: 'recorded',
+      month: '',
+      year: '',
+      source: 'Employer',
+    })
     expect(result.errors).toEqual({})
-    expect(result.filters).toEqual({ source: 'Employer' })
+    expect(result.filters).toEqual({ scope: 'recorded', source: 'Employer' })
   })
 
   it('trims source values', () => {
-    const result = validateIncomeFilterDraft({ month: '', year: '', source: '  Employer  ' })
-    expect(result.filters).toEqual({ source: 'Employer' })
+    const result = validateIncomeFilterDraft({
+      scope: 'all',
+      month: '',
+      year: '',
+      source: '  Employer  ',
+    })
+    expect(result.filters).toEqual({ scope: 'all', source: 'Employer' })
   })
 
   it('accepts combined filters', () => {
-    const result = validateIncomeFilterDraft({ month: '6', year: '2026', source: 'Freelance' })
-    expect(result.filters).toEqual({ year: 2026, month: 6, source: 'Freelance' })
+    const result = validateIncomeFilterDraft({
+      scope: 'all',
+      month: '6',
+      year: '2026',
+      source: 'Freelance',
+    })
+    expect(result.filters).toEqual({
+      scope: 'all',
+      year: 2026,
+      month: 6,
+      source: 'Freelance',
+    })
   })
 
   it('rejects invalid month values', () => {
-    const result = validateIncomeFilterDraft({ month: '13', year: '2026', source: '' })
+    const result = validateIncomeFilterDraft({
+      scope: 'all',
+      month: '13',
+      year: '2026',
+      source: '',
+    })
     expect(result.errors.month).toMatch(/between 1 and 12/i)
   })
 })
@@ -49,20 +79,28 @@ describe('IncomeFilters', () => {
     const onApply = vi.fn()
     const onClear = vi.fn()
 
-    render(<IncomeFilters appliedFilters={{}} onApply={onApply} onClear={onClear} />)
+    render(
+      <IncomeFilters
+        appliedFilters={{ scope: 'all' }}
+        onApply={onApply}
+        onClear={onClear}
+      />,
+    )
 
     await user.selectOptions(screen.getByLabelText('Month'), 'July')
     await user.type(screen.getByLabelText('Year'), '2026')
     await user.click(screen.getByRole('button', { name: 'Apply' }))
 
-    expect(onApply).toHaveBeenCalledWith({ year: 2026, month: 7 })
+    expect(onApply).toHaveBeenCalledWith({ scope: 'all', year: 2026, month: 7 })
   })
 
   it('shows month names while submitting numeric month values', async () => {
     const user = userEvent.setup()
     const onApply = vi.fn()
 
-    render(<IncomeFilters appliedFilters={{}} onApply={onApply} onClear={vi.fn()} />)
+    render(
+      <IncomeFilters appliedFilters={{ scope: 'all' }} onApply={onApply} onClear={vi.fn()} />,
+    )
 
     const monthSelect = screen.getByLabelText('Month')
     expect(screen.getByRole('option', { name: 'January' })).toBeInTheDocument()
@@ -72,7 +110,7 @@ describe('IncomeFilters', () => {
     await user.type(screen.getByLabelText('Year'), '2026')
     await user.click(screen.getByRole('button', { name: 'Apply' }))
 
-    expect(onApply).toHaveBeenCalledWith({ year: 2026, month: 3 })
+    expect(onApply).toHaveBeenCalledWith({ scope: 'all', year: 2026, month: 3 })
     expect((monthSelect as HTMLSelectElement).value).toBe('3')
   })
 
@@ -80,12 +118,14 @@ describe('IncomeFilters', () => {
     const user = userEvent.setup()
     const onApply = vi.fn()
 
-    render(<IncomeFilters appliedFilters={{}} onApply={onApply} onClear={vi.fn()} />)
+    render(
+      <IncomeFilters appliedFilters={{ scope: 'all' }} onApply={onApply} onClear={vi.fn()} />,
+    )
 
     await user.type(screen.getByLabelText('Source'), 'Employer')
     await user.click(screen.getByRole('button', { name: 'Apply' }))
 
-    expect(onApply).toHaveBeenCalledWith({ source: 'Employer' })
+    expect(onApply).toHaveBeenCalledWith({ scope: 'all', source: 'Employer' })
   })
 
   it('clears filters', async () => {
@@ -94,7 +134,11 @@ describe('IncomeFilters', () => {
     const onClear = vi.fn()
 
     render(
-      <IncomeFilters appliedFilters={{ year: 2026, month: 7 }} onApply={onApply} onClear={onClear} />,
+      <IncomeFilters
+        appliedFilters={{ scope: 'all', year: 2026, month: 7 }}
+        onApply={onApply}
+        onClear={onClear}
+      />,
     )
 
     await user.click(screen.getByRole('button', { name: 'Clear' }))

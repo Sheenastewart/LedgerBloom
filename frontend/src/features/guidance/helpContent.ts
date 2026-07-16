@@ -134,10 +134,10 @@ export const HELP_TOPICS: HelpTopic[] = [
     keywords: ['category', 'create', 'add', 'label', 'group'],
     body: [
       'Categories group expenses such as groceries, rent, or utilities.',
-      'Open Categories, choose Add category, enter a name, optionally add a description, then save.',
+      'Open Budgets → Categories, choose Add category, enter a name, optionally add a description, then save.',
       'Use clear names so reports and budgets stay easy to read.',
     ],
-    relatedPath: '/transactions/categories',
+    relatedPath: '/budgets/categories',
     relatedLabel: 'Manage categories',
   },
   {
@@ -151,7 +151,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'To delete it, first reassign or remove those linked expenses and recurring items.',
       'This protects your history from orphaned spending with no category.',
     ],
-    relatedPath: '/transactions/categories',
+    relatedPath: '/budgets/categories',
     relatedLabel: 'Manage categories',
   },
   {
@@ -162,8 +162,8 @@ export const HELP_TOPICS: HelpTopic[] = [
     keywords: ['expense', 'spend', 'add', 'transaction', 'merchant'],
     body: [
       'Expenses are actual spending that already happened.',
-      'Open Expenses, choose Add expense, enter description, amount, date, and category, then save.',
-      'Optional merchant and notes help later search and exports.',
+      'Open Expenses, choose Add expense, enter category, merchant, payment source, amount, and date, then save.',
+      'Payment source tracks which card or account paid; notes are optional.',
     ],
     relatedPath: '/transactions/expenses',
     relatedLabel: 'Manage expenses',
@@ -186,11 +186,12 @@ export const HELP_TOPICS: HelpTopic[] = [
     id: 'add-income',
     categoryId: 'income',
     title: 'How to add income',
-    summary: 'Record money received with source, amount, and date.',
+    summary: 'Record money received with a title, source, amount, and date.',
     keywords: ['income', 'pay', 'add', 'source', 'salary'],
     body: [
       'Income entries are actual money already received.',
-      'Open Income, choose Add income, pick One-time or Recurring, then complete the form. One-time saves a received entry; Recurring saves a schedule under the Recurring schedules tab.',
+      'Open Income, choose Add income, pick One-time or Recurring, then complete the form. One-time saves a received entry; Recurring saves a schedule under All recurring income.',
+      'Use Description as the main title (for example Paycheck). Source is where it came from — employer, client, or account — like payment source on expenses.',
       'Saved income feeds dashboard totals, reports, and net cash flow.',
     ],
     relatedPath: '/transactions/income',
@@ -275,7 +276,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Expected income sums active recurring income schedules whose next expected date falls in the selected month.',
       'It is an estimate until Mark Received creates a saved income entry.',
     ],
-    relatedPath: '/transactions/recurring-income',
+    relatedPath: '/transactions/income',
     relatedLabel: 'Open Income schedules',
   },
   {
@@ -288,8 +289,8 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Expected obligations sum active recurring expense schedules whose next payment date falls in the selected month.',
       'They are estimates until Mark Paid creates a saved expense.',
     ],
-    relatedPath: '/transactions/recurring-expenses',
-    relatedLabel: 'Manage recurring expenses',
+    relatedPath: '/transactions/expenses',
+    relatedLabel: 'Manage expenses',
   },
   {
     id: 'ytd-average',
@@ -344,8 +345,8 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Actual income and expenses exist only after you save them, or after Mark Received / Mark Paid confirms a due schedule.',
       'Reports and net cash flow use actual rows. Projected income also includes scheduled recurring income estimates.',
     ],
-    relatedPath: '/transactions/recurring-expenses',
-    relatedLabel: 'Manage recurring expenses',
+    relatedPath: '/transactions/expenses',
+    relatedLabel: 'Manage expenses',
   },
   {
     id: 'how-mark-paid-works',
@@ -358,8 +359,8 @@ export const HELP_TOPICS: HelpTopic[] = [
       'It also advances the next expected payment date for that schedule.',
       'You must confirm Mark Paid; LedgerBloom does not auto-post expenses in the background.',
     ],
-    relatedPath: '/transactions/recurring-expenses',
-    relatedLabel: 'Manage recurring expenses',
+    relatedPath: '/transactions/expenses',
+    relatedLabel: 'Manage expenses',
   },
   {
     id: 'upcoming-payments',
@@ -371,8 +372,8 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Upcoming payments list active recurring expense schedules with a next payment date in the selected period.',
       'Due status labels such as overdue or due soon are based on today’s date versus that next payment date.',
     ],
-    relatedPath: '/transactions/recurring-expenses',
-    relatedLabel: 'Manage recurring expenses',
+    relatedPath: '/transactions/expenses',
+    relatedLabel: 'Manage expenses',
   },
   {
     id: 'how-mark-received-works',
@@ -385,7 +386,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'It advances the next expected income date for that schedule.',
       'Until confirmed, recurring income remains an estimate in cash-flow planning.',
     ],
-    relatedPath: '/transactions/recurring-income',
+    relatedPath: '/transactions/income',
     relatedLabel: 'Open Income schedules',
   },
   {
@@ -398,7 +399,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Upcoming income lists active recurring income schedules with a next expected date in the selected period.',
       'Use Mark Received when the income is actually received to post it to the ledger.',
     ],
-    relatedPath: '/transactions/recurring-income',
+    relatedPath: '/transactions/income',
     relatedLabel: 'Open Income schedules',
   },
   {

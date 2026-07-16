@@ -161,7 +161,11 @@ export function ExpenseFormPage({ mode }: ExpenseFormPageProps) {
       const body = toExpenseWriteRequest(values)
       const categoryName =
         categories.find((category) => category.id === body.categoryId)?.name ?? 'expense'
-      const title = expenseDisplayTitle(body.description, categoryName)
+      const title = expenseDisplayTitle({
+        merchant: body.merchant,
+        description: body.description,
+        categoryName,
+      })
       if (mode === 'create') {
         await createExpense(body)
         navigate('/transactions/expenses', {

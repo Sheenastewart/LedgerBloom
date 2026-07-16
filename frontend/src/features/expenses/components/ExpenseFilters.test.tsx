@@ -5,30 +5,55 @@ import { ExpenseFilters, validateExpenseFilterDraft } from './ExpenseFilters'
 
 describe('validateExpenseFilterDraft', () => {
   it('requires month and year together', () => {
-    const result = validateExpenseFilterDraft({ month: '7', year: '', categoryId: '' })
+    const result = validateExpenseFilterDraft({
+      scope: 'all',
+      month: '7',
+      year: '',
+      categoryId: '',
+    })
     expect(result.errors.form).toMatch(/both month and year/i)
     expect(result.filters).toBeNull()
   })
 
   it('accepts month and year together', () => {
-    const result = validateExpenseFilterDraft({ month: '7', year: '2026', categoryId: '' })
+    const result = validateExpenseFilterDraft({
+      scope: 'all',
+      month: '7',
+      year: '2026',
+      categoryId: '',
+    })
     expect(result.errors).toEqual({})
-    expect(result.filters).toEqual({ year: 2026, month: 7 })
+    expect(result.filters).toEqual({ scope: 'all', year: 2026, month: 7 })
   })
 
   it('accepts category-only filters', () => {
-    const result = validateExpenseFilterDraft({ month: '', year: '', categoryId: '3' })
+    const result = validateExpenseFilterDraft({
+      scope: 'recorded',
+      month: '',
+      year: '',
+      categoryId: '3',
+    })
     expect(result.errors).toEqual({})
-    expect(result.filters).toEqual({ categoryId: 3 })
+    expect(result.filters).toEqual({ scope: 'recorded', categoryId: 3 })
   })
 
   it('accepts combined filters', () => {
-    const result = validateExpenseFilterDraft({ month: '6', year: '2026', categoryId: '2' })
-    expect(result.filters).toEqual({ year: 2026, month: 6, categoryId: 2 })
+    const result = validateExpenseFilterDraft({
+      scope: 'all',
+      month: '6',
+      year: '2026',
+      categoryId: '2',
+    })
+    expect(result.filters).toEqual({ scope: 'all', year: 2026, month: 6, categoryId: 2 })
   })
 
   it('rejects invalid month values', () => {
-    const result = validateExpenseFilterDraft({ month: '13', year: '2026', categoryId: '' })
+    const result = validateExpenseFilterDraft({
+      scope: 'all',
+      month: '13',
+      year: '2026',
+      categoryId: '',
+    })
     expect(result.errors.month).toMatch(/between 1 and 12/i)
   })
 })
@@ -46,8 +71,8 @@ describe('ExpenseFilters', () => {
 
     render(
       <ExpenseFilters
-        categories={[{ id: 1, name: 'Groceries', description: null, createdAt: '', updatedAt: '' }]}
-        appliedFilters={{}}
+        categories={[{ id: 1, name: 'Groceries', description: null, color: null, createdAt: '', updatedAt: '' }]}
+        appliedFilters={{ scope: 'all' }}
         onApply={onApply}
         onClear={onClear}
       />,
@@ -57,7 +82,7 @@ describe('ExpenseFilters', () => {
     await user.type(screen.getByLabelText('Year'), '2026')
     await user.click(screen.getByRole('button', { name: 'Apply' }))
 
-    expect(onApply).toHaveBeenCalledWith({ year: 2026, month: 7 })
+    expect(onApply).toHaveBeenCalledWith({ scope: 'all', year: 2026, month: 7 })
   })
 
   it('shows month names while submitting numeric month values', async () => {
@@ -67,7 +92,7 @@ describe('ExpenseFilters', () => {
     render(
       <ExpenseFilters
         categories={[]}
-        appliedFilters={{}}
+        appliedFilters={{ scope: 'all' }}
         onApply={onApply}
         onClear={vi.fn()}
       />,
@@ -81,7 +106,7 @@ describe('ExpenseFilters', () => {
     await user.type(screen.getByLabelText('Year'), '2026')
     await user.click(screen.getByRole('button', { name: 'Apply' }))
 
-    expect(onApply).toHaveBeenCalledWith({ year: 2026, month: 3 })
+    expect(onApply).toHaveBeenCalledWith({ scope: 'all', year: 2026, month: 3 })
     expect((monthSelect as HTMLSelectElement).value).toBe('3')
   })
 
@@ -93,7 +118,7 @@ describe('ExpenseFilters', () => {
     render(
       <ExpenseFilters
         categories={[]}
-        appliedFilters={{ year: 2026, month: 7 }}
+        appliedFilters={{ scope: 'all', year: 2026, month: 7 }}
         onApply={onApply}
         onClear={onClear}
       />,

@@ -1,5 +1,6 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ReactElement } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiClientError } from '../../../api/ApiClientError'
@@ -10,6 +11,7 @@ const sampleCategories = [
     id: 1,
     name: 'Groceries',
     description: null,
+    color: null,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
   },
@@ -24,6 +26,11 @@ const emptyValues = {
   notes: '',
 }
 
+
+function renderForm(ui: ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>)
+}
+
 describe('ExpenseForm', () => {
   afterEach(() => {
     cleanup()
@@ -31,7 +38,7 @@ describe('ExpenseForm', () => {
   })
 
   it('renders the create form', () => {
-    render(
+    renderForm(
       <ExpenseForm
         mode="create"
         initialValues={emptyValues}
@@ -43,16 +50,16 @@ describe('ExpenseForm', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Add expense' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Description')).toBeInTheDocument()
+    expect(screen.getByLabelText('Category')).toBeInTheDocument()
+    expect(screen.getByLabelText('Merchant')).toBeInTheDocument()
+    expect(screen.getByLabelText('Payment source')).toBeInTheDocument()
     expect(screen.getByLabelText('Amount')).toBeInTheDocument()
     expect(screen.getByLabelText('Expense date')).toBeInTheDocument()
-    expect(screen.getByLabelText('Category')).toBeInTheDocument()
   })
 
   it('shows a no-category state', () => {
-    render(
-      <MemoryRouter>
-        <ExpenseForm
+    renderForm(
+      <ExpenseForm
           mode="create"
           initialValues={emptyValues}
           categories={[]}
@@ -60,20 +67,19 @@ describe('ExpenseForm', () => {
           onSubmit={vi.fn()}
           onCancel={vi.fn()}
         />
-      </MemoryRouter>,
     )
 
     expect(screen.getByText(/Create at least one category/i)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Add category' })).toHaveAttribute(
       'href',
-      '/transactions/categories/new',
+      '/budgets/categories/new',
     )
   })
 
-  it('allows a blank description when category is not Other', async () => {
+  it('allows a blank payment source when category is not Other', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    render(
+    renderForm(
       <ExpenseForm
         mode="create"
         initialValues={{
@@ -96,15 +102,16 @@ describe('ExpenseForm', () => {
     })
   })
 
-  it('requires description when category is Other', async () => {
+  it('requires merchant when category is Other', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    render(
+    renderForm(
       <ExpenseForm
         mode="create"
         initialValues={{
           ...emptyValues,
           description: '',
+          merchant: '',
           amount: '12.50',
           expenseDate: '2026-07-10',
           categoryId: '2',
@@ -115,6 +122,7 @@ describe('ExpenseForm', () => {
             id: 2,
             name: 'Other',
             description: null,
+            color: null,
             createdAt: '2026-01-01T00:00:00Z',
             updatedAt: '2026-01-01T00:00:00Z',
           },
@@ -126,14 +134,14 @@ describe('ExpenseForm', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Create expense' }))
-    expect(screen.getByText('Description is required when category is Other')).toBeInTheDocument()
+    expect(screen.getByText('Merchant is required when category is Other')).toBeInTheDocument()
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
   it('rejects an invalid amount', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    render(
+    renderForm(
       <ExpenseForm
         mode="create"
         initialValues={{ ...emptyValues, amount: '0' }}
@@ -152,7 +160,7 @@ describe('ExpenseForm', () => {
   it('rejects more than two decimal places', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    render(
+    renderForm(
       <ExpenseForm
         mode="create"
         initialValues={{ ...emptyValues, amount: '12.345' }}
@@ -171,7 +179,7 @@ describe('ExpenseForm', () => {
   it('rejects an amount that is too large', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    render(
+    renderForm(
       <ExpenseForm
         mode="create"
         initialValues={{ ...emptyValues, amount: '12345678901' }}
@@ -192,7 +200,7 @@ describe('ExpenseForm', () => {
   it('requires an expense date', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    render(
+    renderForm(
       <ExpenseForm
         mode="create"
         initialValues={{ ...emptyValues, description: 'Lunch', amount: '12.50', categoryId: '1' }}
@@ -211,7 +219,7 @@ describe('ExpenseForm', () => {
   it('requires a category', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    render(
+    renderForm(
       <ExpenseForm
         mode="create"
         initialValues={{
@@ -235,7 +243,7 @@ describe('ExpenseForm', () => {
   it('submits valid create values', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn().mockResolvedValue(undefined)
-    render(
+    renderForm(
       <ExpenseForm
         mode="create"
         initialValues={emptyValues}
@@ -246,7 +254,7 @@ describe('ExpenseForm', () => {
       />,
     )
 
-    await user.type(screen.getByLabelText('Description'), '  Lunch  ')
+    await user.type(screen.getByLabelText('Payment source'), '  Lunch  ')
     await user.type(screen.getByLabelText('Amount'), '12.50')
     await user.type(screen.getByLabelText('Expense date'), '2026-07-10')
     await user.selectOptions(screen.getByLabelText('Category'), '1')
@@ -265,7 +273,7 @@ describe('ExpenseForm', () => {
   })
 
   it('displays backend validation errors', () => {
-    render(
+    renderForm(
       <ExpenseForm
         mode="create"
         initialValues={{ ...emptyValues, description: 'Lunch' }}
@@ -287,7 +295,7 @@ describe('ExpenseForm', () => {
   })
 
   it('disables submit while saving', () => {
-    render(
+    renderForm(
       <ExpenseForm
         mode="create"
         initialValues={{ ...emptyValues, description: 'Lunch' }}

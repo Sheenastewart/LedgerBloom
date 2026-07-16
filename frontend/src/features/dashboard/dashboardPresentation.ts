@@ -1,6 +1,7 @@
 /** Dashboard helpers that only reshape existing API values for presentation. */
 
-import { expenseDisplayTitle } from '../../utils/expenseDisplay'
+import { expenseDisplayParts } from '../../utils/expenseDisplay'
+import { incomeDisplayParts, incomeSourceLabel } from '../../utils/incomeDisplay'
 import { agendaGroupForDate, startOfTodayIso } from '../../utils/relativeDate'
 import type { ActivityRowItem } from '../../components/ActivityRowList'
 import { paths } from '../../routes/paths'
@@ -35,6 +36,8 @@ export type ActivityItem = {
   date: string
   detail: string
   merchant?: string | null
+  subtitle?: string | null
+  categoryColor?: string | null
   recurring?: boolean
 }
 
@@ -45,7 +48,7 @@ export function mergeRecentActivity(
     merchant?: string | null
     amount: number
     expenseDate: string
-    category: { name: string }
+    category: { name: string; color?: string | null }
   }>,
   incomes: Array<{
     id: number
@@ -57,25 +60,40 @@ export function mergeRecentActivity(
   }>,
   limit = 8,
 ): ActivityItem[] {
-  const expenseItems: ActivityItem[] = expenses.map((item) => ({
-    id: `expense-${item.id}`,
-    kind: 'expense',
-    description: expenseDisplayTitle(item.description, item.category.name),
-    amount: item.amount,
-    date: item.expenseDate,
-    detail: item.category.name,
-    merchant: item.merchant,
-  }))
-  const incomeItems: ActivityItem[] = incomes.map((item) => ({
-    id: `income-${item.id}`,
-    kind: 'income',
-    description: item.description,
-    amount: item.amount,
-    date: item.incomeDate,
-    detail: item.source,
-    merchant: item.source,
-    recurring: item.recurringIncomeId != null,
-  }))
+  const expenseItems: ActivityItem[] = expenses.map((item) => {
+    const display = expenseDisplayParts({
+      merchant: item.merchant,
+      description: item.description,
+      categoryName: item.category.name,
+    })
+    return {
+      id: `expense-${item.id}`,
+      kind: 'expense' as const,
+      description: display.title,
+      amount: item.amount,
+      date: item.expenseDate,
+      detail: display.categoryName ?? item.category.name,
+      merchant: item.merchant,
+      subtitle: display.paymentSource,
+      categoryColor: item.category.color,
+    }
+  })
+  const incomeItems: ActivityItem[] = incomes.map((item) => {
+    const display = incomeDisplayParts({
+      description: item.description,
+      source: item.source,
+    })
+    return {
+      id: `income-${item.id}`,
+      kind: 'income' as const,
+      description: display.title,
+      amount: item.amount,
+      date: item.incomeDate,
+      detail: display.source ?? '',
+      subtitle: display.source,
+      recurring: item.recurringIncomeId != null,
+    }
+  })
   return [...expenseItems, ...incomeItems]
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.id.localeCompare(b.id)))
     .slice(0, limit)
@@ -86,8 +104,9 @@ export function activityItemsToRows(items: ActivityItem[]): ActivityRowItem[] {
     id: item.id,
     kind: item.kind,
     title: item.description,
-    merchant: item.kind === 'expense' ? item.merchant : null,
+    subtitle: item.subtitle,
     categoryName: item.detail,
+    categoryColor: item.categoryColor,
     date: item.date,
     amount: item.amount,
     href:
@@ -113,9 +132,11 @@ export function buildAgenda(args: {
   expenseItems: Array<{
     id: number
     description: string | null
+    merchant?: string | null
     categoryName: string
     amount: number
     nextPaymentDate: string
+    cadence?: string
   }>
   incomeItems: Array<{
     id: number
@@ -127,26 +148,39 @@ export function buildAgenda(args: {
   todayIso?: string
 }): AgendaItem[] {
   const today = args.todayIso ?? startOfTodayIso()
-  const expenses: AgendaItem[] = args.expenseItems.map((item) => ({
-    id: `exp-${item.id}-${item.nextPaymentDate}`,
-    kind: 'payment' as const,
-    scheduleId: item.id,
-    label: expenseDisplayTitle(item.description, item.categoryName),
-    amount: item.amount,
-    date: item.nextPaymentDate,
-    detail: item.categoryName,
-    group: agendaGroupForDate(item.nextPaymentDate, today),
-  }))
-  const incomes: AgendaItem[] = args.incomeItems.map((item) => ({
-    id: `inc-${item.id}-${item.nextIncomeDate}`,
-    kind: 'income' as const,
-    scheduleId: item.id,
-    label: item.description,
-    amount: item.amount,
-    date: item.nextIncomeDate,
-    detail: item.source,
-    group: agendaGroupForDate(item.nextIncomeDate, today),
-  }))
+  const expenses: AgendaItem[] = args.expenseItems.map((item) => {
+    const display = expenseDisplayParts({
+      merchant: item.merchant,
+      description: item.description,
+      categoryName: item.categoryName,
+    })
+    return {
+      id: `exp-${item.id}-${item.nextPaymentDate}`,
+      kind: 'payment' as const,
+      scheduleId: item.id,
+      label: display.title,
+      amount: item.amount,
+      date: item.nextPaymentDate,
+      detail: [display.categoryName, item.cadence, display.paymentSource].filter(Boolean).join(' · '),
+      group: agendaGroupForDate(item.nextPaymentDate, today),
+    }
+  })
+  const incomes: AgendaItem[] = args.incomeItems.map((item) => {
+    const display = incomeDisplayParts({
+      description: item.description,
+      source: item.source,
+    })
+    return {
+      id: `inc-${item.id}-${item.nextIncomeDate}`,
+      kind: 'income' as const,
+      scheduleId: item.id,
+      label: display.title,
+      amount: item.amount,
+      date: item.nextIncomeDate,
+      detail: incomeSourceLabel(display.source) ?? '',
+      group: agendaGroupForDate(item.nextIncomeDate, today),
+    }
+  })
   return [...expenses, ...incomes]
     .filter((item) => item.group !== 'later')
     .sort((a, b) => a.date.localeCompare(b.date))

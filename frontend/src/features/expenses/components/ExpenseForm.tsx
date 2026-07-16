@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { expenseDisplayTitle, isOtherCategoryName } from '../../../utils/expenseDisplay'
+import { paths } from '../../../routes/paths'
 import type { Category } from '../../categories/types'
 import {
   amountToRequestValue,
@@ -38,14 +39,14 @@ function validate(values: ExpenseFormValues, categories: Category[]): ExpenseFor
     }
   }
 
-  if (isOtherCategoryName(categoryName) && !trimmedDescription) {
-    errors.description = 'Description is required when category is Other'
-  } else if (trimmedDescription.length > 160) {
-    errors.description = 'Description must be at most 160 characters'
+  if (isOtherCategoryName(categoryName) && !trimmedMerchant) {
+    errors.merchant = 'Merchant is required when category is Other'
+  } else if (trimmedMerchant.length > 120) {
+    errors.merchant = 'Merchant must be at most 120 characters'
   }
 
-  if (trimmedMerchant.length > 120) {
-    errors.merchant = 'Merchant must be at most 120 characters'
+  if (trimmedDescription.length > 160) {
+    errors.description = 'Payment source must be at most 160 characters'
   }
 
   const amountError = validateAmount(values.amount)
@@ -115,7 +116,7 @@ export function ExpenseForm({
       <div className="status-panel" role="status">
         <h1>{mode === 'create' ? 'Add expense' : 'Edit expense'}</h1>
         <p>Create at least one category before adding expenses.</p>
-        <Link to="/transactions/categories/new" className="button button-primary">
+        <Link to={paths.budgetsCategoryNew} className="button button-primary">
           Add category
         </Link>
         <button type="button" className="button button-secondary" onClick={onCancel}>
@@ -160,35 +161,10 @@ export function ExpenseForm({
             {categoryIdError}
           </p>
         ) : null}
-      </div>
-
-      <div className="field">
-        <label htmlFor="expense-description">Description</label>
-        <input
-          id="expense-description"
-          name="description"
-          type="text"
-          value={values.description}
-          onChange={(event) =>
-            setValues((current) => ({ ...current, description: event.target.value }))
-          }
-          aria-invalid={descriptionError ? true : undefined}
-          aria-describedby={
-            descriptionError ? 'expense-description-error' : 'expense-description-hint'
-          }
-          disabled={submitting}
-          autoComplete="off"
-        />
-        <p id="expense-description-hint" className="field-hint">
-          {otherSelected
-            ? 'Required when category is Other'
-            : 'Optional — leave blank to use the category name'}
+        <p className="field-hint">
+          Required — this determines which budget group receives the spending.{' '}
+          <Link to={paths.budgetsCategories}>Manage categories</Link>
         </p>
-        {descriptionError ? (
-          <p id="expense-description-error" className="field-error" role="alert">
-            {descriptionError}
-          </p>
-        ) : null}
       </div>
 
       <div className="field">
@@ -207,11 +183,40 @@ export function ExpenseForm({
           autoComplete="off"
         />
         <p id="expense-merchant-hint" className="field-hint">
-          Optional, up to 120 characters
+          {otherSelected
+            ? 'Required when category is Other'
+            : 'Who was paid — for example Netflix or the power company'}
         </p>
         {merchantError ? (
           <p id="expense-merchant-error" className="field-error" role="alert">
             {merchantError}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="field">
+        <label htmlFor="expense-description">Payment source</label>
+        <input
+          id="expense-description"
+          name="description"
+          type="text"
+          value={values.description}
+          onChange={(event) =>
+            setValues((current) => ({ ...current, description: event.target.value }))
+          }
+          aria-invalid={descriptionError ? true : undefined}
+          aria-describedby={
+            descriptionError ? 'expense-description-error' : 'expense-description-hint'
+          }
+          disabled={submitting}
+          autoComplete="off"
+        />
+        <p id="expense-description-hint" className="field-hint">
+          Optional — which card or account this came from
+        </p>
+        {descriptionError ? (
+          <p id="expense-description-error" className="field-error" role="alert">
+            {descriptionError}
           </p>
         ) : null}
       </div>

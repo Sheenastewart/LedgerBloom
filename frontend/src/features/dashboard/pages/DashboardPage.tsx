@@ -177,7 +177,7 @@ export function DashboardPage() {
           {greeting}
           {user?.displayName ? `, ${user.displayName}` : ''}.
         </h1>
-        <p className="greeting-block__sub">Am I financially okay this month?</p>
+        <p className="greeting-block__sub">Here’s a calm look at where you stand this month.</p>
       </header>
 
       <div className="dashboard-toolbar">
@@ -362,17 +362,30 @@ export function DashboardPage() {
           </section>
 
           <section className="dashboard-section" aria-labelledby="activity-heading">
-            <div className="section-heading-row">
-              <h2 id="activity-heading">Recent activity</h2>
-              <Link to={paths.transactionsAll} className="text-link">
-                View all
-              </Link>
-            </div>
-            <ActivityRowList
-              items={activityRows}
-              emptyMessage="No expenses or income recorded this month yet."
-              todayIso={today}
-            />
+            <details className="activity-fold">
+              <summary className="activity-fold__summary">
+                <span className="activity-fold__title-row">
+                  <h2 id="activity-heading">Recent financial activity</h2>
+                  {activityRows.length > 0 ? (
+                    <span className="activity-fold__count">{activityRows.length}</span>
+                  ) : null}
+                </span>
+                <Link
+                  to={paths.transactionsAll}
+                  className="text-link"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  View all
+                </Link>
+              </summary>
+              <div className="activity-fold__body">
+                <ActivityRowList
+                  items={activityRows}
+                  emptyMessage="No expenses or income recorded this month yet."
+                  todayIso={today}
+                />
+              </div>
+            </details>
           </section>
         </>
       ) : null}

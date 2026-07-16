@@ -5,11 +5,14 @@ import {
 } from '../../../components/RecurringCatchUpControl'
 import { ActionMenu, confirmDestructive } from '../../../components/ui/ActionMenu'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
-import { daysUntil, dueDateStatus, isPastDate } from '../../../utils/dueDateUtils'
-import { expenseDisplayTitle } from '../../../utils/expenseDisplay'
-import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
+import { isPastDate } from '../../../utils/dueDateUtils'
+import { expenseDisplayParts } from '../../../utils/expenseDisplay'
+import {
+  displayRecurringAmount,
+  perOccurrenceLabel,
+} from '../../../utils/monthlyEquivalent'
+import { formatCurrency } from '../../../utils/moneyUtils'
 import { CALCULATION_DEFS } from '../../guidance/calculationDefs'
-import { HelpLink } from '../../guidance/HelpLink'
 import { paths } from '../../../routes/paths'
 import { cadenceLabel, type RecurringExpense, type RecurringExpenseCatchUpResult } from '../types'
 
@@ -23,23 +26,6 @@ type RecurringListProps = {
   onPreviewCatchUp: (item: RecurringExpense, signal: AbortSignal) => Promise<CatchUpPreviewResult>
   onSubmitCatchUp: (item: RecurringExpense, occurrenceDates: string[]) => Promise<RecurringExpenseCatchUpResult>
   onCatchUpRecorded: (item: RecurringExpense, result: RecurringExpenseCatchUpResult) => void
-}
-
-function paymentStatus(
-  item: RecurringExpense,
-  todayIso: string,
-): { label: string; className: string; tone: 'success' | 'warning' | 'danger' | 'info' | 'neutral' } {
-  if (!item.active) {
-    return { label: 'Inactive', className: 'inactive', tone: 'neutral' }
-  }
-  const status = dueDateStatus(daysUntil(item.nextPaymentDate, todayIso))
-  const tone =
-    status.className === 'overdue'
-      ? 'danger'
-      : status.className === 'due-today' || status.className === 'due-soon'
-        ? 'warning'
-        : 'info'
-  return { ...status, tone }
 }
 
 export function RecurringList({
@@ -56,36 +42,42 @@ export function RecurringList({
   return (
     <ul className="recurring-list">
       {items.map((item) => {
-        const status = paymentStatus(item, todayIso)
         const overdue = item.active && isPastDate(item.nextPaymentDate, todayIso)
         const catchUpId = `recurring-catchup-${item.id}`
-        const title = expenseDisplayTitle(item.description, item.category.name)
+        const display = expenseDisplayParts({
+          merchant: item.merchant,
+          description: item.description,
+          categoryName: item.category.name,
+        })
+        const displayAmount = displayRecurringAmount(item.amount, item.cadence)
+        const eachLabel = perOccurrenceLabel(item.amount, item.cadence)
         return (
           <li key={item.id} className="recurring-item list-row">
             <div className="list-row__main">
               <div className="recurring-item-header">
-                <h3 className="list-row__title">{title}</h3>
-                <strong className="list-row__amount">{formatCurrency(item.amount)}</strong>
+                <h3 className="list-row__title">{display.title}</h3>
+                <strong className="list-row__amount">
+                  {formatCurrency(displayAmount)}
+                  {eachLabel ? '/mo' : null}
+                </strong>
               </div>
               <p className="recurring-meta list-row__meta">
-                {item.category.name} ·{' '}
+                {display.categoryName ? `${display.categoryName} · ` : null}
                 <span className="cadence-with-info">
                   {cadenceLabel(item.cadence)}
                   <InfoTooltip label="About cadence">{CALCULATION_DEFS.cadence.short}</InfoTooltip>
-                </span>{' '}
-                · Next {formatIsoDate(item.nextPaymentDate)}
+                </span>
+                {eachLabel ? ` · ${eachLabel}` : null}
               </p>
-              {item.merchant ? <p className="recurring-meta list-row__meta">Merchant: {item.merchant}</p> : null}
+              {display.paymentSource ? (
+                <p className="recurring-meta list-row__meta">Paid from {display.paymentSource}</p>
+              ) : null}
               {item.notes ? <p className="recurring-meta list-row__meta">{item.notes}</p> : null}
-              <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
-              <InfoTooltip label="About Mark Paid">
-                {CALCULATION_DEFS.markPaid.short}{' '}
-                <HelpLink to="/settings/help?topic=how-mark-paid-works">Learn more</HelpLink>
-              </InfoTooltip>
+              {!item.active ? <StatusBadge tone="neutral">Inactive</StatusBadge> : null}
             </div>
             <div className="recurring-actions list-row__actions">
               <ActionMenu
-                label={`Actions for ${title}`}
+                label={`Actions for ${display.title}`}
                 items={[
                   {
                     id: 'edit',
@@ -120,7 +112,7 @@ export function RecurringList({
                     onSelect: () => {
                       if (
                         confirmDestructive(
-                          `Delete recurring expense “${title}”? This cannot be undone.`,
+                          `Delete recurring expense “${display.title}”? This cannot be undone.`,
                         )
                       ) {
                         onDelete(item)

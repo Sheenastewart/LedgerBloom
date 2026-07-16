@@ -51,9 +51,10 @@ vi.mock('../budgets/api/budgetApi', () => ({
   createMonthlyBudget: vi.fn(),
   updateMonthlyBudget: vi.fn(),
   deleteMonthlyBudget: vi.fn(),
-  createCategoryLimit: vi.fn(),
-  updateCategoryLimit: vi.fn(),
-  deleteCategoryLimit: vi.fn(),
+  createGroupLimit: vi.fn(),
+  updateGroupLimit: vi.fn(),
+  deleteGroupLimit: vi.fn(),
+  generateMonthlyBudget: vi.fn(),
 }))
 
 vi.mock('../dashboard/api/dashboardApi', () => ({
@@ -149,7 +150,7 @@ describe('Recurring routes', () => {
     vi.mocked(recurringApi.getUpcomingRecurringExpenses).mockResolvedValue([])
   })
 
-  it('navigates from Dashboard to recurring expenses via Transactions', async () => {
+  it('navigates from Dashboard to expenses with recurring bills via Transactions', async () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/dashboard']}>
@@ -159,7 +160,8 @@ describe('Recurring routes', () => {
 
     expect(await screen.findByRole('heading', { name: /Test User/ })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Transactions' }))
-    await user.click(screen.getByRole('link', { name: 'Recurring Expenses' }))
-    expect(await screen.findByRole('heading', { name: 'Recurring' })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Expenses' }))
+    expect(await screen.findByRole('heading', { name: 'Expenses' })).toBeInTheDocument()
+    expect(screen.getAllByText('Remaining expenses').length).toBeGreaterThan(0)
   })
 })

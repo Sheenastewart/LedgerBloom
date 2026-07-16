@@ -12,6 +12,7 @@ export type RecurringHistoryMode = 'TRACK_FROM_NOW' | 'RECORD_SELECTED'
 export type RecurringCategoryRef = {
   id: number
   name: string
+  color?: string | null
 }
 
 export type RecurringExpense = {

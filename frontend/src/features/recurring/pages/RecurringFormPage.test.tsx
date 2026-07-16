@@ -27,6 +27,7 @@ function renderCreate() {
     <MemoryRouter initialEntries={['/transactions/recurring-expenses/new']}>
       <Routes>
         <Route path="/transactions/recurring-expenses/new" element={<RecurringFormPage mode="create" />} />
+        <Route path="/transactions/expenses" element={<p>Recurring home</p>} />
         <Route path="/transactions/recurring-expenses" element={<p>Recurring home</p>} />
       </Routes>
     </MemoryRouter>,
@@ -41,7 +42,7 @@ describe('RecurringFormPage', () => {
 
   beforeEach(() => {
     vi.mocked(categoryApi.getCategories).mockResolvedValue([
-      { id: 1, name: 'Entertainment', description: null, createdAt: '', updatedAt: '' },
+      { id: 1, name: 'Entertainment', description: null, color: null, createdAt: '', updatedAt: '' },
     ])
     vi.mocked(recurringApi.createRecurringExpense).mockReset()
     vi.mocked(recurringApi.updateRecurringExpense).mockReset()
@@ -65,9 +66,9 @@ describe('RecurringFormPage', () => {
     })
 
     renderCreate()
-    expect(await screen.findByLabelText('Description')).toBeInTheDocument()
+    expect(await screen.findByLabelText('Payment source')).toBeInTheDocument()
 
-    await user.type(screen.getByLabelText('Description'), 'Netflix')
+    await user.type(screen.getByLabelText('Payment source'), 'Netflix')
     await user.type(screen.getByLabelText('Amount'), '15.99')
     await user.selectOptions(screen.getByLabelText('Category'), '1')
     await user.selectOptions(screen.getByLabelText('Cadence'), 'MONTHLY')
@@ -83,29 +84,29 @@ describe('RecurringFormPage', () => {
   it('validates required fields', async () => {
     const user = userEvent.setup()
     renderCreate()
-    await screen.findByLabelText('Description')
+    await screen.findByLabelText('Payment source')
     await user.click(screen.getByRole('button', { name: 'Create recurring expense' }))
     expect(await screen.findByText('Category is required.')).toBeInTheDocument()
     expect(recurringApi.createRecurringExpense).not.toHaveBeenCalled()
   })
 
-  it('requires description when category is Other', async () => {
+  it('requires merchant when category is Other', async () => {
     const user = userEvent.setup()
     vi.mocked(categoryApi.getCategories).mockResolvedValue([
-      { id: 1, name: 'Other', description: null, createdAt: '', updatedAt: '' },
+      { id: 1, name: 'Other', description: null, color: null, createdAt: '', updatedAt: '' },
     ])
     renderCreate()
-    await screen.findByLabelText('Description')
+    await screen.findByLabelText('Payment source')
     await user.type(screen.getByLabelText('Amount'), '15.99')
     await user.selectOptions(screen.getByLabelText('Category'), '1')
     await user.selectOptions(screen.getByLabelText('Cadence'), 'MONTHLY')
     await user.type(screen.getByLabelText('Next payment date'), '2026-08-01')
     await user.click(screen.getByRole('button', { name: 'Create recurring expense' }))
-    expect(await screen.findByText('Description is required when category is Other.')).toBeInTheDocument()
+    expect(await screen.findByText('Merchant is required when category is Other.')).toBeInTheDocument()
     expect(recurringApi.createRecurringExpense).not.toHaveBeenCalled()
   })
 
-  it('creates a recurring expense without a description', async () => {
+  it('creates a recurring expense without a payment source', async () => {
     const user = userEvent.setup()
     vi.mocked(recurringApi.createRecurringExpense).mockResolvedValue({
       id: 10,
@@ -122,7 +123,7 @@ describe('RecurringFormPage', () => {
     })
 
     renderCreate()
-    expect(await screen.findByLabelText('Description')).toBeInTheDocument()
+    expect(await screen.findByLabelText('Payment source')).toBeInTheDocument()
 
     await user.type(screen.getByLabelText('Amount'), '15.99')
     await user.selectOptions(screen.getByLabelText('Category'), '1')
@@ -139,7 +140,7 @@ describe('RecurringFormPage', () => {
   it('shows semimonthly payment day fields with defaults when that cadence is selected', async () => {
     const user = userEvent.setup()
     renderCreate()
-    await screen.findByLabelText('Description')
+    await screen.findByLabelText('Payment source')
 
     await user.selectOptions(screen.getByLabelText('Cadence'), 'SEMIMONTHLY')
 
@@ -151,9 +152,9 @@ describe('RecurringFormPage', () => {
   it('allows a past next payment date and requires a history choice before submitting', async () => {
     const user = userEvent.setup()
     renderCreate()
-    await screen.findByLabelText('Description')
+    await screen.findByLabelText('Payment source')
 
-    await user.type(screen.getByLabelText('Description'), 'Netflix')
+    await user.type(screen.getByLabelText('Payment source'), 'Netflix')
     await user.type(screen.getByLabelText('Amount'), '15.99')
     await user.selectOptions(screen.getByLabelText('Category'), '1')
     await user.selectOptions(screen.getByLabelText('Cadence'), 'MONTHLY')
@@ -186,9 +187,9 @@ describe('RecurringFormPage', () => {
     })
 
     renderCreate()
-    await screen.findByLabelText('Description')
+    await screen.findByLabelText('Payment source')
 
-    await user.type(screen.getByLabelText('Description'), 'Netflix')
+    await user.type(screen.getByLabelText('Payment source'), 'Netflix')
     await user.type(screen.getByLabelText('Amount'), '15.99')
     await user.selectOptions(screen.getByLabelText('Category'), '1')
     await user.selectOptions(screen.getByLabelText('Cadence'), 'MONTHLY')
@@ -227,9 +228,9 @@ describe('RecurringFormPage', () => {
     })
 
     renderCreate()
-    await screen.findByLabelText('Description')
+    await screen.findByLabelText('Payment source')
 
-    await user.type(screen.getByLabelText('Description'), 'Netflix')
+    await user.type(screen.getByLabelText('Payment source'), 'Netflix')
     await user.type(screen.getByLabelText('Amount'), '15.99')
     await user.selectOptions(screen.getByLabelText('Category'), '1')
     await user.selectOptions(screen.getByLabelText('Cadence'), 'MONTHLY')

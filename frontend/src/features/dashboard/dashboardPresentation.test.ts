@@ -32,10 +32,14 @@ describe('dashboardPresentation', () => {
       5,
     )
     expect(items[0]?.description).toBe('Pay')
-    expect(items[1]?.description).toBe('Groceries')
+    expect(items[0]?.subtitle).toBe('Job')
+    expect(items[1]?.description).toBe('Market')
     const rows = activityItemsToRows(items)
     expect(rows[0]?.recurring).toBe(true)
-    expect(rows[1]?.merchant).toBe('Market')
+    expect(rows[0]?.title).toBe('Pay')
+    expect(rows[0]?.subtitle).toBe('Job')
+    expect(rows[1]?.title).toBe('Market')
+    expect(rows[1]?.categoryName).toBe('Groceries')
   })
 
   it('builds agenda groups and safe-to-spend', () => {
@@ -69,6 +73,8 @@ describe('dashboardPresentation', () => {
     })
     expect(agenda.find((item) => item.id.includes('exp-1'))?.group).toBe('overdue')
     expect(agenda.find((item) => item.id.includes('inc-3'))?.group).toBe('today')
+    expect(agenda.find((item) => item.id.includes('inc-3'))?.label).toBe('Pay')
+    expect(agenda.find((item) => item.id.includes('inc-3'))?.detail).toBe('From Job')
     expect(agenda.find((item) => item.id.includes('exp-2'))?.group).toBe('tomorrow')
     expect(safeToSpend(500, 120)).toBe(380)
     expect(safeToSpend(null, 120)).toBeNull()

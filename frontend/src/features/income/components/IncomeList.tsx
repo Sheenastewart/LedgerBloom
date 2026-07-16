@@ -1,5 +1,6 @@
 import { ActionMenu, confirmDestructive } from '../../../components/ui/ActionMenu'
 import { paths } from '../../../routes/paths'
+import { incomeDisplayParts, incomeSourceLabel } from '../../../utils/incomeDisplay'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
 import { userFacingNotes } from '../../../utils/notesUtils'
 import type { IncomeEntry } from '../types'
@@ -26,13 +27,21 @@ export function IncomeList({
         const isUndoing = undoingIncomeId === entry.id
         const fromRecurring = entry.recurringIncomeId != null
         const notes = userFacingNotes(entry.notes)
+        const display = incomeDisplayParts({
+          description: entry.description,
+          source: entry.source,
+        })
+        const fromLabel = incomeSourceLabel(display.source)
         return (
-          <li key={entry.id} className="income-row list-row">
+          <li key={entry.id} className="income-row list-row income-row--accent">
             <div className="income-main list-row__main">
-              <h2 className="income-description list-row__title">{entry.description}</h2>
-              <p className="income-amount list-row__amount">{formatCurrency(entry.amount)}</p>
+              <h2 className="income-description list-row__title">{display.title}</h2>
+              <p className="income-amount list-row__amount is-income">
+                {formatCurrency(entry.amount)}
+              </p>
               <p className="income-meta list-row__meta">
-                {formatIsoDate(entry.incomeDate)} · {entry.source}
+                {formatIsoDate(entry.incomeDate)}
+                {fromLabel ? ` · ${fromLabel}` : null}
               </p>
               {notes ? <p className="income-meta list-row__meta">Notes: {notes}</p> : null}
               {fromRecurring ? (
@@ -41,44 +50,14 @@ export function IncomeList({
             </div>
             <div className="income-actions list-row__actions">
               <ActionMenu
-                label={`Actions for ${entry.description}`}
+                label={`Actions for ${display.title}`}
                 items={[
                   {
                     id: 'edit',
                     label: 'Edit',
                     to: paths.transactionsIncomeEdit(entry.id),
                   },
-                  {
-                    id: 'duplicate',
-                    label: 'Duplicate',
-                    to: paths.transactionsIncomeNew,
-                    state: {
-                      prefill: {
-                        description: entry.description,
-                        source: entry.source,
-                        amount: String(entry.amount),
-                        incomeDate: entry.incomeDate,
-                        notes: notes ?? '',
-                      },
-                    },
-                  },
-                  {
-                    id: 'convert',
-                    label: 'Convert to recurring',
-                    to: paths.transactionsRecurringIncomeNew,
-                    state: {
-                      prefill: {
-                        description: entry.description,
-                        source: entry.source,
-                        amount: String(entry.amount),
-                        cadence: 'MONTHLY',
-                        nextIncomeDate: entry.incomeDate,
-                        active: true,
-                        notes: notes ?? '',
-                      },
-                    },
-                  },
-                  ...(fromRecurring
+                  ...(fromRecurring && entry.canUndoReceived
                     ? [
                         {
                           id: 'undo',
@@ -96,7 +75,7 @@ export function IncomeList({
                     onSelect: () => {
                       if (
                         confirmDestructive(
-                          `Delete income “${entry.description}”? This cannot be undone.`,
+                          `Delete income “${display.title}”? This cannot be undone.`,
                         )
                       ) {
                         onDelete(entry)

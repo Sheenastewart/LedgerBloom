@@ -1,5 +1,9 @@
 import { useState } from 'react'
 import type { Category } from '../../categories/types'
+import {
+  isLedgerFilterActive,
+  type LedgerFilterScope,
+} from '../../../utils/ledgerPageFilter'
 import type { ExpenseFilterDraft, ExpenseFilters } from '../types'
 
 const MONTH_OPTIONS = [
@@ -17,10 +21,14 @@ const MONTH_OPTIONS = [
   { value: '12', label: 'December' },
 ] as const
 
+export type ExpensePageFilters = ExpenseFilters & {
+  scope: LedgerFilterScope
+}
+
 type ExpenseFiltersProps = {
   categories: Category[]
-  appliedFilters: ExpenseFilters
-  onApply: (filters: ExpenseFilters) => void
+  appliedFilters: ExpensePageFilters
+  onApply: (filters: ExpensePageFilters) => void
   onClear: () => void
 }
 
@@ -30,8 +38,13 @@ export type ExpenseFilterErrors = {
   form?: string
 }
 
-function filtersToDraft(appliedFilters: ExpenseFilters): ExpenseFilterDraft {
+type ExpensePageFilterDraft = ExpenseFilterDraft & {
+  scope: string
+}
+
+function filtersToDraft(appliedFilters: ExpensePageFilters): ExpensePageFilterDraft {
   return {
+    scope: appliedFilters.scope ?? 'all',
     month: appliedFilters.month !== undefined ? String(appliedFilters.month) : '',
     year: appliedFilters.year !== undefined ? String(appliedFilters.year) : '',
     categoryId:
@@ -39,9 +52,9 @@ function filtersToDraft(appliedFilters: ExpenseFilters): ExpenseFilterDraft {
   }
 }
 
-function validateDraft(draft: ExpenseFilterDraft): {
+function validateDraft(draft: ExpensePageFilterDraft): {
   errors: ExpenseFilterErrors
-  filters: ExpenseFilters | null
+  filters: ExpensePageFilters | null
 } {
   const errors: ExpenseFilterErrors = {}
   const hasMonth = draft.month.trim() !== ''
@@ -77,11 +90,16 @@ function validateDraft(draft: ExpenseFilterDraft): {
     }
   }
 
+  const scope = (draft.scope || 'all') as LedgerFilterScope
+  if (!['all', 'recorded', 'upcoming', 'schedules'].includes(scope)) {
+    errors.form = 'Select a valid section to filter.'
+  }
+
   if (Object.keys(errors).length > 0) {
     return { errors, filters: null }
   }
 
-  const filters: ExpenseFilters = {}
+  const filters: ExpensePageFilters = { scope }
   if (year !== undefined && month !== undefined) {
     filters.year = year
     filters.month = month
@@ -99,7 +117,7 @@ export function ExpenseFilters({
   onApply,
   onClear,
 }: ExpenseFiltersProps) {
-  const [draft, setDraft] = useState<ExpenseFilterDraft>(() => filtersToDraft(appliedFilters))
+  const [draft, setDraft] = useState<ExpensePageFilterDraft>(() => filtersToDraft(appliedFilters))
   const [errors, setErrors] = useState<ExpenseFilterErrors>({})
 
   function handleApply() {
@@ -112,7 +130,7 @@ export function ExpenseFilters({
   }
 
   function handleClear() {
-    setDraft({ month: '', year: '', categoryId: '' })
+    setDraft({ scope: 'all', month: '', year: '', categoryId: '' })
     setErrors({})
     onClear()
   }
@@ -120,89 +138,110 @@ export function ExpenseFilters({
   const monthError = errors.month
   const yearError = errors.year
   const formError = errors.form
+  const active = isLedgerFilterActive(appliedFilters)
 
   return (
-    <fieldset className="expense-filters">
-      <legend>Filter expenses</legend>
+    <details className="page-filter">
+      <summary className="page-filter__summary">
+        <span className="page-filter__title">Filter</span>
+        <span className="page-filter__hint">Looking at, month, year, category</span>
+        {active ? <span className="page-filter__badge">On</span> : null}
+      </summary>
 
-      {formError ? (
-        <p className="form-error" role="alert">
-          {formError}
-        </p>
-      ) : null}
+      <div className="page-filter__body">
+        {formError ? (
+          <p className="form-error" role="alert">
+            {formError}
+          </p>
+        ) : null}
 
-      <div className="expense-filters-grid">
-        <div className="field">
-          <label htmlFor="expense-filter-month">Month</label>
-          <select
-            id="expense-filter-month"
-            value={draft.month}
-            onChange={(event) => setDraft((current) => ({ ...current, month: event.target.value }))}
-            aria-invalid={monthError ? true : undefined}
-            aria-describedby={monthError ? 'expense-filter-month-error' : undefined}
-          >
-            <option value="">Any month</option>
-            {MONTH_OPTIONS.map((month) => (
-              <option key={month.value} value={month.value}>
-                {month.label}
-              </option>
-            ))}
-          </select>
-          {monthError ? (
-            <p id="expense-filter-month-error" className="field-error" role="alert">
-              {monthError}
-            </p>
-          ) : null}
+        <div className="page-filter__grid">
+          <div className="field">
+            <label htmlFor="expense-filter-scope">Looking at</label>
+            <select
+              id="expense-filter-scope"
+              value={draft.scope}
+              onChange={(event) => setDraft((current) => ({ ...current, scope: event.target.value }))}
+            >
+              <option value="all">Everything</option>
+              <option value="recorded">Paid expenses</option>
+              <option value="upcoming">Remaining expenses</option>
+              <option value="schedules">All recurring expenses</option>
+            </select>
+          </div>
+
+          <div className="field">
+            <label htmlFor="expense-filter-month">Month</label>
+            <select
+              id="expense-filter-month"
+              value={draft.month}
+              onChange={(event) => setDraft((current) => ({ ...current, month: event.target.value }))}
+              aria-invalid={monthError ? true : undefined}
+              aria-describedby={monthError ? 'expense-filter-month-error' : undefined}
+            >
+              <option value="">Any month</option>
+              {MONTH_OPTIONS.map((month) => (
+                <option key={month.value} value={month.value}>
+                  {month.label}
+                </option>
+              ))}
+            </select>
+            {monthError ? (
+              <p id="expense-filter-month-error" className="field-error" role="alert">
+                {monthError}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="field">
+            <label htmlFor="expense-filter-year">Year</label>
+            <input
+              id="expense-filter-year"
+              type="number"
+              min={1}
+              max={9999}
+              value={draft.year}
+              onChange={(event) => setDraft((current) => ({ ...current, year: event.target.value }))}
+              aria-invalid={yearError ? true : undefined}
+              aria-describedby={yearError ? 'expense-filter-year-error' : undefined}
+              placeholder="Any year"
+            />
+            {yearError ? (
+              <p id="expense-filter-year-error" className="field-error" role="alert">
+                {yearError}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="field">
+            <label htmlFor="expense-filter-category">Category</label>
+            <select
+              id="expense-filter-category"
+              value={draft.categoryId}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, categoryId: event.target.value }))
+              }
+            >
+              <option value="">Any category</option>
+              {categories.map((category) => (
+                <option key={category.id} value={String(category.id)}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <div className="field">
-          <label htmlFor="expense-filter-year">Year</label>
-          <input
-            id="expense-filter-year"
-            type="number"
-            min={1}
-            max={9999}
-            value={draft.year}
-            onChange={(event) => setDraft((current) => ({ ...current, year: event.target.value }))}
-            aria-invalid={yearError ? true : undefined}
-            aria-describedby={yearError ? 'expense-filter-year-error' : undefined}
-            placeholder="Any year"
-          />
-          {yearError ? (
-            <p id="expense-filter-year-error" className="field-error" role="alert">
-              {yearError}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="field">
-          <label htmlFor="expense-filter-category">Category</label>
-          <select
-            id="expense-filter-category"
-            value={draft.categoryId}
-            onChange={(event) =>
-              setDraft((current) => ({ ...current, categoryId: event.target.value }))
-            }
-          >
-            <option value="">Any category</option>
-            {categories.map((category) => (
-              <option key={category.id} value={String(category.id)}>
-                {category.name}
-              </option>
-            ))}
-          </select>
+        <div className="page-filter__actions">
+          <button type="button" className="button button-primary" onClick={handleApply}>
+            Apply
+          </button>
+          <button type="button" className="button button-secondary" onClick={handleClear}>
+            Clear
+          </button>
         </div>
       </div>
-
-      <div className="expense-filters-actions">
-        <button type="button" className="button button-primary" onClick={handleApply}>
-          Apply
-        </button>
-        <button type="button" className="button button-secondary" onClick={handleClear}>
-          Clear
-        </button>
-      </div>
-    </fieldset>
+    </details>
   )
 }
 
