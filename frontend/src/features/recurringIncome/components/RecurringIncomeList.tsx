@@ -1,10 +1,14 @@
 import { Link } from 'react-router-dom'
 import { InfoTooltip } from '../../../components/InfoTooltip'
-import { daysUntil, dueDateStatus } from '../../../utils/dueDateUtils'
+import {
+  RecurringCatchUpControl,
+  type CatchUpPreviewResult,
+} from '../../../components/RecurringCatchUpControl'
+import { daysUntil, dueDateStatus, isPastDate } from '../../../utils/dueDateUtils'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
 import { CALCULATION_DEFS } from '../../guidance/calculationDefs'
 import { HelpLink } from '../../guidance/HelpLink'
-import { cadenceLabel, type RecurringIncome } from '../types'
+import { cadenceLabel, type RecurringIncome, type RecurringIncomeCatchUpResult } from '../types'
 
 type RecurringIncomeListProps = {
   items: RecurringIncome[]
@@ -13,6 +17,9 @@ type RecurringIncomeListProps = {
   deletingId: number | null
   onMarkReceived: (item: RecurringIncome) => void
   onDelete: (item: RecurringIncome) => void
+  onPreviewCatchUp: (item: RecurringIncome, signal: AbortSignal) => Promise<CatchUpPreviewResult>
+  onSubmitCatchUp: (item: RecurringIncome, occurrenceDates: string[]) => Promise<RecurringIncomeCatchUpResult>
+  onCatchUpRecorded: (item: RecurringIncome, result: RecurringIncomeCatchUpResult) => void
 }
 
 function incomeStatus(
@@ -32,11 +39,15 @@ export function RecurringIncomeList({
   deletingId,
   onMarkReceived,
   onDelete,
+  onPreviewCatchUp,
+  onSubmitCatchUp,
+  onCatchUpRecorded,
 }: RecurringIncomeListProps) {
   return (
     <ul className="recurring-list">
       {items.map((item) => {
         const status = incomeStatus(item, todayIso)
+        const overdue = item.active && isPastDate(item.nextIncomeDate, todayIso)
         return (
           <li key={item.id} className="recurring-item">
             <div className="recurring-item-header">
@@ -80,6 +91,14 @@ export function RecurringIncomeList({
                 {deletingId === item.id ? 'Deleting…' : 'Delete'}
               </button>
             </div>
+            {overdue ? (
+              <RecurringCatchUpControl
+                idPrefix={`recurring-income-catchup-${item.id}`}
+                loadPreview={(signal) => onPreviewCatchUp(item, signal)}
+                submitCatchUp={(occurrenceDates) => onSubmitCatchUp(item, occurrenceDates)}
+                onRecorded={(result) => onCatchUpRecorded(item, result)}
+              />
+            ) : null}
           </li>
         )
       })}

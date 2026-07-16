@@ -10,9 +10,11 @@ import com.ledgerbloom.expense.ExpenseRepository;
 import com.ledgerbloom.income.IncomeEntry;
 import com.ledgerbloom.income.IncomeEntryRepository;
 import com.ledgerbloom.recurring.RecurringExpense;
+import com.ledgerbloom.recurring.RecurringExpenseOccurrenceRecordRepository;
 import com.ledgerbloom.recurring.RecurringExpenseRepository;
 import com.ledgerbloom.recurring.support.RecurringPeriodProjection;
 import com.ledgerbloom.recurringincome.RecurringIncome;
+import com.ledgerbloom.recurringincome.RecurringIncomeOccurrenceRecordRepository;
 import com.ledgerbloom.recurringincome.RecurringIncomeRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -27,6 +29,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +44,8 @@ public class ReportService {
 	private final MonthlyBudgetService monthlyBudgetService;
 	private final RecurringExpenseRepository recurringExpenseRepository;
 	private final RecurringIncomeRepository recurringIncomeRepository;
+	private final RecurringIncomeOccurrenceRecordRepository recurringIncomeOccurrenceRecordRepository;
+	private final RecurringExpenseOccurrenceRecordRepository recurringExpenseOccurrenceRecordRepository;
 	private final CurrentUser currentUser;
 
 	public ReportService(
@@ -49,12 +54,16 @@ public class ReportService {
 			MonthlyBudgetService monthlyBudgetService,
 			RecurringExpenseRepository recurringExpenseRepository,
 			RecurringIncomeRepository recurringIncomeRepository,
+			RecurringIncomeOccurrenceRecordRepository recurringIncomeOccurrenceRecordRepository,
+			RecurringExpenseOccurrenceRecordRepository recurringExpenseOccurrenceRecordRepository,
 			CurrentUser currentUser) {
 		this.expenseRepository = expenseRepository;
 		this.incomeEntryRepository = incomeEntryRepository;
 		this.monthlyBudgetService = monthlyBudgetService;
 		this.recurringExpenseRepository = recurringExpenseRepository;
 		this.recurringIncomeRepository = recurringIncomeRepository;
+		this.recurringIncomeOccurrenceRecordRepository = recurringIncomeOccurrenceRecordRepository;
+		this.recurringExpenseOccurrenceRecordRepository = recurringExpenseOccurrenceRecordRepository;
 		this.currentUser = currentUser;
 	}
 
@@ -218,16 +227,24 @@ public class ReportService {
 		List<RecurringExpense> upcomingExpenses = candidateExpenses.stream()
 			.filter(item -> RecurringPeriodProjection.expenseOccurrenceCount(item, monthStart, monthEnd) > 0)
 			.toList();
-		BigDecimal expectedRecurringIncome = RecurringPeriodProjection.sumIncomeInPeriod(
-			upcomingIncome,
-			monthStart,
-			monthEnd
-		);
-		BigDecimal expectedRecurringExpenses = RecurringPeriodProjection.sumExpenseInPeriod(
-			upcomingExpenses,
-			monthStart,
-			monthEnd
-		);
+		BigDecimal expectedRecurringIncome = BigDecimal.ZERO;
+		for (RecurringIncome item : upcomingIncome) {
+			expectedRecurringIncome = expectedRecurringIncome.add(RecurringPeriodProjection.incomeAmountInPeriod(
+				item,
+				monthStart,
+				monthEnd,
+				Set.copyOf(recurringIncomeOccurrenceRecordRepository.findOccurrenceDatesByRecurringIncomeId(item.getId()))
+			));
+		}
+		BigDecimal expectedRecurringExpenses = BigDecimal.ZERO;
+		for (RecurringExpense item : upcomingExpenses) {
+			expectedRecurringExpenses = expectedRecurringExpenses.add(RecurringPeriodProjection.expenseAmountInPeriod(
+				item,
+				monthStart,
+				monthEnd,
+				Set.copyOf(recurringExpenseOccurrenceRecordRepository.findOccurrenceDatesByRecurringExpenseId(item.getId()))
+			));
+		}
 
 		BigDecimal projectedCashFlow = totalIncome
 			.add(expectedRecurringIncome)

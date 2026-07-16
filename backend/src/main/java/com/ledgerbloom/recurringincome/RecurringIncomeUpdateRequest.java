@@ -1,6 +1,8 @@
 package com.ledgerbloom.recurringincome;
 
 import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -31,6 +33,14 @@ public record RecurringIncomeUpdateRequest(
 		@NotNull(message = "Active is required")
 		Boolean active,
 
-		String notes
+		String notes,
+
+		@Min(value = 1, message = "firstPaymentDay must be between 1 and 31")
+		@Max(value = 31, message = "firstPaymentDay must be between 1 and 31")
+		Integer firstPaymentDay,
+
+		@Min(value = 1, message = "secondPaymentDay must be between 1 and 31")
+		@Max(value = 31, message = "secondPaymentDay must be between 1 and 31")
+		Integer secondPaymentDay
 ) {
 }

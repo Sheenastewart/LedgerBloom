@@ -14,6 +14,8 @@ vi.mock('../api/recurringIncomeApi', () => ({
   getUpcomingRecurringIncome: vi.fn().mockResolvedValue([]),
   deleteRecurringIncome: vi.fn(),
   markRecurringIncomeReceived: vi.fn(),
+  previewRecurringIncomeOccurrences: vi.fn(),
+  catchUpRecurringIncome: vi.fn(),
 }))
 
 describe('RecurringIncomePage', () => {

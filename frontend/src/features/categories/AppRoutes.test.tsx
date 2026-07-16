@@ -91,6 +91,8 @@ vi.mock('../recurring/api/recurringApi', () => ({
   updateRecurringExpense: vi.fn(),
   deleteRecurringExpense: vi.fn(),
   markRecurringExpensePaid: vi.fn(),
+  previewRecurringExpenseOccurrences: vi.fn(),
+  catchUpRecurringExpense: vi.fn(),
 }))
 
 vi.mock('../recurringIncome/api/recurringIncomeApi', () => ({
@@ -101,6 +103,8 @@ vi.mock('../recurringIncome/api/recurringIncomeApi', () => ({
   updateRecurringIncome: vi.fn(),
   deleteRecurringIncome: vi.fn(),
   markRecurringIncomeReceived: vi.fn(),
+  previewRecurringIncomeOccurrences: vi.fn(),
+  catchUpRecurringIncome: vi.fn(),
 }))
 
 vi.mock('../reports/api/reportsApi', () => ({

@@ -17,6 +17,8 @@ vi.mock('../../recurringIncome/api/recurringIncomeApi', () => ({
   getUpcomingRecurringIncome: vi.fn(),
   deleteRecurringIncome: vi.fn(),
   markRecurringIncomeReceived: vi.fn(),
+  previewRecurringIncomeOccurrences: vi.fn(),
+  catchUpRecurringIncome: vi.fn(),
 }))
 
 const sampleEntries = [

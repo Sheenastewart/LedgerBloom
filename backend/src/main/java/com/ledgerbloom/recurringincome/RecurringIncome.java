@@ -46,6 +46,12 @@ public class RecurringIncome {
 	@Column(name = "next_income_date", nullable = false)
 	private LocalDate nextIncomeDate;
 
+	@Column(name = "first_payment_day")
+	private Integer firstPaymentDay;
+
+	@Column(name = "second_payment_day")
+	private Integer secondPaymentDay;
+
 	@Column(nullable = false)
 	private boolean active;
 
@@ -70,6 +76,20 @@ public class RecurringIncome {
 			LocalDate nextIncomeDate,
 			boolean active,
 			String notes) {
+		this(user, description, source, amount, cadence, nextIncomeDate, active, notes, null, null);
+	}
+
+	public RecurringIncome(
+			User user,
+			String description,
+			String source,
+			BigDecimal amount,
+			RecurringIncomeCadence cadence,
+			LocalDate nextIncomeDate,
+			boolean active,
+			String notes,
+			Integer firstPaymentDay,
+			Integer secondPaymentDay) {
 		this.user = user;
 		this.description = description;
 		this.source = source;
@@ -78,6 +98,8 @@ public class RecurringIncome {
 		this.nextIncomeDate = nextIncomeDate;
 		this.active = active;
 		this.notes = notes;
+		this.firstPaymentDay = firstPaymentDay;
+		this.secondPaymentDay = secondPaymentDay;
 	}
 
 	@PrePersist
@@ -138,6 +160,22 @@ public class RecurringIncome {
 
 	public void setNextIncomeDate(LocalDate nextIncomeDate) {
 		this.nextIncomeDate = nextIncomeDate;
+	}
+
+	public Integer getFirstPaymentDay() {
+		return firstPaymentDay;
+	}
+
+	public void setFirstPaymentDay(Integer firstPaymentDay) {
+		this.firstPaymentDay = firstPaymentDay;
+	}
+
+	public Integer getSecondPaymentDay() {
+		return secondPaymentDay;
+	}
+
+	public void setSecondPaymentDay(Integer secondPaymentDay) {
+		this.secondPaymentDay = secondPaymentDay;
 	}
 
 	public boolean isActive() {

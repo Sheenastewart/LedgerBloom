@@ -15,6 +15,8 @@ public record RecurringExpenseResponse(
 		boolean active,
 		String notes,
 		Instant createdAt,
-		Instant updatedAt
+		Instant updatedAt,
+		Integer firstPaymentDay,
+		Integer secondPaymentDay
 ) {
 }

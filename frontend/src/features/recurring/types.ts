@@ -5,6 +5,9 @@ export type RecurringCadence =
   | 'QUARTERLY'
   | 'SEMIANNUAL'
   | 'ANNUAL'
+  | 'SEMIMONTHLY'
+
+export type RecurringHistoryMode = 'TRACK_FROM_NOW' | 'RECORD_SELECTED'
 
 export type RecurringCategoryRef = {
   id: number
@@ -23,6 +26,8 @@ export type RecurringExpense = {
   notes: string | null
   createdAt: string
   updatedAt: string
+  firstPaymentDay?: number | null
+  secondPaymentDay?: number | null
 }
 
 export type RecurringWriteRequest = {
@@ -34,6 +39,14 @@ export type RecurringWriteRequest = {
   nextPaymentDate: string
   active: boolean
   notes: string | null
+  firstPaymentDay?: number | null
+  secondPaymentDay?: number | null
+}
+
+/** Extends the base write request with create-only historical catch-up choices. */
+export type RecurringCreateRequest = RecurringWriteRequest & {
+  historyMode?: RecurringHistoryMode | null
+  selectedOccurrenceDates?: string[] | null
 }
 
 export type MarkPaidRequest = {
@@ -71,6 +84,10 @@ export type RecurringFormValues = {
   nextPaymentDate: string
   active: boolean
   notes: string
+  firstPaymentDay: string
+  secondPaymentDay: string
+  historyMode: '' | RecurringHistoryMode
+  selectedOccurrenceDates: string[]
 }
 
 export type RecurringFormErrors = {
@@ -82,6 +99,9 @@ export type RecurringFormErrors = {
   nextPaymentDate?: string
   active?: string
   notes?: string
+  firstPaymentDay?: string
+  secondPaymentDay?: string
+  historyMode?: string
   form?: string
 }
 
@@ -92,8 +112,47 @@ export const CADENCE_OPTIONS: { value: RecurringCadence; label: string }[] = [
   { value: 'QUARTERLY', label: 'Quarterly' },
   { value: 'SEMIANNUAL', label: 'Semiannual' },
   { value: 'ANNUAL', label: 'Annual' },
+  { value: 'SEMIMONTHLY', label: 'Semimonthly' },
 ]
 
 export function cadenceLabel(cadence: RecurringCadence): string {
   return CADENCE_OPTIONS.find((option) => option.value === cadence)?.label ?? cadence
+}
+
+/** Occurrence preview types mirror OccurrencePreviewResponse.java field names exactly. */
+export type OccurrencePreviewItem = {
+  occurrenceDate: string
+  amount: number
+}
+
+export type OccurrencePreviewRequest = {
+  cadence: RecurringCadence
+  startDate: string
+  amount: number
+  firstPaymentDay?: number | null
+  secondPaymentDay?: number | null
+}
+
+export type OccurrencePreviewResponse = {
+  occurrences: OccurrencePreviewItem[]
+  suggestedNextOnOrAfterToday: string
+}
+
+export type CatchUpRequest = {
+  occurrenceDates: string[]
+}
+
+export type CreatedExpenseSummary = {
+  id: number
+  description: string
+  amount: number
+  expenseDate: string
+}
+
+export type RecurringExpenseCatchUpResult = {
+  createdCount: number
+  createdDates: string[]
+  nextOccurrenceDate: string
+  updatedRecurringExpense: RecurringExpense
+  createdExpenses: CreatedExpenseSummary[]
 }

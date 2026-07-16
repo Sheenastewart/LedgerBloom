@@ -4,15 +4,21 @@ import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
 import { HowThisWorks } from '../../../components/HowThisWorks'
 import { HelpLink } from '../../guidance/HelpLink'
 import {
+  catchUpRecurringIncome,
   deleteRecurringIncome,
   getRecurringIncome,
   getUpcomingRecurringIncome,
   markRecurringIncomeReceived,
+  previewRecurringIncomeOccurrences,
 } from '../api/recurringIncomeApi'
 import { RecurringIncomeFilters } from './RecurringIncomeFilters'
 import { RecurringIncomeList } from './RecurringIncomeList'
 import { UpcomingIncome } from './UpcomingIncome'
-import type { RecurringIncome, RecurringIncomeFilters as RecurringIncomeFilterValues } from '../types'
+import type {
+  RecurringIncome,
+  RecurringIncomeCatchUpResult,
+  RecurringIncomeFilters as RecurringIncomeFilterValues,
+} from '../types'
 import '../recurringIncome.css'
 import '../../dashboard/dashboard.css'
 import '../../guidance/help.css'
@@ -131,6 +137,32 @@ export function RecurringIncomePanel({
     }
   }
 
+  async function handlePreviewCatchUp(item: RecurringIncome, signal: AbortSignal) {
+    return previewRecurringIncomeOccurrences(
+      {
+        cadence: item.cadence,
+        startDate: item.nextIncomeDate,
+        amount: item.amount,
+        firstPaymentDay: item.firstPaymentDay,
+        secondPaymentDay: item.secondPaymentDay,
+      },
+      signal,
+    )
+  }
+
+  async function handleSubmitCatchUp(item: RecurringIncome, occurrenceDates: string[]) {
+    return catchUpRecurringIncome(item.id, { occurrenceDates })
+  }
+
+  function handleCatchUpRecorded(item: RecurringIncome, result: RecurringIncomeCatchUpResult) {
+    setActionError(null)
+    setLocalSuccess(
+      `Recorded ${result.createdCount} past occurrence${result.createdCount === 1 ? '' : 's'} for "${item.description}".`,
+    )
+    onClearSuccessMessage?.()
+    void loadPage(appliedFilters)
+  }
+
   const hasActiveFilters =
     appliedFilters.active !== undefined ||
     appliedFilters.cadence !== undefined ||
@@ -219,6 +251,9 @@ export function RecurringIncomePanel({
                 deletingId={deletingId}
                 onMarkReceived={(item) => void handleMarkReceived(item)}
                 onDelete={(item) => void handleDelete(item)}
+                onPreviewCatchUp={handlePreviewCatchUp}
+                onSubmitCatchUp={handleSubmitCatchUp}
+                onCatchUpRecorded={handleCatchUpRecorded}
               />
             )}
           </section>

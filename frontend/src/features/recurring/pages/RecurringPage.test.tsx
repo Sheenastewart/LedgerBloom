@@ -15,6 +15,8 @@ vi.mock('../api/recurringApi', () => ({
   updateRecurringExpense: vi.fn(),
   deleteRecurringExpense: vi.fn(),
   markRecurringExpensePaid: vi.fn(),
+  previewRecurringExpenseOccurrences: vi.fn(),
+  catchUpRecurringExpense: vi.fn(),
 }))
 
 vi.mock('../../categories/api/categoryApi', () => ({
@@ -120,6 +122,54 @@ describe('RecurringPage', () => {
     })
     expect(await screen.findByText(/Paid "Netflix"/)).toBeInTheDocument()
     confirmSpy.mockRestore()
+  })
+
+  it('records overdue occurrences via the catch-up panel', async () => {
+    const user = userEvent.setup()
+    const overdueItem = { ...sampleItem, id: 20, nextPaymentDate: '2020-01-01' }
+    vi.mocked(recurringApi.getRecurringExpenses).mockResolvedValue([overdueItem])
+    vi.mocked(recurringApi.getUpcomingRecurringExpenses).mockResolvedValue([])
+    vi.mocked(recurringApi.previewRecurringExpenseOccurrences).mockResolvedValue({
+      occurrences: [{ occurrenceDate: '2020-01-01', amount: 15.99 }],
+      suggestedNextOnOrAfterToday: '2026-08-01',
+    })
+    vi.mocked(recurringApi.catchUpRecurringExpense).mockResolvedValue({
+      createdCount: 1,
+      createdDates: ['2020-01-01'],
+      nextOccurrenceDate: '2026-08-01',
+      updatedRecurringExpense: { ...overdueItem, nextPaymentDate: '2026-08-01' },
+      createdExpenses: [],
+    })
+
+    renderPage()
+    await screen.findAllByText('Netflix')
+    await user.click(screen.getByRole('button', { name: 'Record past occurrences' }))
+
+    await waitFor(() => {
+      expect(recurringApi.previewRecurringExpenseOccurrences).toHaveBeenCalledWith(
+        {
+          cadence: 'MONTHLY',
+          startDate: '2020-01-01',
+          amount: 15.99,
+          firstPaymentDay: undefined,
+          secondPaymentDay: undefined,
+        },
+        expect.anything(),
+      )
+    })
+    expect(await screen.findByText('01/01/2020')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Record 1 occurrence' }))
+
+    await waitFor(() => {
+      expect(recurringApi.catchUpRecurringExpense).toHaveBeenCalledWith(20, {
+        occurrenceDates: ['2020-01-01'],
+      })
+    })
+    expect(await screen.findByText(/Next scheduled date: 08\/01\/2026/)).toBeInTheDocument()
+    expect(
+      await screen.findByText('Recorded 1 past occurrence for "Netflix".'),
+    ).toBeInTheDocument()
   })
 
   it('cancels delete when confirmation is dismissed', async () => {

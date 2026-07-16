@@ -5,10 +5,12 @@ import { formatAmountForInput } from '../../../utils/moneyUtils'
 import {
   createRecurringIncome,
   getRecurringIncomeById,
+  previewRecurringIncomeOccurrences,
   updateRecurringIncome,
 } from '../api/recurringIncomeApi'
 import {
   RecurringIncomeForm,
+  toRecurringIncomeCreateRequest,
   toRecurringIncomeWriteRequest,
 } from '../components/RecurringIncomeForm'
 import { parseRecurringIncomeRouteId } from '../parseRecurringIncomeRouteId'
@@ -27,6 +29,10 @@ const emptyValues: RecurringIncomeFormValues = {
   nextIncomeDate: '',
   active: true,
   notes: '',
+  firstPaymentDay: '',
+  secondPaymentDay: '',
+  historyMode: '',
+  selectedOccurrenceDates: [],
 }
 
 function mapServerErrors(error: ApiClientError): RecurringIncomeFormErrors {
@@ -39,7 +45,9 @@ function mapServerErrors(error: ApiClientError): RecurringIncomeFormErrors {
       fieldError.field === 'cadence' ||
       fieldError.field === 'nextIncomeDate' ||
       fieldError.field === 'active' ||
-      fieldError.field === 'notes'
+      fieldError.field === 'notes' ||
+      fieldError.field === 'firstPaymentDay' ||
+      fieldError.field === 'secondPaymentDay'
     ) {
       next[fieldError.field] = fieldError.message
     }
@@ -97,6 +105,10 @@ export function RecurringIncomeFormPage({ mode }: RecurringIncomeFormPageProps) 
           nextIncomeDate: item.nextIncomeDate,
           active: item.active,
           notes: item.notes ?? '',
+          firstPaymentDay: item.firstPaymentDay != null ? String(item.firstPaymentDay) : '',
+          secondPaymentDay: item.secondPaymentDay != null ? String(item.secondPaymentDay) : '',
+          historyMode: '',
+          selectedOccurrenceDates: [],
         })
         setFormKey((value) => value + 1)
       } catch (error) {
@@ -124,7 +136,7 @@ export function RecurringIncomeFormPage({ mode }: RecurringIncomeFormPageProps) 
     setServerErrors({})
     try {
       if (mode === 'create') {
-        const created = await createRecurringIncome(toRecurringIncomeWriteRequest(values))
+        const created = await createRecurringIncome(toRecurringIncomeCreateRequest(values))
         navigate('/income?section=recurring', {
           state: { successMessage: `Created recurring income "${created.description}".` },
         })
@@ -193,6 +205,7 @@ export function RecurringIncomeFormPage({ mode }: RecurringIncomeFormPageProps) 
           initialValues={initialValues}
           serverErrors={serverErrors}
           submitting={submitting}
+          previewOccurrences={previewRecurringIncomeOccurrences}
           onSubmit={(values) => void handleSubmit(values)}
           onCancel={() => navigate('/income?section=recurring')}
         />

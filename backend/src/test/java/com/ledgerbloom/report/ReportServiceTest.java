@@ -15,9 +15,11 @@ import com.ledgerbloom.income.IncomeEntry;
 import com.ledgerbloom.income.IncomeEntryRepository;
 import com.ledgerbloom.recurring.RecurringExpense;
 import com.ledgerbloom.recurring.RecurringExpenseCadence;
+import com.ledgerbloom.recurring.RecurringExpenseOccurrenceRecordRepository;
 import com.ledgerbloom.recurring.RecurringExpenseRepository;
 import com.ledgerbloom.recurringincome.RecurringIncome;
 import com.ledgerbloom.recurringincome.RecurringIncomeCadence;
+import com.ledgerbloom.recurringincome.RecurringIncomeOccurrenceRecordRepository;
 import com.ledgerbloom.recurringincome.RecurringIncomeRepository;
 import com.ledgerbloom.user.User;
 import java.lang.reflect.Field;
@@ -55,6 +57,12 @@ class ReportServiceTest {
 	private RecurringIncomeRepository recurringIncomeRepository;
 
 	@Mock
+	private RecurringIncomeOccurrenceRecordRepository recurringIncomeOccurrenceRecordRepository;
+
+	@Mock
+	private RecurringExpenseOccurrenceRecordRepository recurringExpenseOccurrenceRecordRepository;
+
+	@Mock
 	private CurrentUser currentUser;
 
 	@InjectMocks
@@ -69,6 +77,10 @@ class ReportServiceTest {
 		user = new User("user@example.com", "hash", "Test User");
 		setId(user, USER_ID);
 		lenient().when(currentUser.requireUserId()).thenReturn(USER_ID);
+		lenient().when(recurringIncomeOccurrenceRecordRepository.findOccurrenceDatesByRecurringIncomeId(org.mockito.ArgumentMatchers.anyLong()))
+			.thenReturn(List.of());
+		lenient().when(recurringExpenseOccurrenceRecordRepository.findOccurrenceDatesByRecurringExpenseId(org.mockito.ArgumentMatchers.anyLong()))
+			.thenReturn(List.of());
 
 		groceries = new Category(user, "Groceries", null);
 		setId(groceries, 1L);

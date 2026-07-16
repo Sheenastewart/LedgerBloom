@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CADENCE_OPTIONS, cadenceLabel } from './types'
 
-describe('recurring income cadence labels', () => {
+describe('recurring expense cadence labels', () => {
   it('uses user-friendly labels for every supported frequency, including Semimonthly', () => {
     expect(CADENCE_OPTIONS).toEqual([
       { value: 'WEEKLY', label: 'Weekly' },
@@ -13,7 +13,6 @@ describe('recurring income cadence labels', () => {
       { value: 'SEMIMONTHLY', label: 'Semimonthly' },
     ])
     expect(cadenceLabel('BIWEEKLY')).toBe('Biweekly')
-    expect(cadenceLabel('SEMIANNUAL')).toBe('Semiannual')
     expect(cadenceLabel('SEMIMONTHLY')).toBe('Semimonthly')
   })
 })

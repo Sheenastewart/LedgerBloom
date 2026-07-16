@@ -1,5 +1,8 @@
 package com.ledgerbloom.recurring;
 
+import com.ledgerbloom.recurring.support.CatchUpRequest;
+import com.ledgerbloom.recurring.support.OccurrencePreviewRequest;
+import com.ledgerbloom.recurring.support.OccurrencePreviewResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -74,5 +77,18 @@ public class RecurringExpenseController {
 			@PathVariable Long id,
 			@Valid @RequestBody MarkPaidRequest request) {
 		return recurringExpenseService.markPaid(id, request);
+	}
+
+	@PostMapping("/preview-occurrences")
+	public OccurrencePreviewResponse previewOccurrences(
+			@Valid @RequestBody OccurrencePreviewRequest request) {
+		return recurringExpenseService.previewOccurrences(request);
+	}
+
+	@PostMapping("/{id}/catch-up")
+	public RecurringExpenseCatchUpResponse catchUp(
+			@PathVariable Long id,
+			@Valid @RequestBody CatchUpRequest request) {
+		return recurringExpenseService.catchUp(id, request);
 	}
 }

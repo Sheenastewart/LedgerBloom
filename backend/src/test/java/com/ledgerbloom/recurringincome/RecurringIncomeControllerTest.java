@@ -20,6 +20,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ledgerbloom.error.GlobalExceptionHandler;
 import com.ledgerbloom.income.IncomeEntryResponse;
+import com.ledgerbloom.recurring.support.CatchUpRequest;
+import com.ledgerbloom.recurring.support.OccurrencePreviewItem;
+import com.ledgerbloom.recurring.support.OccurrencePreviewRequest;
+import com.ledgerbloom.recurring.support.OccurrencePreviewResponse;
 import com.ledgerbloom.support.SecurityTestConfig;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -56,7 +60,9 @@ class RecurringIncomeControllerTest {
 			true,
 			null,
 			Instant.parse("2026-01-01T00:00:00Z"),
-			Instant.parse("2026-01-01T00:00:00Z")
+			Instant.parse("2026-01-01T00:00:00Z"),
+			null,
+			null
 		);
 	}
 
@@ -295,5 +301,121 @@ class RecurringIncomeControllerTest {
 			.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 
 		verify(recurringIncomeService, never()).markReceived(any(), any());
+	}
+
+	@Test
+	void previewOccurrencesReturnsOccurrencesAndSuggestedNext() throws Exception {
+		when(recurringIncomeService.previewOccurrences(any(OccurrencePreviewRequest.class))).thenReturn(
+			new OccurrencePreviewResponse(
+				List.of(new OccurrencePreviewItem(LocalDate.of(2026, 6, 1), new BigDecimal("5000.00"))),
+				LocalDate.of(2026, 8, 1)
+			)
+		);
+
+		mockMvc.perform(post("/api/recurring-income/preview-occurrences")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "cadence":"MONTHLY",
+						  "startDate":"2026-06-01",
+						  "amount":5000.00
+						}
+						"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.occurrences[0].occurrenceDate").value("2026-06-01"))
+			.andExpect(jsonPath("$.suggestedNextOnOrAfterToday").value("2026-08-01"));
+	}
+
+	@Test
+	void previewOccurrencesValidationReturns400() throws Exception {
+		mockMvc.perform(post("/api/recurring-income/preview-occurrences")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "cadence":"SEMIMONTHLY",
+						  "startDate":"2026-06-01",
+						  "amount":5000.00,
+						  "firstPaymentDay":50
+						}
+						"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+		verify(recurringIncomeService, never()).previewOccurrences(any());
+	}
+
+	@Test
+	void catchUpReturnsCreatedSummary() throws Exception {
+		when(recurringIncomeService.catchUp(eq(10L), any(CatchUpRequest.class))).thenReturn(
+			new RecurringIncomeCatchUpResponse(
+				2,
+				List.of(LocalDate.of(2026, 6, 1), LocalDate.of(2026, 7, 1)),
+				LocalDate.of(2026, 8, 1),
+				sample(),
+				List.of(
+					new IncomeEntryResponse(
+						51L, "Salary", "Acme Corp", new BigDecimal("5000.00"), LocalDate.of(2026, 6, 1),
+						"Caught up from recurring income #10",
+						Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z")
+					),
+					new IncomeEntryResponse(
+						52L, "Salary", "Acme Corp", new BigDecimal("5000.00"), LocalDate.of(2026, 7, 1),
+						"Caught up from recurring income #10",
+						Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z")
+					)
+				)
+			)
+		);
+
+		mockMvc.perform(post("/api/recurring-income/10/catch-up")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "occurrenceDates":["2026-06-01","2026-07-01"]
+						}
+						"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.createdCount").value(2))
+			.andExpect(jsonPath("$.createdDates[0]").value("2026-06-01"))
+			.andExpect(jsonPath("$.nextOccurrenceDate").value("2026-08-01"))
+			.andExpect(jsonPath("$.updatedRecurringIncome.id").value(10))
+			.andExpect(jsonPath("$.createdIncomeEntries[1].id").value(52));
+	}
+
+	@Test
+	void catchUpEmptyDatesReturns400() throws Exception {
+		mockMvc.perform(post("/api/recurring-income/10/catch-up")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "occurrenceDates":[]
+						}
+						"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+		verify(recurringIncomeService, never()).catchUp(any(), any());
+	}
+
+	@Test
+	void catchUpInvalidDatesReturns400WithServiceErrorCode() throws Exception {
+		when(recurringIncomeService.catchUp(eq(10L), any(CatchUpRequest.class)))
+			.thenThrow(new InvalidRecurringIncomeDataException(
+				"occurrenceDates must be a subset of the pending occurrences on or before today"));
+
+		mockMvc.perform(post("/api/recurring-income/10/catch-up")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "occurrenceDates":["2099-01-01"]
+						}
+						"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("INVALID_RECURRING_INCOME_DATA"));
 	}
 }

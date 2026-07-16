@@ -6,15 +6,21 @@ import { getCategories } from '../../categories/api/categoryApi'
 import type { Category } from '../../categories/types'
 import { HelpLink } from '../../guidance/HelpLink'
 import {
+  catchUpRecurringExpense,
   deleteRecurringExpense,
   getRecurringExpenses,
   getUpcomingRecurringExpenses,
   markRecurringExpensePaid,
+  previewRecurringExpenseOccurrences,
 } from '../api/recurringApi'
 import { RecurringFilters } from '../components/RecurringFilters'
 import { RecurringList } from '../components/RecurringList'
 import { UpcomingPayments } from '../components/UpcomingPayments'
-import type { RecurringExpense, RecurringFilters as RecurringFilterValues } from '../types'
+import type {
+  RecurringExpense,
+  RecurringExpenseCatchUpResult,
+  RecurringFilters as RecurringFilterValues,
+} from '../types'
 import '../recurring.css'
 import '../../categories/categories.css'
 import '../../dashboard/dashboard.css'
@@ -137,6 +143,31 @@ export function RecurringPage() {
     }
   }
 
+  async function handlePreviewCatchUp(item: RecurringExpense, signal: AbortSignal) {
+    return previewRecurringExpenseOccurrences(
+      {
+        cadence: item.cadence,
+        startDate: item.nextPaymentDate,
+        amount: item.amount,
+        firstPaymentDay: item.firstPaymentDay,
+        secondPaymentDay: item.secondPaymentDay,
+      },
+      signal,
+    )
+  }
+
+  async function handleSubmitCatchUp(item: RecurringExpense, occurrenceDates: string[]) {
+    return catchUpRecurringExpense(item.id, { occurrenceDates })
+  }
+
+  function handleCatchUpRecorded(item: RecurringExpense, result: RecurringExpenseCatchUpResult) {
+    setActionError(null)
+    setSuccessMessage(
+      `Recorded ${result.createdCount} past occurrence${result.createdCount === 1 ? '' : 's'} for "${item.description}".`,
+    )
+    void loadPage(appliedFilters)
+  }
+
   const hasActiveFilters =
     appliedFilters.active !== undefined ||
     appliedFilters.categoryId !== undefined ||
@@ -231,6 +262,9 @@ export function RecurringPage() {
                 deletingId={deletingId}
                 onMarkPaid={(item) => void handleMarkPaid(item)}
                 onDelete={(item) => void handleDelete(item)}
+                onPreviewCatchUp={handlePreviewCatchUp}
+                onSubmitCatchUp={handleSubmitCatchUp}
+                onCatchUpRecorded={handleCatchUpRecorded}
               />
             )}
           </section>

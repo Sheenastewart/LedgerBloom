@@ -7,9 +7,14 @@ import type { Category } from '../../categories/types'
 import {
   createRecurringExpense,
   getRecurringExpense,
+  previewRecurringExpenseOccurrences,
   updateRecurringExpense,
 } from '../api/recurringApi'
-import { RecurringForm, toRecurringWriteRequest } from '../components/RecurringForm'
+import {
+  RecurringForm,
+  toRecurringCreateRequest,
+  toRecurringWriteRequest,
+} from '../components/RecurringForm'
 import { parseRecurringRouteId } from '../parseRecurringRouteId'
 import type { RecurringFormErrors, RecurringFormValues } from '../types'
 import '../recurring.css'
@@ -28,6 +33,10 @@ const emptyValues: RecurringFormValues = {
   nextPaymentDate: '',
   active: true,
   notes: '',
+  firstPaymentDay: '',
+  secondPaymentDay: '',
+  historyMode: '',
+  selectedOccurrenceDates: [],
 }
 
 function mapServerErrors(error: ApiClientError): RecurringFormErrors {
@@ -41,7 +50,9 @@ function mapServerErrors(error: ApiClientError): RecurringFormErrors {
       fieldError.field === 'cadence' ||
       fieldError.field === 'nextPaymentDate' ||
       fieldError.field === 'active' ||
-      fieldError.field === 'notes'
+      fieldError.field === 'notes' ||
+      fieldError.field === 'firstPaymentDay' ||
+      fieldError.field === 'secondPaymentDay'
     ) {
       next[fieldError.field] = fieldError.message
     }
@@ -107,6 +118,10 @@ export function RecurringFormPage({ mode }: RecurringFormPageProps) {
           nextPaymentDate: item.nextPaymentDate,
           active: item.active,
           notes: item.notes ?? '',
+          firstPaymentDay: item.firstPaymentDay != null ? String(item.firstPaymentDay) : '',
+          secondPaymentDay: item.secondPaymentDay != null ? String(item.secondPaymentDay) : '',
+          historyMode: '',
+          selectedOccurrenceDates: [],
         })
         setFormKey((value) => value + 1)
       } catch (error) {
@@ -134,7 +149,7 @@ export function RecurringFormPage({ mode }: RecurringFormPageProps) {
     setServerErrors({})
     try {
       if (mode === 'create') {
-        const created = await createRecurringExpense(toRecurringWriteRequest(values))
+        const created = await createRecurringExpense(toRecurringCreateRequest(values))
         navigate('/recurring', {
           state: { successMessage: `Created recurring expense "${created.description}".` },
         })
@@ -202,6 +217,7 @@ export function RecurringFormPage({ mode }: RecurringFormPageProps) {
           categories={categories}
           serverErrors={serverErrors}
           submitting={submitting}
+          previewOccurrences={previewRecurringExpenseOccurrences}
           onSubmit={(values) => void handleSubmit(values)}
           onCancel={() => navigate('/recurring')}
         />

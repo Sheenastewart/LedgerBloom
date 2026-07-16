@@ -3,8 +3,11 @@ package com.ledgerbloom.recurring;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,10 +15,18 @@ import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.category.Category;
 import com.ledgerbloom.category.CategoryNotFoundException;
 import com.ledgerbloom.category.CategoryRepository;
+import com.ledgerbloom.expense.Expense;
 import com.ledgerbloom.expense.ExpenseCreateRequest;
+import com.ledgerbloom.expense.ExpenseRepository;
 import com.ledgerbloom.expense.ExpenseResponse;
 import com.ledgerbloom.expense.ExpenseService;
 import com.ledgerbloom.expense.InvalidExpenseDataException;
+import com.ledgerbloom.recurring.support.CadenceKind;
+import com.ledgerbloom.recurring.support.CadenceScheduleMath;
+import com.ledgerbloom.recurring.support.CatchUpRequest;
+import com.ledgerbloom.recurring.support.HistorySetupMode;
+import com.ledgerbloom.recurring.support.OccurrencePreviewRequest;
+import com.ledgerbloom.recurring.support.OccurrencePreviewResponse;
 import com.ledgerbloom.user.User;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -40,10 +51,16 @@ class RecurringExpenseServiceTest {
 	private RecurringExpenseRepository recurringExpenseRepository;
 
 	@Mock
+	private RecurringExpenseOccurrenceRecordRepository occurrenceRecordRepository;
+
+	@Mock
 	private CategoryRepository categoryRepository;
 
 	@Mock
 	private ExpenseService expenseService;
+
+	@Mock
+	private ExpenseRepository expenseRepository;
 
 	@Mock
 	private CurrentUser currentUser;
@@ -241,19 +258,31 @@ class RecurringExpenseServiceTest {
 
 	@Test
 	void cadenceAdvanceCalculations() {
-		assertThat(RecurringExpenseService.advanceNextPaymentDate(LocalDate.of(2026, 7, 10), RecurringExpenseCadence.WEEKLY))
+		assertThat(RecurringExpenseService.advanceNextPaymentDate(
+			LocalDate.of(2026, 7, 10), RecurringExpenseCadence.WEEKLY, null, null))
 			.isEqualTo(LocalDate.of(2026, 7, 17));
-		assertThat(RecurringExpenseService.advanceNextPaymentDate(LocalDate.of(2026, 7, 10), RecurringExpenseCadence.BIWEEKLY))
+		assertThat(RecurringExpenseService.advanceNextPaymentDate(
+			LocalDate.of(2026, 7, 10), RecurringExpenseCadence.BIWEEKLY, null, null))
 			.isEqualTo(LocalDate.of(2026, 7, 24));
-		assertThat(RecurringExpenseService.advanceNextPaymentDate(LocalDate.of(2026, 1, 31), RecurringExpenseCadence.MONTHLY))
+		assertThat(RecurringExpenseService.advanceNextPaymentDate(
+			LocalDate.of(2026, 1, 31), RecurringExpenseCadence.MONTHLY, null, null))
 			.isEqualTo(LocalDate.of(2026, 2, 28));
-		assertThat(RecurringExpenseService.advanceNextPaymentDate(LocalDate.of(2026, 1, 15), RecurringExpenseCadence.QUARTERLY))
+		assertThat(RecurringExpenseService.advanceNextPaymentDate(
+			LocalDate.of(2026, 1, 15), RecurringExpenseCadence.QUARTERLY, null, null))
 			.isEqualTo(LocalDate.of(2026, 4, 15));
-		assertThat(RecurringExpenseService.advanceNextPaymentDate(LocalDate.of(2026, 1, 15), RecurringExpenseCadence.SEMIANNUAL))
+		assertThat(RecurringExpenseService.advanceNextPaymentDate(
+			LocalDate.of(2026, 1, 15), RecurringExpenseCadence.SEMIANNUAL, null, null))
 			.isEqualTo(LocalDate.of(2026, 7, 15));
 		// Leap-day source uses LocalDate semantics: 2024-02-29 + 1 year => 2025-02-28
-		assertThat(RecurringExpenseService.advanceNextPaymentDate(LocalDate.of(2024, 2, 29), RecurringExpenseCadence.ANNUAL))
+		assertThat(RecurringExpenseService.advanceNextPaymentDate(
+			LocalDate.of(2024, 2, 29), RecurringExpenseCadence.ANNUAL, null, null))
 			.isEqualTo(LocalDate.of(2025, 2, 28));
+		assertThat(RecurringExpenseService.advanceNextPaymentDate(
+			LocalDate.of(2026, 7, 1), RecurringExpenseCadence.SEMIMONTHLY, 1, 15))
+			.isEqualTo(LocalDate.of(2026, 7, 15));
+		assertThat(RecurringExpenseService.advanceNextPaymentDate(
+			LocalDate.of(2026, 7, 15), RecurringExpenseCadence.SEMIMONTHLY, 1, 15))
+			.isEqualTo(LocalDate.of(2026, 8, 1));
 	}
 
 	@Test
@@ -330,6 +359,244 @@ class RecurringExpenseServiceTest {
 		verify(recurringExpenseRepository, never()).saveAndFlush(any());
 	}
 
+	@Test
+	void createRejectsSemimonthlyWithoutPaymentDays() {
+		assertThatThrownBy(() -> recurringExpenseService.create(createRequest(
+			"Netflix", "Netflix Inc", "15.99", 1L, RecurringExpenseCadence.SEMIMONTHLY,
+			LocalDate.now().plusMonths(1), true, null, null, null, null, null
+		))).isInstanceOf(InvalidRecurringExpenseDataException.class);
+		verify(recurringExpenseRepository, never()).saveAndFlush(any());
+	}
+
+	@Test
+	void createRejectsPaymentDaysForNonSemimonthlyCadence() {
+		assertThatThrownBy(() -> recurringExpenseService.create(createRequest(
+			"Netflix", "Netflix Inc", "15.99", 1L, RecurringExpenseCadence.MONTHLY,
+			LocalDate.now().plusMonths(1), true, null, 1, 15, null, null
+		))).isInstanceOf(InvalidRecurringExpenseDataException.class);
+	}
+
+	@Test
+	void createNormalizesSemimonthlyDaysToAscendingOrder() throws Exception {
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
+		when(recurringExpenseRepository.saveAndFlush(any(RecurringExpense.class))).thenAnswer(invocation -> {
+			RecurringExpense entity = invocation.getArgument(0);
+			setId(entity, 22L);
+			onCreate(entity);
+			return entity;
+		});
+
+		RecurringExpenseResponse response = recurringExpenseService.create(createRequest(
+			"Netflix", "Netflix Inc", "15.99", 1L, RecurringExpenseCadence.SEMIMONTHLY,
+			LocalDate.now().plusMonths(1), true, null, 15, 1, null, null
+		));
+
+		assertThat(response.firstPaymentDay()).isEqualTo(1);
+		assertThat(response.secondPaymentDay()).isEqualTo(15);
+	}
+
+	@Test
+	void createWithPastStartDateDefaultsToTrackFromNowAndSkipsEntryCreation() throws Exception {
+		LocalDate today = LocalDate.now();
+		LocalDate start = today.minusMonths(3);
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
+		when(recurringExpenseRepository.saveAndFlush(any(RecurringExpense.class))).thenAnswer(invocation -> {
+			RecurringExpense entity = invocation.getArgument(0);
+			setId(entity, 20L);
+			onCreate(entity);
+			return entity;
+		});
+
+		RecurringExpenseResponse response = recurringExpenseService.create(createRequest(
+			"Netflix", "Netflix Inc", "15.99", 1L, RecurringExpenseCadence.MONTHLY, start, true, null,
+			null, null, null, null
+		));
+
+		LocalDate expectedNext = CadenceScheduleMath.firstOnOrAfter(start, today, CadenceKind.MONTHLY, null, null);
+		assertThat(response.nextPaymentDate()).isEqualTo(expectedNext);
+		verify(expenseService, never()).create(any());
+		verify(occurrenceRecordRepository, never()).saveAndFlush(any());
+	}
+
+	@Test
+	void createWithPastStartDateRecordSelectedCreatesEntriesForSelectedDatesOnly() throws Exception {
+		LocalDate today = LocalDate.now();
+		LocalDate start = today.minusMonths(3);
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
+		when(recurringExpenseRepository.saveAndFlush(any(RecurringExpense.class))).thenAnswer(invocation -> {
+			RecurringExpense entity = invocation.getArgument(0);
+			setId(entity, 21L);
+			onCreate(entity);
+			return entity;
+		});
+		when(expenseService.create(any(ExpenseCreateRequest.class))).thenAnswer(invocation -> sampleExpenseResponse());
+		when(expenseRepository.getReferenceById(anyLong())).thenReturn(mock(Expense.class));
+
+		List<LocalDate> preview = CadenceScheduleMath.occurrencesThrough(start, today, CadenceKind.MONTHLY, null, null);
+		List<LocalDate> selected = List.of(preview.get(0), preview.get(preview.size() - 1));
+
+		RecurringExpenseResponse response = recurringExpenseService.create(createRequest(
+			"Netflix", "Netflix Inc", "15.99", 1L, RecurringExpenseCadence.MONTHLY, start, true, null,
+			null, null, HistorySetupMode.RECORD_SELECTED, selected
+		));
+
+		LocalDate expectedNext = CadenceScheduleMath.advance(
+			preview.get(preview.size() - 1), CadenceKind.MONTHLY, null, null);
+		assertThat(response.nextPaymentDate()).isEqualTo(expectedNext);
+		verify(expenseService, times(2)).create(any(ExpenseCreateRequest.class));
+		verify(occurrenceRecordRepository, times(2)).saveAndFlush(any());
+	}
+
+	@Test
+	void createRejectsSelectedDatesNotInPreview() {
+		LocalDate today = LocalDate.now();
+		LocalDate start = today.minusMonths(3);
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
+		assertThatThrownBy(() -> recurringExpenseService.create(createRequest(
+			"Netflix", "Netflix Inc", "15.99", 1L, RecurringExpenseCadence.MONTHLY, start, true, null,
+			null, null, HistorySetupMode.RECORD_SELECTED, List.of(today.plusDays(100))
+		))).isInstanceOf(InvalidRecurringExpenseDataException.class);
+	}
+
+	@Test
+	void previewOccurrencesReturnsDatesThroughTodayAndSuggestedNext() {
+		LocalDate today = LocalDate.now();
+		LocalDate start = today.minusMonths(2);
+
+		OccurrencePreviewResponse response = recurringExpenseService.previewOccurrences(
+			new OccurrencePreviewRequest(CadenceKind.MONTHLY, start, new BigDecimal("15.99"), null, null)
+		);
+
+		List<LocalDate> expectedDates = CadenceScheduleMath.occurrencesThrough(start, today, CadenceKind.MONTHLY, null, null);
+		assertThat(response.occurrences()).hasSize(expectedDates.size());
+		assertThat(response.occurrences().get(0).occurrenceDate()).isEqualTo(expectedDates.get(0));
+		assertThat(response.suggestedNextOnOrAfterToday())
+			.isEqualTo(CadenceScheduleMath.firstOnOrAfter(start, today, CadenceKind.MONTHLY, null, null));
+	}
+
+	@Test
+	void previewOccurrencesFutureStartReturnsEmptyListAndSuggestedNextEqualsStart() {
+		LocalDate start = LocalDate.now().plusMonths(1);
+
+		OccurrencePreviewResponse response = recurringExpenseService.previewOccurrences(
+			new OccurrencePreviewRequest(CadenceKind.MONTHLY, start, new BigDecimal("15.99"), null, null)
+		);
+
+		assertThat(response.occurrences()).isEmpty();
+		assertThat(response.suggestedNextOnOrAfterToday()).isEqualTo(start);
+	}
+
+	@Test
+	void catchUpCreatesEntriesForSelectedDatesAndAdvancesPastAllAllowedDates() throws Exception {
+		LocalDate today = LocalDate.now();
+		LocalDate next = today.minusMonths(3);
+		RecurringExpense entity = sampleEntity(10L, next, true);
+		when(recurringExpenseRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
+		when(recurringExpenseRepository.saveAndFlush(any(RecurringExpense.class)))
+			.thenAnswer(invocation -> invocation.getArgument(0));
+		when(expenseService.create(any(ExpenseCreateRequest.class))).thenAnswer(invocation -> sampleExpenseResponse());
+		when(expenseRepository.getReferenceById(anyLong())).thenReturn(mock(Expense.class));
+
+		List<LocalDate> allowed = CadenceScheduleMath.occurrencesThrough(next, today, CadenceKind.MONTHLY, null, null);
+		LocalDate expectedNext = CadenceScheduleMath.advance(allowed.get(allowed.size() - 1), CadenceKind.MONTHLY, null, null);
+		List<LocalDate> selected = List.of(allowed.get(0), allowed.get(allowed.size() - 1));
+
+		RecurringExpenseCatchUpResponse response = recurringExpenseService.catchUp(10L, new CatchUpRequest(selected));
+
+		assertThat(response.createdCount()).isEqualTo(2);
+		assertThat(response.createdDates()).containsExactlyElementsOf(selected.stream().sorted().toList());
+		assertThat(response.nextOccurrenceDate()).isEqualTo(expectedNext);
+		assertThat(response.updatedRecurringExpense().nextPaymentDate()).isEqualTo(expectedNext);
+		verify(expenseService, times(2)).create(any(ExpenseCreateRequest.class));
+	}
+
+	@Test
+	void catchUpSkipsDatesThatAlreadyHaveOccurrenceRecords() throws Exception {
+		LocalDate today = LocalDate.now();
+		LocalDate next = today.minusMonths(1);
+		RecurringExpense entity = sampleEntity(10L, next, true);
+		when(recurringExpenseRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
+		when(recurringExpenseRepository.saveAndFlush(any(RecurringExpense.class)))
+			.thenAnswer(invocation -> invocation.getArgument(0));
+		when(occurrenceRecordRepository.existsByRecurringExpense_IdAndOccurrenceDate(10L, next)).thenReturn(true);
+
+		List<LocalDate> allowed = CadenceScheduleMath.occurrencesThrough(next, today, CadenceKind.MONTHLY, null, null);
+		LocalDate expectedNext = CadenceScheduleMath.advance(allowed.get(allowed.size() - 1), CadenceKind.MONTHLY, null, null);
+
+		RecurringExpenseCatchUpResponse response = recurringExpenseService.catchUp(10L, new CatchUpRequest(List.of(next)));
+
+		assertThat(response.createdCount()).isEqualTo(0);
+		assertThat(response.createdDates()).isEmpty();
+		assertThat(response.nextOccurrenceDate()).isEqualTo(expectedNext);
+		verify(expenseService, never()).create(any());
+	}
+
+	@Test
+	void catchUpIdempotentRetryAfterAdvanceReturnsZeroWithoutCreatingEntries() throws Exception {
+		LocalDate today = LocalDate.now();
+		LocalDate alreadyRecorded = today.minusMonths(1);
+		LocalDate nextAfterCatchUp = today.plusDays(1);
+		RecurringExpense entity = sampleEntity(10L, nextAfterCatchUp, true);
+		when(recurringExpenseRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
+		when(recurringExpenseRepository.saveAndFlush(any(RecurringExpense.class)))
+			.thenAnswer(invocation -> invocation.getArgument(0));
+		when(occurrenceRecordRepository.existsByRecurringExpense_IdAndOccurrenceDate(10L, alreadyRecorded))
+			.thenReturn(true);
+
+		RecurringExpenseCatchUpResponse response = recurringExpenseService.catchUp(
+			10L, new CatchUpRequest(List.of(alreadyRecorded)));
+
+		assertThat(response.createdCount()).isEqualTo(0);
+		assertThat(response.createdDates()).isEmpty();
+		assertThat(response.nextOccurrenceDate()).isEqualTo(nextAfterCatchUp);
+		verify(expenseService, never()).create(any());
+	}
+
+	@Test
+	void catchUpRejectsDateOutsideAllowedRange() throws Exception {
+		LocalDate today = LocalDate.now();
+		LocalDate next = today.minusMonths(1);
+		RecurringExpense entity = sampleEntity(10L, next, true);
+		when(recurringExpenseRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
+
+		assertThatThrownBy(() -> recurringExpenseService.catchUp(10L, new CatchUpRequest(List.of(today.plusDays(30)))))
+			.isInstanceOf(InvalidRecurringExpenseDataException.class);
+		verify(expenseService, never()).create(any());
+	}
+
+	@Test
+	void markPaidWritesOccurrenceRecordLinkedToCreatedExpense() throws Exception {
+		LocalDate next = LocalDate.of(2026, 7, 15);
+		RecurringExpense entity = sampleEntity(10L, next, true);
+		when(recurringExpenseRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
+		when(expenseService.create(any(ExpenseCreateRequest.class))).thenReturn(sampleExpenseResponse());
+		when(recurringExpenseRepository.saveAndFlush(any(RecurringExpense.class)))
+			.thenAnswer(invocation -> invocation.getArgument(0));
+		Expense expenseRef = mock(Expense.class);
+		when(expenseRepository.getReferenceById(50L)).thenReturn(expenseRef);
+
+		recurringExpenseService.markPaid(10L, new MarkPaidRequest(next));
+
+		ArgumentCaptor<RecurringExpenseOccurrenceRecord> captor = ArgumentCaptor.forClass(RecurringExpenseOccurrenceRecord.class);
+		verify(occurrenceRecordRepository).saveAndFlush(captor.capture());
+		assertThat(captor.getValue().getOccurrenceDate()).isEqualTo(next);
+		assertThat(captor.getValue().getExpense()).isEqualTo(expenseRef);
+	}
+
+	@Test
+	void markPaidThrowsConflictWhenOccurrenceRecordAlreadyExists() throws Exception {
+		LocalDate next = LocalDate.of(2026, 7, 15);
+		RecurringExpense entity = sampleEntity(10L, next, true);
+		when(recurringExpenseRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
+		when(occurrenceRecordRepository.existsByRecurringExpense_IdAndOccurrenceDate(10L, next)).thenReturn(true);
+
+		assertThatThrownBy(() -> recurringExpenseService.markPaid(10L, new MarkPaidRequest(next)))
+			.isInstanceOf(RecurringExpensePaymentConflictException.class);
+
+		verify(expenseService, never()).create(any());
+		verify(recurringExpenseRepository, never()).saveAndFlush(any());
+	}
+
 	private RecurringExpenseCreateRequest createRequest(
 			String description,
 			String merchant,
@@ -339,6 +606,23 @@ class RecurringExpenseServiceTest {
 			LocalDate nextPaymentDate,
 			boolean active,
 			String notes) {
+		return createRequest(
+			description, merchant, amount, categoryId, cadence, nextPaymentDate, active, notes, null, null, null, null);
+	}
+
+	private RecurringExpenseCreateRequest createRequest(
+			String description,
+			String merchant,
+			String amount,
+			Long categoryId,
+			RecurringExpenseCadence cadence,
+			LocalDate nextPaymentDate,
+			boolean active,
+			String notes,
+			Integer firstPaymentDay,
+			Integer secondPaymentDay,
+			HistorySetupMode historyMode,
+			List<LocalDate> selectedOccurrenceDates) {
 		return new RecurringExpenseCreateRequest(
 			description,
 			merchant,
@@ -347,7 +631,11 @@ class RecurringExpenseServiceTest {
 			cadence,
 			nextPaymentDate,
 			active,
-			notes
+			notes,
+			firstPaymentDay,
+			secondPaymentDay,
+			historyMode,
+			selectedOccurrenceDates
 		);
 	}
 
@@ -368,7 +656,9 @@ class RecurringExpenseServiceTest {
 			cadence,
 			nextPaymentDate,
 			active,
-			notes
+			notes,
+			null,
+			null
 		);
 	}
 

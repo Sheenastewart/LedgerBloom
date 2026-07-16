@@ -6,5 +6,6 @@ public enum RecurringIncomeCadence {
 	MONTHLY,
 	QUARTERLY,
 	SEMIANNUAL,
-	ANNUAL
+	ANNUAL,
+	SEMIMONTHLY
 }

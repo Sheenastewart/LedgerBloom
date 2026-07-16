@@ -1,8 +1,13 @@
 import { ApiClientError, requestJson } from '../../../api/apiClient'
 import type {
+  CatchUpRequest,
   MarkReceivedRequest,
   MarkReceivedResult,
+  OccurrencePreviewRequest,
+  OccurrencePreviewResponse,
   RecurringIncome,
+  RecurringIncomeCatchUpResult,
+  RecurringIncomeCreateRequest,
   RecurringIncomeFilters,
   RecurringIncomeWriteRequest,
 } from '../types'
@@ -51,7 +56,7 @@ export async function getRecurringIncomeById(
 }
 
 export async function createRecurringIncome(
-  body: RecurringIncomeWriteRequest,
+  body: RecurringIncomeCreateRequest,
 ): Promise<RecurringIncome> {
   return requestJson<RecurringIncome>('/api/recurring-income', {
     method: 'POST',
@@ -78,6 +83,27 @@ export async function markRecurringIncomeReceived(
   body: MarkReceivedRequest,
 ): Promise<MarkReceivedResult> {
   return requestJson<MarkReceivedResult>(`/api/recurring-income/${id}/mark-received`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
+export async function previewRecurringIncomeOccurrences(
+  body: OccurrencePreviewRequest,
+  signal?: AbortSignal,
+): Promise<OccurrencePreviewResponse> {
+  return requestJson<OccurrencePreviewResponse>('/api/recurring-income/preview-occurrences', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    signal,
+  })
+}
+
+export async function catchUpRecurringIncome(
+  id: number,
+  body: CatchUpRequest,
+): Promise<RecurringIncomeCatchUpResult> {
+  return requestJson<RecurringIncomeCatchUpResult>(`/api/recurring-income/${id}/catch-up`, {
     method: 'POST',
     body: JSON.stringify(body),
   })

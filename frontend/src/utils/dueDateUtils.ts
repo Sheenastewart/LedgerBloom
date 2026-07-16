@@ -3,6 +3,18 @@ export type DueDateStatus = {
   className: string
 }
 
+export function todayIso(): string {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}
+
+/** ISO (YYYY-MM-DD) date strings compare lexicographically, so a plain string comparison is safe. */
+export function isPastDate(dateIso: string, referenceTodayIso: string = todayIso()): boolean {
+  return dateIso.trim().length > 0 && dateIso < referenceTodayIso
+}
+
 export function daysUntil(dateIso: string, todayIso: string): number {
   const target = new Date(`${dateIso}T00:00:00`)
   const today = new Date(`${todayIso}T00:00:00`)

@@ -6,5 +6,6 @@ public enum RecurringExpenseCadence {
 	MONTHLY,
 	QUARTERLY,
 	SEMIANNUAL,
-	ANNUAL
+	ANNUAL,
+	SEMIMONTHLY
 }

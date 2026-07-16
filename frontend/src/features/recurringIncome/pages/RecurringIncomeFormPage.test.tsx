@@ -13,6 +13,8 @@ vi.mock('../api/recurringIncomeApi', () => ({
   updateRecurringIncome: vi.fn(),
   deleteRecurringIncome: vi.fn(),
   markRecurringIncomeReceived: vi.fn(),
+  previewRecurringIncomeOccurrences: vi.fn(),
+  catchUpRecurringIncome: vi.fn(),
 }))
 
 function renderCreate() {
@@ -35,6 +37,7 @@ describe('RecurringIncomeFormPage', () => {
   beforeEach(() => {
     vi.mocked(recurringIncomeApi.createRecurringIncome).mockReset()
     vi.mocked(recurringIncomeApi.updateRecurringIncome).mockReset()
+    vi.mocked(recurringIncomeApi.previewRecurringIncomeOccurrences).mockReset()
   })
 
   it('creates a recurring income entry', async () => {
@@ -75,5 +78,83 @@ describe('RecurringIncomeFormPage', () => {
     await user.click(screen.getByRole('button', { name: 'Create recurring income' }))
     expect(await screen.findByText('Description is required.')).toBeInTheDocument()
     expect(recurringIncomeApi.createRecurringIncome).not.toHaveBeenCalled()
+  })
+
+  it('shows semimonthly payment day fields with defaults when that cadence is selected', async () => {
+    const user = userEvent.setup()
+    renderCreate()
+    await screen.findByLabelText('Description')
+
+    await user.selectOptions(screen.getByLabelText('Cadence'), 'SEMIMONTHLY')
+
+    expect(screen.getByLabelText('First payment day')).toHaveValue(1)
+    expect(screen.getByLabelText('Second payment day')).toHaveValue(15)
+    expect(screen.getByText(/paid twice per month/)).toBeInTheDocument()
+  })
+
+  it('allows a past next income date and requires a history choice before submitting', async () => {
+    const user = userEvent.setup()
+    renderCreate()
+    await screen.findByLabelText('Description')
+
+    await user.type(screen.getByLabelText('Description'), 'Paycheck')
+    await user.type(screen.getByLabelText('Source'), 'Employer')
+    await user.type(screen.getByLabelText('Amount'), '4500')
+    await user.selectOptions(screen.getByLabelText('Cadence'), 'BIWEEKLY')
+    await user.type(screen.getByLabelText('Next income date'), '2020-01-01')
+
+    expect(screen.queryByText(/must not be in the past/i)).not.toBeInTheDocument()
+    expect(await screen.findByText('Track from now on')).toBeInTheDocument()
+    expect(screen.getByText('Review and record past occurrences')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Create recurring income' }))
+    expect(await screen.findByText('Choose how to handle past occurrences.')).toBeInTheDocument()
+    expect(recurringIncomeApi.createRecurringIncome).not.toHaveBeenCalled()
+  })
+
+  it('previews and records selected past occurrences', async () => {
+    const user = userEvent.setup()
+    vi.mocked(recurringIncomeApi.previewRecurringIncomeOccurrences).mockResolvedValue({
+      occurrences: [{ occurrenceDate: '2020-01-01', amount: 4500 }],
+      suggestedNextOnOrAfterToday: '2026-08-01',
+    })
+    vi.mocked(recurringIncomeApi.createRecurringIncome).mockResolvedValue({
+      id: 13,
+      description: 'Paycheck',
+      source: 'Employer',
+      amount: 4500,
+      cadence: 'BIWEEKLY',
+      nextIncomeDate: '2026-08-01',
+      active: true,
+      notes: null,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    })
+
+    renderCreate()
+    await screen.findByLabelText('Description')
+
+    await user.type(screen.getByLabelText('Description'), 'Paycheck')
+    await user.type(screen.getByLabelText('Source'), 'Employer')
+    await user.type(screen.getByLabelText('Amount'), '4500')
+    await user.selectOptions(screen.getByLabelText('Cadence'), 'BIWEEKLY')
+    await user.type(screen.getByLabelText('Next income date'), '2020-01-01')
+    await user.click(await screen.findByText('Review and record past occurrences'))
+
+    await waitFor(() => {
+      expect(recurringIncomeApi.previewRecurringIncomeOccurrences).toHaveBeenCalled()
+    })
+    expect(await screen.findByText('01/01/2020')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Create recurring income' }))
+
+    await waitFor(() => {
+      expect(recurringIncomeApi.createRecurringIncome).toHaveBeenCalledWith(
+        expect.objectContaining({
+          historyMode: 'RECORD_SELECTED',
+          selectedOccurrenceDates: ['2020-01-01'],
+        }),
+      )
+    })
   })
 })

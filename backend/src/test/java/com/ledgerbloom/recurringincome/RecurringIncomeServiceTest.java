@@ -3,16 +3,27 @@ package com.ledgerbloom.recurringincome;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.ledgerbloom.auth.CurrentUser;
+import com.ledgerbloom.income.IncomeEntry;
 import com.ledgerbloom.income.IncomeEntryCreateRequest;
+import com.ledgerbloom.income.IncomeEntryRepository;
 import com.ledgerbloom.income.IncomeEntryResponse;
 import com.ledgerbloom.income.IncomeEntryService;
 import com.ledgerbloom.income.InvalidIncomeDataException;
+import com.ledgerbloom.recurring.support.CadenceKind;
+import com.ledgerbloom.recurring.support.CadenceScheduleMath;
+import com.ledgerbloom.recurring.support.CatchUpRequest;
+import com.ledgerbloom.recurring.support.HistorySetupMode;
+import com.ledgerbloom.recurring.support.OccurrencePreviewRequest;
+import com.ledgerbloom.recurring.support.OccurrencePreviewResponse;
 import com.ledgerbloom.user.User;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -37,7 +48,13 @@ class RecurringIncomeServiceTest {
 	private RecurringIncomeRepository recurringIncomeRepository;
 
 	@Mock
+	private RecurringIncomeOccurrenceRecordRepository occurrenceRecordRepository;
+
+	@Mock
 	private IncomeEntryService incomeEntryService;
+
+	@Mock
+	private IncomeEntryRepository incomeEntryRepository;
 
 	@Mock
 	private CurrentUser currentUser;
@@ -236,18 +253,30 @@ class RecurringIncomeServiceTest {
 
 	@Test
 	void cadenceAdvanceCalculations() {
-		assertThat(RecurringIncomeService.advanceNextIncomeDate(LocalDate.of(2026, 7, 10), RecurringIncomeCadence.WEEKLY))
+		assertThat(RecurringIncomeService.advanceNextIncomeDate(
+			LocalDate.of(2026, 7, 10), RecurringIncomeCadence.WEEKLY, null, null))
 			.isEqualTo(LocalDate.of(2026, 7, 17));
-		assertThat(RecurringIncomeService.advanceNextIncomeDate(LocalDate.of(2026, 7, 10), RecurringIncomeCadence.BIWEEKLY))
+		assertThat(RecurringIncomeService.advanceNextIncomeDate(
+			LocalDate.of(2026, 7, 10), RecurringIncomeCadence.BIWEEKLY, null, null))
 			.isEqualTo(LocalDate.of(2026, 7, 24));
-		assertThat(RecurringIncomeService.advanceNextIncomeDate(LocalDate.of(2026, 1, 31), RecurringIncomeCadence.MONTHLY))
+		assertThat(RecurringIncomeService.advanceNextIncomeDate(
+			LocalDate.of(2026, 1, 31), RecurringIncomeCadence.MONTHLY, null, null))
 			.isEqualTo(LocalDate.of(2026, 2, 28));
-		assertThat(RecurringIncomeService.advanceNextIncomeDate(LocalDate.of(2026, 1, 15), RecurringIncomeCadence.QUARTERLY))
+		assertThat(RecurringIncomeService.advanceNextIncomeDate(
+			LocalDate.of(2026, 1, 15), RecurringIncomeCadence.QUARTERLY, null, null))
 			.isEqualTo(LocalDate.of(2026, 4, 15));
-		assertThat(RecurringIncomeService.advanceNextIncomeDate(LocalDate.of(2026, 1, 15), RecurringIncomeCadence.SEMIANNUAL))
+		assertThat(RecurringIncomeService.advanceNextIncomeDate(
+			LocalDate.of(2026, 1, 15), RecurringIncomeCadence.SEMIANNUAL, null, null))
 			.isEqualTo(LocalDate.of(2026, 7, 15));
-		assertThat(RecurringIncomeService.advanceNextIncomeDate(LocalDate.of(2024, 2, 29), RecurringIncomeCadence.ANNUAL))
+		assertThat(RecurringIncomeService.advanceNextIncomeDate(
+			LocalDate.of(2024, 2, 29), RecurringIncomeCadence.ANNUAL, null, null))
 			.isEqualTo(LocalDate.of(2025, 2, 28));
+		assertThat(RecurringIncomeService.advanceNextIncomeDate(
+			LocalDate.of(2026, 7, 1), RecurringIncomeCadence.SEMIMONTHLY, 1, 15))
+			.isEqualTo(LocalDate.of(2026, 7, 15));
+		assertThat(RecurringIncomeService.advanceNextIncomeDate(
+			LocalDate.of(2026, 7, 15), RecurringIncomeCadence.SEMIMONTHLY, 1, 15))
+			.isEqualTo(LocalDate.of(2026, 8, 1));
 	}
 
 	@Test
@@ -326,6 +355,251 @@ class RecurringIncomeServiceTest {
 		verify(recurringIncomeRepository, never()).saveAndFlush(any());
 	}
 
+	@Test
+	void createRejectsSemimonthlyWithoutPaymentDays() {
+		assertThatThrownBy(() -> recurringIncomeService.create(createRequest(
+			"Salary", "Acme Corp", "5000.00", RecurringIncomeCadence.SEMIMONTHLY,
+			LocalDate.now().plusMonths(1), true, null, null, null, null, null
+		))).isInstanceOf(InvalidRecurringIncomeDataException.class);
+		verify(recurringIncomeRepository, never()).saveAndFlush(any());
+	}
+
+	@Test
+	void createRejectsPaymentDaysForNonSemimonthlyCadence() {
+		assertThatThrownBy(() -> recurringIncomeService.create(createRequest(
+			"Salary", "Acme Corp", "5000.00", RecurringIncomeCadence.MONTHLY,
+			LocalDate.now().plusMonths(1), true, null, 1, 15, null, null
+		))).isInstanceOf(InvalidRecurringIncomeDataException.class);
+	}
+
+	@Test
+	void createNormalizesSemimonthlyDaysToAscendingOrder() throws Exception {
+		when(recurringIncomeRepository.saveAndFlush(any(RecurringIncome.class))).thenAnswer(invocation -> {
+			RecurringIncome entity = invocation.getArgument(0);
+			setId(entity, 22L);
+			onCreate(entity);
+			return entity;
+		});
+
+		RecurringIncomeResponse response = recurringIncomeService.create(createRequest(
+			"Salary", "Acme Corp", "5000.00", RecurringIncomeCadence.SEMIMONTHLY,
+			LocalDate.now().plusMonths(1), true, null, 15, 1, null, null
+		));
+
+		assertThat(response.firstPaymentDay()).isEqualTo(1);
+		assertThat(response.secondPaymentDay()).isEqualTo(15);
+	}
+
+	@Test
+	void createWithPastStartDateDefaultsToTrackFromNowAndSkipsEntryCreation() throws Exception {
+		LocalDate today = LocalDate.now();
+		LocalDate start = today.minusWeeks(5);
+		when(recurringIncomeRepository.saveAndFlush(any(RecurringIncome.class))).thenAnswer(invocation -> {
+			RecurringIncome entity = invocation.getArgument(0);
+			setId(entity, 20L);
+			onCreate(entity);
+			return entity;
+		});
+
+		RecurringIncomeResponse response = recurringIncomeService.create(createRequest(
+			"Salary", "Acme Corp", "5000.00", RecurringIncomeCadence.WEEKLY, start, true, null, null, null, null, null
+		));
+
+		LocalDate expectedNext = CadenceScheduleMath.firstOnOrAfter(start, today, CadenceKind.WEEKLY, null, null);
+		assertThat(response.nextIncomeDate()).isEqualTo(expectedNext);
+		verify(incomeEntryService, never()).create(any());
+		verify(occurrenceRecordRepository, never()).saveAndFlush(any());
+	}
+
+	@Test
+	void createWithPastStartDateRecordSelectedCreatesEntriesForSelectedDatesOnly() throws Exception {
+		LocalDate today = LocalDate.now();
+		LocalDate start = today.minusWeeks(5);
+		when(recurringIncomeRepository.saveAndFlush(any(RecurringIncome.class))).thenAnswer(invocation -> {
+			RecurringIncome entity = invocation.getArgument(0);
+			setId(entity, 21L);
+			onCreate(entity);
+			return entity;
+		});
+		when(incomeEntryService.create(any(IncomeEntryCreateRequest.class))).thenAnswer(invocation -> {
+			IncomeEntryCreateRequest req = invocation.getArgument(0);
+			return new IncomeEntryResponse(
+				77L, req.description(), req.source(), req.amount(), req.incomeDate(), req.notes(),
+				Instant.now(), Instant.now()
+			);
+		});
+		when(incomeEntryRepository.getReferenceById(anyLong())).thenReturn(mock(IncomeEntry.class));
+
+		List<LocalDate> preview = CadenceScheduleMath.occurrencesThrough(start, today, CadenceKind.WEEKLY, null, null);
+		List<LocalDate> selected = List.of(preview.get(0), preview.get(preview.size() - 1));
+
+		RecurringIncomeResponse response = recurringIncomeService.create(createRequest(
+			"Salary", "Acme Corp", "5000.00", RecurringIncomeCadence.WEEKLY, start, true, null,
+			null, null, HistorySetupMode.RECORD_SELECTED, selected
+		));
+
+		LocalDate expectedNext = CadenceScheduleMath.advance(
+			preview.get(preview.size() - 1), CadenceKind.WEEKLY, null, null);
+		assertThat(response.nextIncomeDate()).isEqualTo(expectedNext);
+		verify(incomeEntryService, times(2)).create(any(IncomeEntryCreateRequest.class));
+		verify(occurrenceRecordRepository, times(2)).saveAndFlush(any());
+	}
+
+	@Test
+	void createRejectsSelectedDatesNotInPreview() {
+		LocalDate today = LocalDate.now();
+		LocalDate start = today.minusWeeks(5);
+		assertThatThrownBy(() -> recurringIncomeService.create(createRequest(
+			"Salary", "Acme Corp", "5000.00", RecurringIncomeCadence.WEEKLY, start, true, null,
+			null, null, HistorySetupMode.RECORD_SELECTED, List.of(today.plusDays(100))
+		))).isInstanceOf(InvalidRecurringIncomeDataException.class);
+	}
+
+	@Test
+	void previewOccurrencesReturnsDatesThroughTodayAndSuggestedNext() {
+		LocalDate today = LocalDate.now();
+		LocalDate start = today.minusWeeks(3);
+
+		OccurrencePreviewResponse response = recurringIncomeService.previewOccurrences(
+			new OccurrencePreviewRequest(CadenceKind.WEEKLY, start, new BigDecimal("100.00"), null, null)
+		);
+
+		List<LocalDate> expectedDates = CadenceScheduleMath.occurrencesThrough(start, today, CadenceKind.WEEKLY, null, null);
+		assertThat(response.occurrences()).hasSize(expectedDates.size());
+		assertThat(response.occurrences().get(0).occurrenceDate()).isEqualTo(expectedDates.get(0));
+		assertThat(response.suggestedNextOnOrAfterToday())
+			.isEqualTo(CadenceScheduleMath.firstOnOrAfter(start, today, CadenceKind.WEEKLY, null, null));
+	}
+
+	@Test
+	void previewOccurrencesFutureStartReturnsEmptyListAndSuggestedNextEqualsStart() {
+		LocalDate start = LocalDate.now().plusMonths(1);
+
+		OccurrencePreviewResponse response = recurringIncomeService.previewOccurrences(
+			new OccurrencePreviewRequest(CadenceKind.MONTHLY, start, new BigDecimal("100.00"), null, null)
+		);
+
+		assertThat(response.occurrences()).isEmpty();
+		assertThat(response.suggestedNextOnOrAfterToday()).isEqualTo(start);
+	}
+
+	@Test
+	void catchUpCreatesEntriesForSelectedDatesAndAdvancesPastAllAllowedDates() throws Exception {
+		LocalDate today = LocalDate.now();
+		LocalDate next = today.minusMonths(3);
+		RecurringIncome entity = sampleEntity(10L, next, true);
+		when(recurringIncomeRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
+		when(recurringIncomeRepository.saveAndFlush(any(RecurringIncome.class)))
+			.thenAnswer(invocation -> invocation.getArgument(0));
+		when(incomeEntryService.create(any(IncomeEntryCreateRequest.class))).thenAnswer(invocation -> {
+			IncomeEntryCreateRequest req = invocation.getArgument(0);
+			return new IncomeEntryResponse(
+				99L, req.description(), req.source(), req.amount(), req.incomeDate(), req.notes(),
+				Instant.now(), Instant.now()
+			);
+		});
+		when(incomeEntryRepository.getReferenceById(anyLong())).thenReturn(mock(IncomeEntry.class));
+
+		List<LocalDate> allowed = CadenceScheduleMath.occurrencesThrough(next, today, CadenceKind.MONTHLY, null, null);
+		LocalDate expectedNext = CadenceScheduleMath.advance(allowed.get(allowed.size() - 1), CadenceKind.MONTHLY, null, null);
+		List<LocalDate> selected = List.of(allowed.get(0), allowed.get(allowed.size() - 1));
+
+		RecurringIncomeCatchUpResponse response = recurringIncomeService.catchUp(10L, new CatchUpRequest(selected));
+
+		assertThat(response.createdCount()).isEqualTo(2);
+		assertThat(response.createdDates()).containsExactlyElementsOf(selected.stream().sorted().toList());
+		assertThat(response.nextOccurrenceDate()).isEqualTo(expectedNext);
+		assertThat(response.updatedRecurringIncome().nextIncomeDate()).isEqualTo(expectedNext);
+		verify(incomeEntryService, times(2)).create(any(IncomeEntryCreateRequest.class));
+	}
+
+	@Test
+	void catchUpSkipsDatesThatAlreadyHaveOccurrenceRecords() throws Exception {
+		LocalDate today = LocalDate.now();
+		LocalDate next = today.minusWeeks(1);
+		RecurringIncome entity = sampleEntity(10L, next, true);
+		when(recurringIncomeRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
+		when(recurringIncomeRepository.saveAndFlush(any(RecurringIncome.class)))
+			.thenAnswer(invocation -> invocation.getArgument(0));
+		when(occurrenceRecordRepository.existsByRecurringIncome_IdAndOccurrenceDate(10L, next)).thenReturn(true);
+
+		List<LocalDate> allowed = CadenceScheduleMath.occurrencesThrough(next, today, CadenceKind.MONTHLY, null, null);
+		LocalDate expectedNext = CadenceScheduleMath.advance(allowed.get(allowed.size() - 1), CadenceKind.MONTHLY, null, null);
+
+		RecurringIncomeCatchUpResponse response = recurringIncomeService.catchUp(10L, new CatchUpRequest(List.of(next)));
+
+		assertThat(response.createdCount()).isEqualTo(0);
+		assertThat(response.createdDates()).isEmpty();
+		assertThat(response.nextOccurrenceDate()).isEqualTo(expectedNext);
+		verify(incomeEntryService, never()).create(any());
+	}
+
+	@Test
+	void catchUpIdempotentRetryAfterAdvanceReturnsZeroWithoutCreatingEntries() throws Exception {
+		LocalDate today = LocalDate.now();
+		LocalDate alreadyRecorded = today.minusMonths(1);
+		LocalDate nextAfterCatchUp = today.plusDays(1);
+		RecurringIncome entity = sampleEntity(10L, nextAfterCatchUp, true);
+		when(recurringIncomeRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
+		when(recurringIncomeRepository.saveAndFlush(any(RecurringIncome.class)))
+			.thenAnswer(invocation -> invocation.getArgument(0));
+		when(occurrenceRecordRepository.existsByRecurringIncome_IdAndOccurrenceDate(10L, alreadyRecorded))
+			.thenReturn(true);
+
+		RecurringIncomeCatchUpResponse response = recurringIncomeService.catchUp(
+			10L, new CatchUpRequest(List.of(alreadyRecorded)));
+
+		assertThat(response.createdCount()).isEqualTo(0);
+		assertThat(response.createdDates()).isEmpty();
+		assertThat(response.nextOccurrenceDate()).isEqualTo(nextAfterCatchUp);
+		verify(incomeEntryService, never()).create(any());
+	}
+
+	@Test
+	void catchUpRejectsDateOutsideAllowedRange() throws Exception {
+		LocalDate today = LocalDate.now();
+		LocalDate next = today.minusWeeks(1);
+		RecurringIncome entity = sampleEntity(10L, next, true);
+		when(recurringIncomeRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
+
+		assertThatThrownBy(() -> recurringIncomeService.catchUp(10L, new CatchUpRequest(List.of(today.plusDays(30)))))
+			.isInstanceOf(InvalidRecurringIncomeDataException.class);
+		verify(incomeEntryService, never()).create(any());
+	}
+
+	@Test
+	void markReceivedWritesOccurrenceRecordLinkedToCreatedEntry() throws Exception {
+		LocalDate next = LocalDate.of(2026, 7, 15);
+		RecurringIncome entity = sampleEntity(10L, next, true);
+		when(recurringIncomeRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
+		when(incomeEntryService.create(any(IncomeEntryCreateRequest.class))).thenReturn(sampleIncomeEntryResponse());
+		when(recurringIncomeRepository.saveAndFlush(any(RecurringIncome.class)))
+			.thenAnswer(invocation -> invocation.getArgument(0));
+		IncomeEntry entryRef = mock(IncomeEntry.class);
+		when(incomeEntryRepository.getReferenceById(50L)).thenReturn(entryRef);
+
+		recurringIncomeService.markReceived(10L, new MarkReceivedRequest(next));
+
+		ArgumentCaptor<RecurringIncomeOccurrenceRecord> captor = ArgumentCaptor.forClass(RecurringIncomeOccurrenceRecord.class);
+		verify(occurrenceRecordRepository).saveAndFlush(captor.capture());
+		assertThat(captor.getValue().getOccurrenceDate()).isEqualTo(next);
+		assertThat(captor.getValue().getIncomeEntry()).isEqualTo(entryRef);
+	}
+
+	@Test
+	void markReceivedThrowsConflictWhenOccurrenceRecordAlreadyExists() throws Exception {
+		LocalDate next = LocalDate.of(2026, 7, 15);
+		RecurringIncome entity = sampleEntity(10L, next, true);
+		when(recurringIncomeRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
+		when(occurrenceRecordRepository.existsByRecurringIncome_IdAndOccurrenceDate(10L, next)).thenReturn(true);
+
+		assertThatThrownBy(() -> recurringIncomeService.markReceived(10L, new MarkReceivedRequest(next)))
+			.isInstanceOf(RecurringIncomeReceiptConflictException.class);
+
+		verify(incomeEntryService, never()).create(any());
+		verify(recurringIncomeRepository, never()).saveAndFlush(any());
+	}
+
 	private RecurringIncomeCreateRequest createRequest(
 			String description,
 			String source,
@@ -334,6 +608,21 @@ class RecurringIncomeServiceTest {
 			LocalDate nextIncomeDate,
 			boolean active,
 			String notes) {
+		return createRequest(description, source, amount, cadence, nextIncomeDate, active, notes, null, null, null, null);
+	}
+
+	private RecurringIncomeCreateRequest createRequest(
+			String description,
+			String source,
+			String amount,
+			RecurringIncomeCadence cadence,
+			LocalDate nextIncomeDate,
+			boolean active,
+			String notes,
+			Integer firstPaymentDay,
+			Integer secondPaymentDay,
+			HistorySetupMode historyMode,
+			List<LocalDate> selectedOccurrenceDates) {
 		return new RecurringIncomeCreateRequest(
 			description,
 			source,
@@ -341,7 +630,11 @@ class RecurringIncomeServiceTest {
 			cadence,
 			nextIncomeDate,
 			active,
-			notes
+			notes,
+			firstPaymentDay,
+			secondPaymentDay,
+			historyMode,
+			selectedOccurrenceDates
 		);
 	}
 
@@ -360,7 +653,9 @@ class RecurringIncomeServiceTest {
 			cadence,
 			nextIncomeDate,
 			active,
-			notes
+			notes,
+			null,
+			null
 		);
 	}
 
