@@ -58,7 +58,7 @@ export function YtdSummary({ data }: YtdSummaryProps) {
               </InfoTooltip>
             </h2>
             <p className="reports-card-value">{formatCurrency(data.averages.averageExpenses)}</p>
-            <HelpLink to="/help?topic=ytd-average">Learn more</HelpLink>
+            <HelpLink to="/settings/help?topic=ytd-average">Learn more</HelpLink>
           </article>
           <article className="reports-card">
             <h2>Average net cash flow</h2>

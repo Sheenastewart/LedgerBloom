@@ -58,11 +58,11 @@ const sampleExpenses = [
   },
 ]
 
-function renderPage(initialEntry = '/expenses') {
+function renderPage(initialEntry = '/transactions/expenses') {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
-        <Route path="/expenses" element={<ExpensesPage />} />
+        <Route path="/transactions/expenses" element={<ExpensesPage />} />
       </Routes>
     </MemoryRouter>,
   )
@@ -345,13 +345,13 @@ describe('ExpensesPage', () => {
       <MemoryRouter
         initialEntries={[
           {
-            pathname: '/expenses',
+            pathname: '/transactions/expenses',
             state: { successMessage: 'Created expense "Lunch".' },
           },
         ]}
       >
         <Routes>
-          <Route path="/expenses" element={<ExpensesPage />} />
+          <Route path="/transactions/expenses" element={<ExpensesPage />} />
         </Routes>
       </MemoryRouter>,
     )

@@ -19,10 +19,10 @@ vi.mock('../api/recurringIncomeApi', () => ({
 
 function renderCreate() {
   return render(
-    <MemoryRouter initialEntries={['/recurring-income/new']}>
+    <MemoryRouter initialEntries={['/transactions/recurring-income/new']}>
       <Routes>
-        <Route path="/recurring-income/new" element={<RecurringIncomeFormPage mode="create" />} />
-        <Route path="/income" element={<p>Income recurring section</p>} />
+        <Route path="/transactions/recurring-income/new" element={<RecurringIncomeFormPage mode="create" />} />
+        <Route path="/transactions/recurring-income" element={<p>Recurring income hub</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -68,7 +68,7 @@ describe('RecurringIncomeFormPage', () => {
     await waitFor(() => {
       expect(recurringIncomeApi.createRecurringIncome).toHaveBeenCalled()
     })
-    expect(await screen.findByText('Income recurring section')).toBeInTheDocument()
+    expect(await screen.findByText('Recurring income hub')).toBeInTheDocument()
   })
 
   it('validates required fields', async () => {

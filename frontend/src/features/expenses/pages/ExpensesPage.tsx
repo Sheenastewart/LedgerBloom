@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { isAbortError } from '../../../api/ApiClientError'
+import { paths } from '../../../routes/paths'
 import { getCategories } from '../../categories/api/categoryApi'
 import type { Category } from '../../categories/types'
 import { deleteExpense, getExpenses } from '../api/expenseApi'
@@ -134,7 +135,7 @@ export function ExpensesPage() {
           <h1>Expenses</h1>
           <p className="page-subtitle">Track spending by category and month.</p>
         </div>
-        <Link to="/expenses/new" className="button button-primary">
+        <Link to={paths.transactionsExpensesAdd} className="button button-primary">
           Add expense
         </Link>
       </div>
@@ -186,7 +187,7 @@ export function ExpensesPage() {
               ? 'No expenses match the current filters.'
               : 'No expenses yet.'}
           </p>
-          <Link to="/expenses/new" className="button button-primary">
+          <Link to={paths.transactionsExpensesAdd} className="button button-primary">
             Add expense
           </Link>
         </div>

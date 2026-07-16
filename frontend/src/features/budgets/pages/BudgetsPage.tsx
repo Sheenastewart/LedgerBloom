@@ -94,7 +94,13 @@ type LocationSuccessState = {
   successMessage?: string
 }
 
-export function BudgetsPage() {
+export type BudgetsPageView = 'monthly' | 'categories'
+
+type BudgetsPageProps = {
+  view?: BudgetsPageView
+}
+
+export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialPeriod = parsePeriodFromSearch(searchParams) ?? currentPeriod()
@@ -315,15 +321,21 @@ export function BudgetsPage() {
     <main className="budgets-page page">
       <div className="page-header">
         <div>
-          <h1>Budgets</h1>
-          <p className="page-subtitle">Plan monthly limits and compare them to actual expenses.</p>
+          <h1>{view === 'categories' ? 'Budget categories' : 'Monthly budget'}</h1>
+          <p className="page-subtitle">
+            {view === 'categories'
+              ? 'Optional category ceilings within the selected monthly budget.'
+              : 'Plan monthly limits and compare them to actual expenses.'}
+          </p>
         </div>
-        <Link
-          to={`/budgets/new${periodToSearch(period)}`}
-          className="button button-primary"
-        >
-          Create budget
-        </Link>
+        {view === 'monthly' ? (
+          <Link
+            to={`/budgets/new${periodToSearch(period)}`}
+            className="button button-primary"
+          >
+            Create budget
+          </Link>
+        ) : null}
       </div>
 
       <HowThisWorks>
@@ -332,7 +344,7 @@ export function BudgetsPage() {
           from saved Expense entries; category limits are optional planning ceilings tracked
           separately from the overall budget.
         </p>
-        <HelpLink to="/help?topic=set-monthly-budget">Learn more</HelpLink>
+        <HelpLink to="/settings/help?topic=set-monthly-budget">Learn more</HelpLink>
       </HowThisWorks>
 
       <BudgetPeriodForm appliedPeriod={period} onApply={handleApplyPeriod} />
@@ -373,78 +385,88 @@ export function BudgetsPage() {
             Showing {periodLabel({ year: budget.year, month: budget.month })}.
           </p>
 
-          <section aria-label="Budget summary">
-            <div className="budget-summary-grid">
-              <article className="budget-card">
-                <h2>Total budget</h2>
-                <p className="budget-card-value">{formatCurrency(budget.totalLimit)}</p>
-              </article>
-              <article className="budget-card">
-                <h2>Actual expenses</h2>
-                <p className="budget-card-value">{formatCurrency(budget.actualExpenses)}</p>
-              </article>
-              <article className="budget-card">
-                <h2 className="metric-heading">
-                  Remaining
-                  <InfoTooltip label="About remaining budget">
-                    {CALCULATION_DEFS.remainingBudget.short}
-                  </InfoTooltip>
-                </h2>
-                <p className={budget.remaining < 0 ? 'budget-card-value negative' : 'budget-card-value'}>
-                  {formatCurrency(budget.remaining)}
-                </p>
-              </article>
-              <article className="budget-card">
-                <h2 className="metric-heading">
-                  Percent used
-                  <InfoTooltip label="About percent used">
-                    {CALCULATION_DEFS.percentUsed.short}
-                  </InfoTooltip>
-                </h2>
-                <p className="budget-card-value">{budget.percentUsed.toFixed(2)}%</p>
-              </article>
-              <article className="budget-card">
-                <h2 className="metric-heading">
-                  Status
-                  <InfoTooltip label="About budget status">
-                    {CALCULATION_DEFS.budgetStatus.short}
-                  </InfoTooltip>
-                </h2>
-                <p className={`budget-status ${overallStatus ?? ''}`}>
-                  {overallStatus ? budgetStatusLabel(overallStatus) : '—'}
-                </p>
-                <HelpLink to="/help?topic=budget-status-labels">What do these mean?</HelpLink>
-              </article>
-              <article className="budget-card">
-                <h2>Expense entries</h2>
-                <p className="budget-card-value">{budget.expenseCount}</p>
-              </article>
-            </div>
-          </section>
+          {view === 'monthly' ? (
+            <>
+              <section aria-label="Budget summary">
+                <div className="budget-summary-grid">
+                  <article className="budget-card">
+                    <h2>Total budget</h2>
+                    <p className="budget-card-value">{formatCurrency(budget.totalLimit)}</p>
+                  </article>
+                  <article className="budget-card">
+                    <h2>Actual expenses</h2>
+                    <p className="budget-card-value">{formatCurrency(budget.actualExpenses)}</p>
+                  </article>
+                  <article className="budget-card">
+                    <h2 className="metric-heading">
+                      Remaining
+                      <InfoTooltip label="About remaining budget">
+                        {CALCULATION_DEFS.remainingBudget.short}
+                      </InfoTooltip>
+                    </h2>
+                    <p className={budget.remaining < 0 ? 'budget-card-value negative' : 'budget-card-value'}>
+                      {formatCurrency(budget.remaining)}
+                    </p>
+                  </article>
+                  <article className="budget-card">
+                    <h2 className="metric-heading">
+                      Percent used
+                      <InfoTooltip label="About percent used">
+                        {CALCULATION_DEFS.percentUsed.short}
+                      </InfoTooltip>
+                    </h2>
+                    <p className="budget-card-value">{budget.percentUsed.toFixed(2)}%</p>
+                  </article>
+                  <article className="budget-card">
+                    <h2 className="metric-heading">
+                      Status
+                      <InfoTooltip label="About budget status">
+                        {CALCULATION_DEFS.budgetStatus.short}
+                      </InfoTooltip>
+                    </h2>
+                    <p className={`budget-status ${overallStatus ?? ''}`}>
+                      {overallStatus ? budgetStatusLabel(overallStatus) : '—'}
+                    </p>
+                    <HelpLink to="/settings/help?topic=budget-status-labels">What do these mean?</HelpLink>
+                  </article>
+                  <article className="budget-card">
+                    <h2>Expense entries</h2>
+                    <p className="budget-card-value">{budget.expenseCount}</p>
+                  </article>
+                </div>
+              </section>
 
-          <div className="budget-actions-row">
-            <Link to={`/budgets/${budget.id}/edit${periodToSearch(period)}`} className="button button-secondary">
-              Edit budget
-            </Link>
-            <button
-              type="button"
-              className="button button-secondary"
-              disabled={deletingBudget}
-              onClick={() => void handleDeleteBudget()}
-            >
-              {deletingBudget ? 'Deleting…' : 'Delete budget'}
-            </button>
-            <button
-              type="button"
-              className="button button-primary"
-              onClick={() => {
-                setLimitServerErrors({})
-                setLimitEditor({ mode: 'create' })
-              }}
-            >
-              Add category limit
-            </button>
-          </div>
+              <div className="budget-actions-row">
+                <Link to={`/budgets/${budget.id}/edit${periodToSearch(period)}`} className="button button-secondary">
+                  Edit budget
+                </Link>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  disabled={deletingBudget}
+                  onClick={() => void handleDeleteBudget()}
+                >
+                  {deletingBudget ? 'Deleting…' : 'Delete budget'}
+                </button>
+                <Link to={`/budgets/categories${periodToSearch(period)}`} className="button button-primary">
+                  Manage category limits
+                </Link>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="budget-actions-row">
+                <button
+                  type="button"
+                  className="button button-primary"
+                  onClick={() => {
+                    setLimitServerErrors({})
+                    setLimitEditor({ mode: 'create' })
+                  }}
+                >
+                  Add category limit
+                </button>
+              </div>
 
           <section className="budget-section" aria-labelledby="category-limits-heading">
             <h2 id="category-limits-heading" className="metric-heading">
@@ -553,6 +575,8 @@ export function BudgetsPage() {
               )}
             </div>
           ) : null}
+            </>
+          )}
         </>
       ) : null}
     </main>

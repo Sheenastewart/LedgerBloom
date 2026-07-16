@@ -27,7 +27,7 @@ export function CategoryList({
             <div className="category-actions">
               <Link
                 className="button button-secondary"
-                to={`/categories/${category.id}/edit`}
+                to={`/transactions/categories/${category.id}/edit`}
               >
                 Edit
               </Link>

@@ -29,11 +29,11 @@ const sampleCategories = [
   },
 ]
 
-function renderPage(initialEntry = '/categories') {
+function renderPage(initialEntry = '/transactions/categories') {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
-        <Route path="/categories" element={<CategoriesPage />} />
+        <Route path="/transactions/categories" element={<CategoriesPage />} />
       </Routes>
     </MemoryRouter>,
   )
@@ -139,13 +139,13 @@ describe('CategoriesPage', () => {
       <MemoryRouter
         initialEntries={[
           {
-            pathname: '/categories',
+            pathname: '/transactions/categories',
             state: { successMessage: 'Created category "Travel".' },
           },
         ]}
       >
         <Routes>
-          <Route path="/categories" element={<CategoriesPage />} />
+          <Route path="/transactions/categories" element={<CategoriesPage />} />
         </Routes>
       </MemoryRouter>,
     )

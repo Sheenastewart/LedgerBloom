@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../features/auth/AuthContext'
+import { paths } from '../routes/paths'
 import '../features/auth/auth.css'
 
 export function AppLayout() {
@@ -8,59 +9,45 @@ export function AppLayout() {
 
   async function handleLogout() {
     await logout()
-    navigate('/')
+    navigate(paths.home)
   }
 
   return (
     <div className="shell">
       <header className="topbar">
-        <NavLink to="/" className="brand-link">
+        <NavLink to={paths.home} className="brand-link">
           LedgerBloom
         </NavLink>
         <nav className="site-nav" aria-label="Primary">
-          <NavLink to="/" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')} end>
+          <NavLink
+            to={paths.home}
+            className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+            end
+          >
             Home
           </NavLink>
           {user ? (
             <>
               <NavLink
-                to="/dashboard"
+                to={paths.dashboard}
                 className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
               >
                 Dashboard
               </NavLink>
               <NavLink
-                to="/budgets"
+                to={paths.transactions}
+                className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+              >
+                Transactions
+              </NavLink>
+              <NavLink
+                to={paths.budgets}
                 className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
               >
                 Budgets
               </NavLink>
               <NavLink
-                to="/categories"
-                className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
-              >
-                Categories
-              </NavLink>
-              <NavLink
-                to="/expenses"
-                className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
-              >
-                Expenses
-              </NavLink>
-              <NavLink
-                to="/recurring"
-                className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
-              >
-                Recurring
-              </NavLink>
-              <NavLink
-                to="/income"
-                className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
-              >
-                Income
-              </NavLink>
-              <NavLink
-                to="/reports"
+                to={paths.reports}
                 className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
               >
                 Reports
@@ -68,10 +55,10 @@ export function AppLayout() {
             </>
           ) : null}
           <NavLink
-            to="/help"
+            to={paths.settings}
             className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
           >
-            Help
+            Settings
           </NavLink>
         </nav>
         {user ? (
@@ -83,10 +70,10 @@ export function AppLayout() {
           </div>
         ) : (
           <div className="user-menu">
-            <NavLink to="/login" className="button button-secondary">
+            <NavLink to={paths.login} className="button button-secondary">
               Log in
             </NavLink>
-            <NavLink to="/register" className="button button-primary">
+            <NavLink to={paths.register} className="button button-primary">
               Sign up
             </NavLink>
           </div>

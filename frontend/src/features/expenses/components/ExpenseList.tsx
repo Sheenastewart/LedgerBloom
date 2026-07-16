@@ -27,7 +27,7 @@ export function ExpenseList({ expenses, deletingExpenseId, onDelete }: ExpenseLi
               {expense.notes ? <p className="expense-meta">Notes: {expense.notes}</p> : null}
             </div>
             <div className="expense-actions">
-              <Link className="button button-secondary" to={`/expenses/${expense.id}/edit`}>
+              <Link className="button button-secondary" to={`/transactions/expenses/${expense.id}/edit`}>
                 Edit
               </Link>
               <button

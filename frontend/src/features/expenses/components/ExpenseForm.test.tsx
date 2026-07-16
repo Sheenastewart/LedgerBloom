@@ -66,7 +66,7 @@ describe('ExpenseForm', () => {
     expect(screen.getByText(/Create at least one category/i)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Add category' })).toHaveAttribute(
       'href',
-      '/categories/new',
+      '/transactions/categories/new',
     )
   })
 

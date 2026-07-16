@@ -160,7 +160,7 @@ describe('Auth routes', () => {
     )
 
     render(
-      <MemoryRouter initialEntries={['/categories']}>
+      <MemoryRouter initialEntries={['/transactions/categories']}>
         <AppRoutes />
       </MemoryRouter>,
     )
@@ -176,7 +176,7 @@ describe('Auth routes', () => {
     vi.mocked(authApi.login).mockResolvedValue(sampleUser)
 
     render(
-      <MemoryRouter initialEntries={['/categories']}>
+      <MemoryRouter initialEntries={['/transactions/categories']}>
         <AppRoutes />
       </MemoryRouter>,
     )

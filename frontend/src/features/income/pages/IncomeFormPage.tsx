@@ -122,7 +122,7 @@ export function IncomeFormPage({ mode }: IncomeFormPageProps) {
       const body = toIncomeWriteRequest(values)
       if (mode === 'create') {
         await createIncomeEntry(body)
-        navigate('/income', {
+        navigate('/transactions/income', {
           state: { successMessage: `Created income entry "${body.description}".` },
         })
         return
@@ -134,7 +134,7 @@ export function IncomeFormPage({ mode }: IncomeFormPageProps) {
       }
 
       await updateIncomeEntry(routeId, body)
-      navigate('/income', {
+      navigate('/transactions/income', {
         state: { successMessage: `Updated income entry "${body.description}".` },
       })
     } catch (error) {
@@ -167,7 +167,7 @@ export function IncomeFormPage({ mode }: IncomeFormPageProps) {
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => navigate('/income')}
+            onClick={() => navigate('/transactions/income')}
           >
             Back to income
           </button>
@@ -184,7 +184,7 @@ export function IncomeFormPage({ mode }: IncomeFormPageProps) {
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => navigate('/income')}
+            onClick={() => navigate('/transactions/income')}
           >
             Back to income
           </button>
@@ -202,7 +202,7 @@ export function IncomeFormPage({ mode }: IncomeFormPageProps) {
         submitting={submitting}
         serverErrors={serverErrors}
         onSubmit={handleSubmit}
-        onCancel={() => navigate('/income')}
+        onCancel={() => navigate('/transactions/income')}
       />
     </main>
   )

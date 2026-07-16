@@ -1,16 +1,16 @@
-import { Navigate, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
+import { RecurringIncomePanel } from '../components/RecurringIncomePanel'
+
+type LocationSuccessState = {
+  successMessage?: string
+}
 
 /**
- * Legacy route: recurring income lives under the Income area.
+ * Recurring income schedules under Transactions.
  */
 export function RecurringIncomePage() {
   const location = useLocation()
-  const successMessage = (location.state as { successMessage?: string } | null)?.successMessage
-  return (
-    <Navigate
-      to="/income?section=recurring"
-      replace
-      state={successMessage ? { successMessage } : null}
-    />
-  )
+  const successMessage = (location.state as LocationSuccessState | null)?.successMessage ?? null
+
+  return <RecurringIncomePanel successMessage={successMessage} />
 }

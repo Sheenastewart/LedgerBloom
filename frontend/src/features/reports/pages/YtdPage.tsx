@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
 import { getYearToDate } from '../api/reportsApi'
-import { ReportsNav } from '../components/ReportsNav'
 import { YtdSummary } from '../components/YtdSummary'
 import { currentPeriod } from '../reportsFormat'
 import type { YearToDateResponse } from '../types'
@@ -71,8 +70,6 @@ export function YtdPage() {
           <p className="page-subtitle">Totals, averages, and highlights for a full year.</p>
         </div>
       </div>
-
-      <ReportsNav />
 
       <form className="month-range-form" onSubmit={handleSubmit} noValidate>
         <fieldset>

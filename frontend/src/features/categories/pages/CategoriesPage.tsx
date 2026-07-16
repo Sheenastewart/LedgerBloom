@@ -118,7 +118,7 @@ export function CategoriesPage() {
         <div>
           <h1>Categories</h1>
           <p className="page-subtitle">Organize spending into reusable labels.</p>
-          <HelpLink to="/help?topic=why-category-cannot-delete">
+          <HelpLink to="/settings/help?topic=why-category-cannot-delete">
             Why can’t I delete this category?
           </HelpLink>
         </div>
@@ -131,7 +131,7 @@ export function CategoriesPage() {
           >
             {addingStarter ? 'Adding starter categories…' : 'Add starter categories'}
           </button>
-          <Link to="/categories/new" className="button button-primary">
+          <Link to="/transactions/categories/new" className="button button-primary">
             Add category
           </Link>
         </div>
@@ -186,7 +186,7 @@ export function CategoriesPage() {
             >
               Add starter categories
             </button>
-            <Link to="/categories/new" className="button button-primary">
+            <Link to="/transactions/categories/new" className="button button-primary">
               Add category
             </Link>
           </div>

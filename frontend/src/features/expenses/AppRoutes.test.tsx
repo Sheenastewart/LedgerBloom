@@ -143,7 +143,7 @@ describe('Expense routes', () => {
     vi.mocked(expenseApi.getExpenses).mockResolvedValue([])
   })
 
-  it('navigates between Home, Categories, and Expenses', async () => {
+  it('navigates between Home and Expenses via Transactions', async () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/']}>
@@ -152,9 +152,7 @@ describe('Expense routes', () => {
     )
 
     expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
-    await user.click(screen.getByRole('link', { name: 'Categories' }))
-    expect(await screen.findByRole('heading', { name: 'Categories' })).toBeInTheDocument()
-    await user.click(screen.getByRole('link', { name: 'Expenses' }))
+    await user.click(screen.getByRole('link', { name: 'Transactions' }))
     expect(await screen.findByRole('heading', { name: 'Expenses' })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Home' }))
     expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
@@ -163,7 +161,7 @@ describe('Expense routes', () => {
   it('renders Add expense from the Expenses page', async () => {
     const user = userEvent.setup()
     render(
-      <MemoryRouter initialEntries={['/expenses']}>
+      <MemoryRouter initialEntries={['/transactions/expenses']}>
         <AppRoutes />
       </MemoryRouter>,
     )
@@ -171,11 +169,14 @@ describe('Expense routes', () => {
     expect(await screen.findByRole('heading', { name: 'Expenses' })).toBeInTheDocument()
     await user.click(screen.getAllByRole('link', { name: 'Add expense' })[0])
     expect(await screen.findByRole('heading', { name: 'Add expense' })).toBeInTheDocument()
+    expect(screen.getByText('Is this recurring?')).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'One-time' }))
+    expect(await screen.findByRole('heading', { name: 'Add expense' })).toBeInTheDocument()
   })
 
   it('shows not found for an invalid edit id', async () => {
     render(
-      <MemoryRouter initialEntries={['/expenses/0/edit']}>
+      <MemoryRouter initialEntries={['/transactions/expenses/0/edit']}>
         <AppRoutes />
       </MemoryRouter>,
     )

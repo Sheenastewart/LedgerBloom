@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { isAbortError } from '../../../api/ApiClientError'
 import { HowThisWorks } from '../../../components/HowThisWorks'
 import { HelpLink } from '../../guidance/HelpLink'
-import { RecurringIncomePanel } from '../../recurringIncome/components/RecurringIncomePanel'
+import { paths } from '../../../routes/paths'
 import { deleteIncomeEntry, getIncomeEntries, undoReceivedIncomeEntry } from '../api/incomeApi'
 import { IncomeFilters } from '../components/IncomeFilters'
 import { IncomeList } from '../components/IncomeList'
@@ -16,17 +16,14 @@ type LocationSuccessState = {
   successMessage?: string
 }
 
-type IncomeSection = 'received' | 'recurring'
-
-function parseSection(value: string | null): IncomeSection {
-  return value === 'recurring' ? 'recurring' : 'received'
-}
-
 export function IncomePage() {
   const location = useLocation()
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const section = useMemo(() => parseSection(searchParams.get('section')), [searchParams])
+  const [searchParams] = useSearchParams()
+
+  if (searchParams.get('section') === 'recurring') {
+    return <Navigate to={paths.transactionsRecurringIncome} replace state={location.state} />
+  }
 
   const [entries, setEntries] = useState<IncomeEntry[]>([])
   const [appliedFilters, setAppliedFilters] = useState<IncomeFilterValues>({})
@@ -70,13 +67,10 @@ export function IncomePage() {
   }, [])
 
   useEffect(() => {
-    if (section !== 'received') {
-      return
-    }
     const controller = new AbortController()
     void loadPage({}, controller.signal)
     return () => controller.abort()
-  }, [loadPage, section])
+  }, [loadPage])
 
   function handleApplyFilters(filters: IncomeFilterValues) {
     setAppliedFilters(filters)
@@ -99,19 +93,11 @@ export function IncomePage() {
     setDeleteError(null)
     setUndoingIncomeId(entry.id)
     try {
-      const result = await undoReceivedIncomeEntry(entry.id)
+      await undoReceivedIncomeEntry(entry.id)
       await loadPage(appliedFilters)
-      if (result.scheduleRestored) {
-        setSuccessMessage(
-          `Undid receive for "${entry.description}". Next scheduled date is ${result.nextIncomeDate}.`,
-        )
-      } else {
-        setSuccessMessage(
-          `Removed "${entry.description}" from received income. Review the recurring schedule if needed.`,
-        )
-      }
+      setSuccessMessage(`Undid receiving "${entry.description}".`)
     } catch {
-      setDeleteError(`Could not undo receive for "${entry.description}". Please try again.`)
+      setDeleteError(`Could not undo "${entry.description}". Please try again.`)
     } finally {
       setUndoingIncomeId(null)
     }
@@ -119,7 +105,7 @@ export function IncomePage() {
 
   async function handleDelete(entry: IncomeEntry) {
     const confirmed = window.confirm(
-      `Delete income entry "${entry.description}"? This cannot be undone.`,
+      `Delete income "${entry.description}"? This cannot be undone.`,
     )
     if (!confirmed) {
       return
@@ -130,22 +116,12 @@ export function IncomePage() {
     try {
       await deleteIncomeEntry(entry.id)
       await loadPage(appliedFilters)
-      setSuccessMessage(`Deleted income entry "${entry.description}".`)
+      setSuccessMessage(`Deleted income "${entry.description}".`)
     } catch {
       setDeleteError(`Could not delete "${entry.description}". Please try again.`)
     } finally {
       setDeletingIncomeId(null)
     }
-  }
-
-  function setSection(next: IncomeSection) {
-    const nextParams = new URLSearchParams(searchParams)
-    if (next === 'received') {
-      nextParams.delete('section')
-    } else {
-      nextParams.set('section', next)
-    }
-    setSearchParams(nextParams, { replace: true })
   }
 
   const hasActiveFilters =
@@ -158,49 +134,24 @@ export function IncomePage() {
       <div className="page-header">
         <div>
           <h1>Income</h1>
-          <p className="page-subtitle">
-            Record money you received and plan pay on a repeating schedule.
-          </p>
+          <p className="page-subtitle">Record money you have already received.</p>
         </div>
-        <Link to="/income/add" className="button button-primary">
+        <Link to={paths.transactionsIncomeAdd} className="button button-primary">
           Add income
         </Link>
       </div>
 
       <HowThisWorks>
         <p>
-          Received income is money that already arrived. Recurring schedules project upcoming pay
-          without creating ledger rows until you mark them received.
+          Received income is money that already arrived. Recurring schedules live under the
+          Recurring Income tab and do not create ledger rows until you mark them received.
         </p>
-        <HelpLink to="/help?topic=recurring-vs-actual">Recurring vs. actual entries</HelpLink>
+        <HelpLink to={`${paths.settingsHelp}?topic=recurring-vs-actual`}>
+          Recurring vs. actual entries
+        </HelpLink>
       </HowThisWorks>
 
-      <div className="income-section-tabs" role="tablist" aria-label="Income sections">
-        <button
-          type="button"
-          role="tab"
-          id="income-tab-received"
-          aria-selected={section === 'received'}
-          aria-controls="income-panel-received"
-          className={section === 'received' ? 'income-tab active' : 'income-tab'}
-          onClick={() => setSection('received')}
-        >
-          Received
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id="income-tab-recurring"
-          aria-selected={section === 'recurring'}
-          aria-controls="income-panel-recurring"
-          className={section === 'recurring' ? 'income-tab active' : 'income-tab'}
-          onClick={() => setSection('recurring')}
-        >
-          Recurring schedules
-        </button>
-      </div>
-
-      {section === 'received' && successMessage ? (
+      {successMessage ? (
         <p className="status-banner success" role="status" aria-live="polite">
           {successMessage}
         </p>
@@ -212,72 +163,53 @@ export function IncomePage() {
         </p>
       ) : null}
 
-      {section === 'received' ? (
-        <div
-          id="income-panel-received"
-          role="tabpanel"
-          aria-labelledby="income-tab-received"
-        >
-          <IncomeFilters
-            appliedFilters={appliedFilters}
-            onApply={handleApplyFilters}
-            onClear={handleClearFilters}
-          />
+      <IncomeFilters
+        appliedFilters={appliedFilters}
+        onApply={handleApplyFilters}
+        onClear={handleClearFilters}
+      />
 
-          {loading ? (
-            <p className="status-banner" role="status" aria-live="polite">
-              Loading income…
-            </p>
-          ) : null}
+      {loading ? (
+        <p className="status-banner" role="status" aria-live="polite">
+          Loading income…
+        </p>
+      ) : null}
 
-          {!loading && error ? (
-            <div className="status-panel" role="alert">
-              <p>{error}</p>
-              <button
-                type="button"
-                className="button button-secondary"
-                onClick={() => void loadPage(appliedFilters)}
-              >
-                Retry
-              </button>
-            </div>
-          ) : null}
-
-          {!loading && !error && entries.length === 0 ? (
-            <div className="status-panel" role="status">
-              <p>
-                {hasActiveFilters
-                  ? 'No income entries match the current filters.'
-                  : 'No received income yet.'}
-              </p>
-              <Link to="/income/add" className="button button-primary">
-                Add income
-              </Link>
-            </div>
-          ) : null}
-
-          {!loading && !error && entries.length > 0 ? (
-            <IncomeList
-              entries={entries}
-              deletingIncomeId={deletingIncomeId}
-              undoingIncomeId={undoingIncomeId}
-              onDelete={(item) => void handleDelete(item)}
-              onUndoReceived={(item) => void handleUndoReceived(item)}
-            />
-          ) : null}
+      {!loading && error ? (
+        <div className="status-panel" role="alert">
+          <p>{error}</p>
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={() => void loadPage(appliedFilters)}
+          >
+            Retry
+          </button>
         </div>
-      ) : (
-        <div
-          id="income-panel-recurring"
-          role="tabpanel"
-          aria-labelledby="income-tab-recurring"
-        >
-          <RecurringIncomePanel
-            successMessage={successMessage}
-            onClearSuccessMessage={() => setSuccessMessage(null)}
-          />
+      ) : null}
+
+      {!loading && !error && entries.length === 0 ? (
+        <div className="status-panel" role="status">
+          <p>
+            {hasActiveFilters
+              ? 'No income entries match the current filters.'
+              : 'No received income yet.'}
+          </p>
+          <Link to={paths.transactionsIncomeAdd} className="button button-primary">
+            Add income
+          </Link>
         </div>
-      )}
+      ) : null}
+
+      {!loading && !error && entries.length > 0 ? (
+        <IncomeList
+          entries={entries}
+          deletingIncomeId={deletingIncomeId}
+          undoingIncomeId={undoingIncomeId}
+          onDelete={(item) => void handleDelete(item)}
+          onUndoReceived={(item) => void handleUndoReceived(item)}
+        />
+      ) : null}
     </main>
   )
 }

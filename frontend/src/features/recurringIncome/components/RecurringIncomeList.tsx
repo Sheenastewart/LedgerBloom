@@ -65,7 +65,7 @@ export function RecurringIncomeList({
             {item.notes ? <p className="recurring-meta">{item.notes}</p> : null}
             <p className={`recurring-status ${status.className}`}>{status.label}</p>
             <div className="recurring-actions">
-              <Link to={`/recurring-income/${item.id}/edit`} className="button button-secondary">
+              <Link to={`/transactions/recurring-income/${item.id}/edit`} className="button button-secondary">
                 Edit
               </Link>
               <button
@@ -80,7 +80,7 @@ export function RecurringIncomeList({
               </button>
               <InfoTooltip label="About Mark Received">
                 {CALCULATION_DEFS.markReceived.short}{' '}
-                <HelpLink to="/help?topic=how-mark-received-works">Learn more</HelpLink>
+                <HelpLink to="/settings/help?topic=how-mark-received-works">Learn more</HelpLink>
               </InfoTooltip>
               <button
                 type="button"

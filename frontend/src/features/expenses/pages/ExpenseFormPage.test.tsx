@@ -29,10 +29,10 @@ const sampleCategories = [
 
 function renderCreate() {
   return render(
-    <MemoryRouter initialEntries={['/expenses/new']}>
+    <MemoryRouter initialEntries={['/transactions/expenses/new']}>
       <Routes>
-        <Route path="/expenses/new" element={<ExpenseFormPage mode="create" />} />
-        <Route path="/expenses" element={<p>Expenses home</p>} />
+        <Route path="/transactions/expenses/new" element={<ExpenseFormPage mode="create" />} />
+        <Route path="/transactions/expenses" element={<p>Expenses home</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -42,8 +42,8 @@ function renderEdit(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/expenses/:id/edit" element={<ExpenseFormPage mode="edit" />} />
-        <Route path="/expenses" element={<p>Expenses home</p>} />
+        <Route path="/transactions/expenses/:id/edit" element={<ExpenseFormPage mode="edit" />} />
+        <Route path="/transactions/expenses" element={<p>Expenses home</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -124,7 +124,7 @@ describe('ExpenseFormPage', () => {
       updatedAt: '2026-01-01T00:00:00Z',
     })
 
-    renderEdit('/expenses/7/edit')
+    renderEdit('/transactions/expenses/7/edit')
 
     expect(await screen.findByDisplayValue('Weekly shopping')).toBeInTheDocument()
     expect(screen.getByDisplayValue('45.5')).toBeInTheDocument()
@@ -132,7 +132,7 @@ describe('ExpenseFormPage', () => {
   })
 
   it('shows not-found for an invalid route id without calling the API', async () => {
-    renderEdit('/expenses/abc/edit')
+    renderEdit('/transactions/expenses/abc/edit')
 
     expect(await screen.findByRole('heading', { name: 'Expense not found' })).toBeInTheDocument()
     expect(expenseApi.getExpense).not.toHaveBeenCalled()
@@ -143,7 +143,7 @@ describe('ExpenseFormPage', () => {
       new ApiClientError({ message: 'missing', code: 'EXPENSE_NOT_FOUND', status: 404 }),
     )
 
-    renderEdit('/expenses/99/edit')
+    renderEdit('/transactions/expenses/99/edit')
 
     expect(await screen.findByRole('heading', { name: 'Expense not found' })).toBeInTheDocument()
   })
@@ -173,7 +173,7 @@ describe('ExpenseFormPage', () => {
       updatedAt: '2026-01-02T00:00:00Z',
     })
 
-    renderEdit('/expenses/7/edit')
+    renderEdit('/transactions/expenses/7/edit')
     await screen.findByDisplayValue('Weekly shopping')
 
     await user.clear(screen.getByLabelText('Merchant'))

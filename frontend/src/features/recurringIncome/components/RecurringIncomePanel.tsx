@@ -175,7 +175,7 @@ export function RecurringIncomePanel({
           Recurring schedules plan upcoming paychecks but do not become income on their own. Use
           Mark Received when the income actually arrives to create a real income entry.
         </p>
-        <HelpLink to="/help?topic=recurring-vs-actual">Recurring vs. actual entries</HelpLink>
+        <HelpLink to="/settings/help?topic=recurring-vs-actual">Recurring vs. actual entries</HelpLink>
       </HowThisWorks>
 
       {displaySuccess ? (
@@ -228,7 +228,7 @@ export function RecurringIncomePanel({
           <section className="recurring-section" aria-labelledby="recurring-income-list-heading">
             <div className="section-header-row">
               <h2 id="recurring-income-list-heading">Recurring schedules</h2>
-              <Link to="/recurring-income/new" className="button button-secondary">
+              <Link to="/transactions/recurring-income/new" className="button button-secondary">
                 Add recurring
               </Link>
             </div>
@@ -239,7 +239,7 @@ export function RecurringIncomePanel({
                     ? 'No recurring income matches the current filters.'
                     : 'No recurring income schedules yet.'}
                 </p>
-                <Link to="/recurring-income/new" className="button button-primary">
+                <Link to="/transactions/recurring-income/new" className="button button-primary">
                   Add recurring
                 </Link>
               </div>

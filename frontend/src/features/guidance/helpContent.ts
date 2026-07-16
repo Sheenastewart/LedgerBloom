@@ -137,7 +137,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Open Categories, choose Add category, enter a name, optionally add a description, then save.',
       'Use clear names so reports and budgets stay easy to read.',
     ],
-    relatedPath: '/categories',
+    relatedPath: '/transactions/categories',
     relatedLabel: 'Manage categories',
   },
   {
@@ -151,7 +151,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'To delete it, first reassign or remove those linked expenses and recurring items.',
       'This protects your history from orphaned spending with no category.',
     ],
-    relatedPath: '/categories',
+    relatedPath: '/transactions/categories',
     relatedLabel: 'Manage categories',
   },
   {
@@ -165,7 +165,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Open Expenses, choose Add expense, enter description, amount, date, and category, then save.',
       'Optional merchant and notes help later search and exports.',
     ],
-    relatedPath: '/expenses',
+    relatedPath: '/transactions/expenses',
     relatedLabel: 'Manage expenses',
   },
   {
@@ -179,7 +179,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Clear filters to return to the full list.',
       'Filters change which rows you see; they do not permanently delete data.',
     ],
-    relatedPath: '/expenses',
+    relatedPath: '/transactions/expenses',
     relatedLabel: 'Manage expenses',
   },
   {
@@ -193,7 +193,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Open Income, choose Add income, pick One-time or Recurring, then complete the form. One-time saves a received entry; Recurring saves a schedule under the Recurring schedules tab.',
       'Saved income feeds dashboard totals, reports, and net cash flow.',
     ],
-    relatedPath: '/income',
+    relatedPath: '/transactions/income',
     relatedLabel: 'Manage income',
   },
   {
@@ -276,7 +276,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Expected income sums active recurring income schedules whose next expected date falls in the selected month.',
       'It is an estimate until Mark Received creates a saved income entry.',
     ],
-    relatedPath: '/income?section=recurring',
+    relatedPath: '/transactions/recurring-income',
     relatedLabel: 'Open Income schedules',
   },
   {
@@ -289,7 +289,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Expected obligations sum active recurring expense schedules whose next payment date falls in the selected month.',
       'They are estimates until Mark Paid creates a saved expense.',
     ],
-    relatedPath: '/recurring',
+    relatedPath: '/transactions/recurring-expenses',
     relatedLabel: 'Manage recurring expenses',
   },
   {
@@ -345,7 +345,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Actual income and expenses exist only after you save them, or after Mark Received / Mark Paid confirms a due schedule.',
       'Reports and net cash flow use actual rows. Projected cash flow also includes scheduled estimates.',
     ],
-    relatedPath: '/recurring',
+    relatedPath: '/transactions/recurring-expenses',
     relatedLabel: 'Manage recurring expenses',
   },
   {
@@ -359,7 +359,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'It also advances the next expected payment date for that schedule.',
       'You must confirm Mark Paid; LedgerBloom does not auto-post expenses in the background.',
     ],
-    relatedPath: '/recurring',
+    relatedPath: '/transactions/recurring-expenses',
     relatedLabel: 'Manage recurring expenses',
   },
   {
@@ -372,7 +372,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Upcoming payments list active recurring expense schedules with a next payment date in the selected period.',
       'Due status labels such as overdue or due soon are based on today’s date versus that next payment date.',
     ],
-    relatedPath: '/recurring',
+    relatedPath: '/transactions/recurring-expenses',
     relatedLabel: 'Manage recurring expenses',
   },
   {
@@ -386,7 +386,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'It advances the next expected income date for that schedule.',
       'Until confirmed, recurring income remains an estimate in cash-flow planning.',
     ],
-    relatedPath: '/income?section=recurring',
+    relatedPath: '/transactions/recurring-income',
     relatedLabel: 'Open Income schedules',
   },
   {
@@ -399,7 +399,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Upcoming income lists active recurring income schedules with a next expected date in the selected period.',
       'Use Mark Received when the income is actually received to post it to the ledger.',
     ],
-    relatedPath: '/income?section=recurring',
+    relatedPath: '/transactions/recurring-income',
     relatedLabel: 'Open Income schedules',
   },
   {

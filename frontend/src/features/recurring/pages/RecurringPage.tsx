@@ -180,7 +180,7 @@ export function RecurringPage() {
           <h1>Recurring</h1>
           <p className="page-subtitle">Track subscriptions and planned expenses without auto-posting ledger rows.</p>
         </div>
-        <Link to="/recurring/new" className="button button-primary">
+        <Link to="/transactions/recurring-expenses/new" className="button button-primary">
           Add Recurring Expense
         </Link>
       </div>
@@ -190,7 +190,7 @@ export function RecurringPage() {
           Recurring schedules plan upcoming bills but do not become expenses on their own. Use
           Mark Paid when a payment is actually made to create a real expense entry.
         </p>
-        <HelpLink to="/help?topic=recurring-vs-actual">Recurring vs. actual entries</HelpLink>
+        <HelpLink to="/settings/help?topic=recurring-vs-actual">Recurring vs. actual entries</HelpLink>
       </HowThisWorks>
 
       {successMessage ? (
@@ -250,7 +250,7 @@ export function RecurringPage() {
                     ? 'No recurring expenses match the current filters.'
                     : 'No recurring expenses yet.'}
                 </p>
-                <Link to="/recurring/new" className="button button-primary">
+                <Link to="/transactions/recurring-expenses/new" className="button button-primary">
                   Add Recurring Expense
                 </Link>
               </div>

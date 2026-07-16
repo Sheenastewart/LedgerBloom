@@ -16,9 +16,9 @@ function renderEdit(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/categories/:id/edit" element={<CategoryFormPage mode="edit" />} />
-        <Route path="/categories" element={<p>Categories home</p>} />
-        <Route path="/categories/new" element={<CategoryFormPage mode="create" />} />
+        <Route path="/transactions/categories/:id/edit" element={<CategoryFormPage mode="edit" />} />
+        <Route path="/transactions/categories" element={<p>Categories home</p>} />
+        <Route path="/transactions/categories/new" element={<CategoryFormPage mode="create" />} />
       </Routes>
     </MemoryRouter>,
   )
@@ -45,7 +45,7 @@ describe('CategoryFormPage', () => {
       updatedAt: '2026-01-01T00:00:00Z',
     })
 
-    renderEdit('/categories/7/edit')
+    renderEdit('/transactions/categories/7/edit')
 
     expect(await screen.findByDisplayValue('Housing')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Rent')).toBeInTheDocument()
@@ -53,7 +53,7 @@ describe('CategoryFormPage', () => {
   })
 
   it('shows not-found for an invalid route id without calling the API', async () => {
-    renderEdit('/categories/abc/edit')
+    renderEdit('/transactions/categories/abc/edit')
 
     expect(await screen.findByRole('heading', { name: 'Category not found' })).toBeInTheDocument()
     expect(categoryApi.getCategory).not.toHaveBeenCalled()
@@ -64,7 +64,7 @@ describe('CategoryFormPage', () => {
       new ApiClientError({ message: 'missing', code: 'CATEGORY_NOT_FOUND', status: 404 }),
     )
 
-    renderEdit('/categories/99/edit')
+    renderEdit('/transactions/categories/99/edit')
 
     expect(await screen.findByRole('heading', { name: 'Category not found' })).toBeInTheDocument()
   })
@@ -86,7 +86,7 @@ describe('CategoryFormPage', () => {
       updatedAt: '2026-01-02T00:00:00Z',
     })
 
-    renderEdit('/categories/7/edit')
+    renderEdit('/transactions/categories/7/edit')
     await screen.findByDisplayValue('Housing')
 
     await user.clear(screen.getByLabelText('Description'))
@@ -113,10 +113,10 @@ describe('CategoryFormPage', () => {
     })
 
     render(
-      <MemoryRouter initialEntries={['/categories/new']}>
+      <MemoryRouter initialEntries={['/transactions/categories/new']}>
         <Routes>
-          <Route path="/categories/new" element={<CategoryFormPage mode="create" />} />
-          <Route path="/categories" element={<p>Categories home</p>} />
+          <Route path="/transactions/categories/new" element={<CategoryFormPage mode="create" />} />
+          <Route path="/transactions/categories" element={<p>Categories home</p>} />
         </Routes>
       </MemoryRouter>,
     )

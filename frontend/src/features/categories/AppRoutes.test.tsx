@@ -159,6 +159,7 @@ describe('Category routes', () => {
     )
 
     expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Transactions' }))
     await user.click(screen.getByRole('link', { name: 'Categories' }))
     expect(await screen.findByRole('heading', { name: 'Categories' })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Home' }))
@@ -168,7 +169,7 @@ describe('Category routes', () => {
   it('renders Add category from the Categories page', async () => {
     const user = userEvent.setup()
     render(
-      <MemoryRouter initialEntries={['/categories']}>
+      <MemoryRouter initialEntries={['/transactions/categories']}>
         <AppRoutes />
       </MemoryRouter>,
     )
@@ -180,7 +181,7 @@ describe('Category routes', () => {
 
   it('shows not found for an invalid edit id', async () => {
     render(
-      <MemoryRouter initialEntries={['/categories/0/edit']}>
+      <MemoryRouter initialEntries={['/transactions/categories/0/edit']}>
         <AppRoutes />
       </MemoryRouter>,
     )

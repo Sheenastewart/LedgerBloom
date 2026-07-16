@@ -49,11 +49,12 @@ const sampleBudget = {
   updatedAt: '2026-01-01T00:00:00Z',
 }
 
-function renderPage(entry = '/budgets?year=2026&month=7') {
+function renderPage(entry = '/budgets/monthly?year=2026&month=7') {
   return render(
     <MemoryRouter initialEntries={[entry]}>
       <Routes>
-        <Route path="/budgets" element={<BudgetsPage />} />
+        <Route path="/budgets/monthly" element={<BudgetsPage view="monthly" />} />
+        <Route path="/budgets/categories" element={<BudgetsPage view="categories" />} />
         <Route path="/budgets/new" element={<p>Create form</p>} />
         <Route path="/budgets/:id/edit" element={<p>Edit form</p>} />
       </Routes>
@@ -89,7 +90,7 @@ describe('BudgetsPage', () => {
     expect(screen.getByText('$1,000.00')).toBeInTheDocument()
     expect(screen.getByText('$200.00')).toBeInTheDocument()
     expect(screen.getAllByText('On track').length).toBeGreaterThan(0)
-    expect(screen.getByRole('row', { name: /Groceries/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Manage category limits' })).toBeInTheDocument()
   })
 
   it('shows no-budget state with create action', async () => {
@@ -163,7 +164,7 @@ describe('BudgetsPage', () => {
     })
     vi.mocked(budgetApi.createCategoryLimit).mockResolvedValue(sampleBudget)
 
-    renderPage()
+    renderPage('/budgets/categories?year=2026&month=7')
     await screen.findByText('No category limits for this month.')
 
     await user.click(screen.getByRole('button', { name: 'Add category limit' }))
@@ -193,7 +194,7 @@ describe('BudgetsPage', () => {
       }),
     )
 
-    renderPage()
+    renderPage('/budgets/categories?year=2026&month=7')
     await screen.findByText('No category limits for this month.')
     await user.click(screen.getByRole('button', { name: 'Add category limit' }))
     await user.selectOptions(screen.getByLabelText('Category'), '1')

@@ -148,7 +148,7 @@ export function ExpenseFormPage({ mode }: ExpenseFormPageProps) {
       const body = toExpenseWriteRequest(values)
       if (mode === 'create') {
         await createExpense(body)
-        navigate('/expenses', {
+        navigate('/transactions/expenses', {
           state: { successMessage: `Created expense "${body.description}".` },
         })
         return
@@ -160,7 +160,7 @@ export function ExpenseFormPage({ mode }: ExpenseFormPageProps) {
       }
 
       await updateExpense(routeId, body)
-      navigate('/expenses', {
+      navigate('/transactions/expenses', {
         state: { successMessage: `Updated expense "${body.description}".` },
       })
     } catch (error) {
@@ -193,7 +193,7 @@ export function ExpenseFormPage({ mode }: ExpenseFormPageProps) {
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => navigate('/expenses')}
+            onClick={() => navigate('/transactions/expenses')}
           >
             Back to expenses
           </button>
@@ -210,7 +210,7 @@ export function ExpenseFormPage({ mode }: ExpenseFormPageProps) {
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => navigate('/expenses')}
+            onClick={() => navigate('/transactions/expenses')}
           >
             Back to expenses
           </button>
@@ -229,7 +229,7 @@ export function ExpenseFormPage({ mode }: ExpenseFormPageProps) {
         submitting={submitting}
         serverErrors={serverErrors}
         onSubmit={handleSubmit}
-        onCancel={() => navigate('/expenses')}
+        onCancel={() => navigate('/transactions/expenses')}
       />
     </main>
   )

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { fetchHealth } from '../api/health'
 import { useAuth } from '../features/auth/AuthContext'
+import { paths } from '../routes/paths'
 
 type HealthStatus = 'loading' | 'connected' | 'unavailable'
 
@@ -48,10 +49,10 @@ export function HomePage() {
         <>
           <p className="home-welcome">Sign in to manage your budgets, expenses, and income.</p>
           <div className="home-actions">
-            <Link to="/login" className="button button-primary">
+            <Link to={paths.login} className="button button-primary">
               Log in
             </Link>
-            <Link to="/register" className="button button-secondary">
+            <Link to={paths.register} className="button button-secondary">
               Create an account
             </Link>
           </div>
@@ -60,32 +61,26 @@ export function HomePage() {
 
       {!loading && user ? (
         <div className="home-actions">
-          <Link to="/dashboard" className="button button-primary">
+          <Link to={paths.dashboard} className="button button-primary">
             View dashboard
           </Link>
-          <Link to="/budgets" className="button button-secondary">
+          <Link to={paths.transactions} className="button button-secondary">
+            Manage transactions
+          </Link>
+          <Link to={paths.budgets} className="button button-secondary">
             Manage budgets
           </Link>
-          <Link to="/categories" className="button button-secondary">
-            Manage categories
-          </Link>
-          <Link to="/expenses" className="button button-secondary">
-            Manage expenses
-          </Link>
-          <Link to="/recurring" className="button button-secondary">
-            Manage recurring
-          </Link>
-          <Link to="/income" className="button button-secondary">
-            Manage income
-          </Link>
-          <Link to="/reports" className="button button-secondary">
+          <Link to={paths.reports} className="button button-secondary">
             View reports
+          </Link>
+          <Link to={paths.settings} className="button button-secondary">
+            Open settings
           </Link>
         </div>
       ) : null}
 
       <p className="home-help-link">
-        <Link to="/help">View help</Link>
+        <Link to={paths.settingsHelp}>View help</Link>
       </p>
     </main>
   )

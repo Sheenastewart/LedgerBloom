@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
 import { HowThisWorks } from '../../../components/HowThisWorks'
 import { InfoTooltip } from '../../../components/InfoTooltip'
@@ -8,10 +7,12 @@ import { downloadMonthlySummaryCsv, downloadMonthlyTransactionsCsv, saveCsvDownl
 import { currentPeriod } from '../reportsFormat'
 import '../reports.css'
 import '../../guidance/help.css'
+import { paths } from '../../../routes/paths'
 
 type DownloadTarget = 'transactions' | 'summary' | null
 
-export function ReportsPage() {
+/** CSV export tools previously hosted on the reports overview page. */
+export function ExportsPage() {
   const initialPeriod = currentPeriod()
   const [year, setYear] = useState(String(initialPeriod.year))
   const [month, setMonth] = useState(String(initialPeriod.month))
@@ -66,43 +67,18 @@ export function ReportsPage() {
     <main className="reports-page page">
       <div className="page-header">
         <div>
-          <h1>Reports</h1>
-          <p className="page-subtitle">Trends, year-to-date totals, printable monthly reports, and CSV exports.</p>
+          <h1>Exports</h1>
+          <p className="page-subtitle">Download a month&apos;s transactions or summary as CSV.</p>
         </div>
       </div>
 
       <HowThisWorks>
         <p>
-          Reports summarize saved ledger entries and clearly separate actual values from
-          projected recurring estimates.
+          CSV exports include saved ledger rows for the selected month. Risky leading characters are
+          neutralized to reduce spreadsheet formula injection risk.
         </p>
-        <HelpLink to="/settings/help?topic=reports-overview">Learn more</HelpLink>
+        <HelpLink to={`${paths.settingsHelp}?topic=export-csv`}>Learn more about CSV exports</HelpLink>
       </HowThisWorks>
-
-      <div className="reports-overview-grid">
-        <article className="reports-overview-card">
-          <h2>Trends</h2>
-          <p>Compare income, expenses, and cash flow across a custom range of months.</p>
-          <Link to="/reports/trends" className="button button-primary">
-            View trends
-          </Link>
-        </article>
-        <article className="reports-overview-card">
-          <h2>Year-to-date</h2>
-          <p>See totals, averages, and highlights for an entire year.</p>
-          <Link to="/reports/year-to-date" className="button button-primary">
-            View year-to-date
-          </Link>
-        </article>
-        <article className="reports-overview-card">
-          <h2>Monthly report</h2>
-          <p>A printable summary of a single month's finances.</p>
-          <Link to="/reports/monthly" className="button button-primary">
-            View monthly report
-          </Link>
-          <HelpLink to="/settings/help?topic=print-monthly-report">How do I print or save as PDF?</HelpLink>
-        </article>
-      </div>
 
       <section className="reports-section" aria-labelledby="csv-exports-heading">
         <h2 id="csv-exports-heading" className="metric-heading">
@@ -112,8 +88,6 @@ export function ReportsPage() {
             neutralized to reduce spreadsheet formula injection risk.
           </InfoTooltip>
         </h2>
-        <p className="page-subtitle">Download a month's transactions or summary as a CSV file.</p>
-        <HelpLink to="/settings/help?topic=export-csv">Learn more about CSV exports</HelpLink>
 
         {error ? (
           <p className="form-error" role="alert">

@@ -1,0 +1,87 @@
+.section-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0 0 1.25rem;
+  padding: 0.35rem;
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid #c7d5cb;
+}
+
+.section-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.85rem;
+  border-radius: 0.45rem;
+  color: #355445;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid transparent;
+}
+
+.section-tab:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.section-tab.active {
+  background: #2f5d45;
+  color: #f7fbf7;
+}
+
+.section-tab:focus-visible {
+  outline: 3px solid #6f9b7c;
+  outline-offset: 2px;
+}
+
+.section-shell {
+  width: min(52rem, 100%);
+  margin: 0 auto;
+}
+
+.section-shell > .content-page,
+.section-shell > .page,
+.section-shell > .budgets-page,
+.section-shell > .reports-page {
+  width: 100%;
+  margin: 0;
+}
+
+.coming-soon-page {
+  width: min(36rem, 100%);
+  margin: 0 auto;
+  padding: 1.5rem 0 2rem;
+}
+
+.coming-soon-page h1 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  letter-spacing: -0.02em;
+}
+
+.coming-soon-page p {
+  margin: 0 0 1rem;
+  color: #4c6356;
+}
+
+.coming-soon-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.7rem;
+  border-radius: 0.45rem;
+  background: #eef4ef;
+  border: 1px solid #9fb3a5;
+  font-weight: 600;
+  color: #1d2a24;
+}
+
+@media (max-width: 640px) {
+  .section-tabs {
+    gap: 0.25rem;
+  }
+
+  .section-tab {
+    padding: 0.4rem 0.65rem;
+    font-size: 0.9rem;
+  }
+}

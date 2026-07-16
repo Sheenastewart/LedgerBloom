@@ -59,27 +59,23 @@ describe('HomePage', () => {
       'href',
       '/dashboard',
     )
+    expect(screen.getByRole('link', { name: 'Manage transactions' })).toHaveAttribute(
+      'href',
+      '/transactions',
+    )
     expect(screen.getByRole('link', { name: 'Manage budgets' })).toHaveAttribute(
       'href',
       '/budgets',
     )
-    expect(screen.getByRole('link', { name: 'Manage categories' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'View reports' })).toHaveAttribute(
       'href',
-      '/categories',
+      '/reports',
     )
-    expect(screen.getByRole('link', { name: 'Manage expenses' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Open settings' })).toHaveAttribute(
       'href',
-      '/expenses',
+      '/settings',
     )
-    expect(screen.getByRole('link', { name: 'Manage recurring' })).toHaveAttribute(
-      'href',
-      '/recurring',
-    )
-    expect(screen.getByRole('link', { name: 'Manage income' })).toHaveAttribute(
-      'href',
-      '/income',
-    )
-    expect(screen.getByRole('link', { name: 'View help' })).toHaveAttribute('href', '/help')
+    expect(screen.getByRole('link', { name: 'View help' })).toHaveAttribute('href', '/settings/help')
     expect(screen.queryByRole('link', { name: 'Log in' })).not.toBeInTheDocument()
   })
 
@@ -103,7 +99,7 @@ describe('HomePage', () => {
       '/register',
     )
     expect(screen.queryByRole('link', { name: 'View dashboard' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'View help' })).toHaveAttribute('href', '/help')
+    expect(screen.getByRole('link', { name: 'View help' })).toHaveAttribute('href', '/settings/help')
   })
 
   it('shows API unavailable when the health request fails', async () => {

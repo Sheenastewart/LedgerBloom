@@ -24,10 +24,10 @@ vi.mock('../../categories/api/categoryApi', () => ({
 
 function renderCreate() {
   return render(
-    <MemoryRouter initialEntries={['/recurring/new']}>
+    <MemoryRouter initialEntries={['/transactions/recurring-expenses/new']}>
       <Routes>
-        <Route path="/recurring/new" element={<RecurringFormPage mode="create" />} />
-        <Route path="/recurring" element={<p>Recurring home</p>} />
+        <Route path="/transactions/recurring-expenses/new" element={<RecurringFormPage mode="create" />} />
+        <Route path="/transactions/recurring-expenses" element={<p>Recurring home</p>} />
       </Routes>
     </MemoryRouter>,
   )

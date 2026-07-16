@@ -112,7 +112,7 @@ export function CategoryFormPage({ mode }: CategoryFormPageProps) {
       const body = toWriteRequest(values)
       if (mode === 'create') {
         await createCategory(body)
-        navigate('/categories', {
+        navigate('/transactions/categories', {
           state: { successMessage: `Created category "${body.name}".` },
         })
         return
@@ -124,7 +124,7 @@ export function CategoryFormPage({ mode }: CategoryFormPageProps) {
       }
 
       await updateCategory(routeId, body)
-      navigate('/categories', {
+      navigate('/transactions/categories', {
         state: { successMessage: `Updated category "${body.name}".` },
       })
     } catch (error) {
@@ -157,7 +157,7 @@ export function CategoryFormPage({ mode }: CategoryFormPageProps) {
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => navigate('/categories')}
+            onClick={() => navigate('/transactions/categories')}
           >
             Back to categories
           </button>
@@ -174,7 +174,7 @@ export function CategoryFormPage({ mode }: CategoryFormPageProps) {
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => navigate('/categories')}
+            onClick={() => navigate('/transactions/categories')}
           >
             Back to categories
           </button>
@@ -192,7 +192,7 @@ export function CategoryFormPage({ mode }: CategoryFormPageProps) {
         submitting={submitting}
         serverErrors={serverErrors}
         onSubmit={handleSubmit}
-        onCancel={() => navigate('/categories')}
+        onCancel={() => navigate('/transactions/categories')}
       />
     </main>
   )

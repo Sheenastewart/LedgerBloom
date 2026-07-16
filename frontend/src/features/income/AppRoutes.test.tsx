@@ -149,7 +149,7 @@ describe('Income routes', () => {
     vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue([])
   })
 
-  it('navigates between Home and Income', async () => {
+  it('navigates between Home and Transactions income', async () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/']}>
@@ -158,6 +158,8 @@ describe('Income routes', () => {
     )
 
     expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Transactions' }))
+    expect(await screen.findByRole('heading', { name: 'Expenses' })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Income' }))
     expect(await screen.findByRole('heading', { name: 'Income' })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Home' }))
@@ -167,15 +169,12 @@ describe('Income routes', () => {
   it('renders Add income choice for one-time and recurring', async () => {
     const user = userEvent.setup()
     render(
-      <MemoryRouter initialEntries={['/income']}>
+      <MemoryRouter initialEntries={['/transactions/income']}>
         <AppRoutes />
       </MemoryRouter>,
     )
 
     expect(await screen.findByRole('heading', { name: 'Income' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Received' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Recurring schedules' })).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Recurring Income' })).not.toBeInTheDocument()
 
     await user.click(screen.getAllByRole('link', { name: 'Add income' })[0])
     expect(await screen.findByText('Is this recurring?')).toBeInTheDocument()
@@ -187,7 +186,7 @@ describe('Income routes', () => {
   it('navigates from Income add choice to the recurring income form', async () => {
     const user = userEvent.setup()
     render(
-      <MemoryRouter initialEntries={['/income/add']}>
+      <MemoryRouter initialEntries={['/transactions/income/add']}>
         <AppRoutes />
       </MemoryRouter>,
     )
@@ -195,7 +194,7 @@ describe('Income routes', () => {
     expect(await screen.findByText('Is this recurring?')).toBeInTheDocument()
     const recurringChoice = screen
       .getAllByRole('link')
-      .find((link) => link.getAttribute('href') === '/recurring-income/new')
+      .find((link) => link.getAttribute('href') === '/transactions/recurring-income/new')
     expect(recurringChoice).toBeTruthy()
     await user.click(recurringChoice!)
     expect(
@@ -205,7 +204,7 @@ describe('Income routes', () => {
 
   it('shows not found for an invalid edit id', async () => {
     render(
-      <MemoryRouter initialEntries={['/income/0/edit']}>
+      <MemoryRouter initialEntries={['/transactions/income/0/edit']}>
         <AppRoutes />
       </MemoryRouter>,
     )
@@ -228,6 +227,8 @@ describe('Income routes', () => {
         notes: null,
         createdAt: '2026-07-15T20:04:25.859404Z',
         updatedAt: '2026-07-15T20:04:25.859404Z',
+        recurringIncomeId: null,
+        canUndoReceived: null,
       },
     ])
     vi.mocked(incomeApi.getIncomeEntry).mockResolvedValue({
@@ -239,10 +240,12 @@ describe('Income routes', () => {
       notes: null,
       createdAt: '2026-07-15T20:04:25.859404Z',
       updatedAt: '2026-07-15T20:04:25.859404Z',
+      recurringIncomeId: null,
+      canUndoReceived: null,
     })
 
     render(
-      <MemoryRouter initialEntries={['/income']}>
+      <MemoryRouter initialEntries={['/transactions/income']}>
         <AppRoutes />
       </MemoryRouter>,
     )

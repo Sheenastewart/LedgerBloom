@@ -11,7 +11,6 @@ import { CALCULATION_DEFS } from '../../guidance/calculationDefs'
 import { HelpLink } from '../../guidance/HelpLink'
 import { downloadMonthlySummaryCsv, downloadMonthlyTransactionsCsv, saveCsvDownload } from '../api/exportsApi'
 import { getMonthlyComparison } from '../api/reportsApi'
-import { ReportsNav } from '../components/ReportsNav'
 import { TrendsTable } from '../components/TrendsTable'
 import { currentPeriod, monthLabel } from '../reportsFormat'
 import type { MonthlyComparisonItem } from '../types'
@@ -123,11 +122,10 @@ export function MonthlyReportPage() {
           Actual totals come from saved Income and Expense entries. Cash flow planning also
           includes expected recurring income and obligations for the selected month.
         </p>
-        <HelpLink to="/help?topic=print-monthly-report">How do I print or save as PDF?</HelpLink>
+        <HelpLink to="/settings/help?topic=print-monthly-report">How do I print or save as PDF?</HelpLink>
       </HowThisWorks>
 
       <div className="no-print">
-        <ReportsNav />
         <DashboardPeriodForm appliedPeriod={period} onApply={handleApplyPeriod} />
       </div>
 

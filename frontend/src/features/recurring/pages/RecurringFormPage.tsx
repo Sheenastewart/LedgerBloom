@@ -150,7 +150,7 @@ export function RecurringFormPage({ mode }: RecurringFormPageProps) {
     try {
       if (mode === 'create') {
         const created = await createRecurringExpense(toRecurringCreateRequest(values))
-        navigate('/recurring', {
+        navigate('/transactions/recurring-expenses', {
           state: { successMessage: `Created recurring expense "${created.description}".` },
         })
         return
@@ -159,7 +159,7 @@ export function RecurringFormPage({ mode }: RecurringFormPageProps) {
         routeId as number,
         toRecurringWriteRequest(values),
       )
-      navigate('/recurring', {
+      navigate('/transactions/recurring-expenses', {
         state: { successMessage: `Updated recurring expense "${updated.description}".` },
       })
     } catch (error) {
@@ -180,7 +180,7 @@ export function RecurringFormPage({ mode }: RecurringFormPageProps) {
           <h1>{mode === 'create' ? 'Add recurring expense' : 'Edit recurring expense'}</h1>
           <p className="page-subtitle">Define a schedule. Expenses are only created when you mark an item paid.</p>
         </div>
-        <Link to="/recurring" className="button button-secondary">
+        <Link to="/transactions/recurring-expenses" className="button button-secondary">
           Back to recurring
         </Link>
       </div>
@@ -194,7 +194,7 @@ export function RecurringFormPage({ mode }: RecurringFormPageProps) {
       {!loading && notFound ? (
         <div className="status-panel" role="alert">
           <p>Recurring expense not found.</p>
-          <Link to="/recurring" className="button button-secondary">
+          <Link to="/transactions/recurring-expenses" className="button button-secondary">
             Back to recurring
           </Link>
         </div>
@@ -219,7 +219,7 @@ export function RecurringFormPage({ mode }: RecurringFormPageProps) {
           submitting={submitting}
           previewOccurrences={previewRecurringExpenseOccurrences}
           onSubmit={(values) => void handleSubmit(values)}
-          onCancel={() => navigate('/recurring')}
+          onCancel={() => navigate('/transactions/recurring-expenses')}
         />
       ) : null}
     </main>

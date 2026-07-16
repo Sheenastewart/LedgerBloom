@@ -14,10 +14,10 @@ vi.mock('../api/incomeApi', () => ({
 
 function renderCreate() {
   return render(
-    <MemoryRouter initialEntries={['/income/new']}>
+    <MemoryRouter initialEntries={['/transactions/income/new']}>
       <Routes>
-        <Route path="/income/new" element={<IncomeFormPage mode="create" />} />
-        <Route path="/income" element={<p>Income home</p>} />
+        <Route path="/transactions/income/new" element={<IncomeFormPage mode="create" />} />
+        <Route path="/transactions/income" element={<p>Income home</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -27,8 +27,8 @@ function renderEdit(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/income/:id/edit" element={<IncomeFormPage mode="edit" />} />
-        <Route path="/income" element={<p>Income home</p>} />
+        <Route path="/transactions/income/:id/edit" element={<IncomeFormPage mode="edit" />} />
+        <Route path="/transactions/income" element={<p>Income home</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -63,6 +63,8 @@ describe('IncomeFormPage', () => {
       notes: null,
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
+      recurringIncomeId: null,
+      canUndoReceived: null,
     })
 
     renderCreate()
@@ -96,9 +98,11 @@ describe('IncomeFormPage', () => {
       notes: 'july',
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
+      recurringIncomeId: null,
+      canUndoReceived: null,
     })
 
-    renderEdit('/income/7/edit')
+    renderEdit('/transactions/income/7/edit')
 
     expect(await screen.findByDisplayValue('Monthly paycheck')).toBeInTheDocument()
     expect(screen.getByDisplayValue('4500.5')).toBeInTheDocument()
@@ -106,7 +110,7 @@ describe('IncomeFormPage', () => {
   })
 
   it('shows not-found for an invalid route id without calling the API', async () => {
-    renderEdit('/income/abc/edit')
+    renderEdit('/transactions/income/abc/edit')
 
     expect(
       await screen.findByRole('heading', { name: 'Income entry not found' }),
@@ -119,7 +123,7 @@ describe('IncomeFormPage', () => {
       new ApiClientError({ message: 'missing', code: 'INCOME_ENTRY_NOT_FOUND', status: 404 }),
     )
 
-    renderEdit('/income/99/edit')
+    renderEdit('/transactions/income/99/edit')
 
     expect(
       await screen.findByRole('heading', { name: 'Income entry not found' }),
@@ -137,6 +141,8 @@ describe('IncomeFormPage', () => {
       notes: null,
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
+      recurringIncomeId: null,
+      canUndoReceived: null,
     })
     vi.mocked(incomeApi.updateIncomeEntry).mockResolvedValue({
       id: 7,
@@ -147,9 +153,11 @@ describe('IncomeFormPage', () => {
       notes: null,
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-02T00:00:00Z',
+      recurringIncomeId: null,
+      canUndoReceived: null,
     })
 
-    renderEdit('/income/7/edit')
+    renderEdit('/transactions/income/7/edit')
     await screen.findByDisplayValue('Monthly paycheck')
 
     await user.clear(screen.getByLabelText('Source'))

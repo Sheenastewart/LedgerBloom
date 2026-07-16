@@ -37,7 +37,7 @@ export function IncomeList({
               ) : null}
             </div>
             <div className="income-actions">
-              <Link className="button button-secondary" to={`/income/${entry.id}/edit`}>
+              <Link className="button button-secondary" to={`/transactions/income/${entry.id}/edit`}>
                 Edit
               </Link>
               {fromRecurring ? (

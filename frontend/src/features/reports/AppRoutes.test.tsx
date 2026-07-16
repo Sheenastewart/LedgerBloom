@@ -180,14 +180,14 @@ describe('Reports routes', () => {
 
     expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Reports' }))
-    expect(await screen.findByRole('heading', { name: 'Reports' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Monthly report' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Home' }))
     await user.click(screen.getByRole('link', { name: 'View reports' }))
-    expect(await screen.findByRole('heading', { name: 'Reports' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Monthly report' })).toBeInTheDocument()
   })
 
-  it('navigates between Trends, Year-to-date, and Monthly report from the overview', async () => {
+  it('navigates between report tabs from the monthly default', async () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/reports']}>
@@ -195,18 +195,18 @@ describe('Reports routes', () => {
       </MemoryRouter>,
     )
 
-    expect(await screen.findByRole('heading', { name: 'Reports' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('link', { name: 'View trends' }))
-    expect(await screen.findByRole('heading', { name: 'Trends' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('link', { name: 'Year-to-date' }))
-    expect(await screen.findByRole('heading', { name: 'Year-to-date' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('link', { name: 'Monthly report' }))
     expect(await screen.findByRole('heading', { name: 'Monthly report' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('link', { name: 'Overview' }))
-    expect(await screen.findByRole('heading', { name: 'Reports' })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Trends' }))
+    expect(await screen.findByRole('heading', { name: 'Trends' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'Year-to-Date' }))
+    expect(await screen.findByRole('heading', { name: 'Year-to-date' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'Exports' }))
+    expect(await screen.findByRole('heading', { name: 'Exports' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'Monthly Report' }))
+    expect(await screen.findByRole('heading', { name: 'Monthly report' })).toBeInTheDocument()
   })
 })

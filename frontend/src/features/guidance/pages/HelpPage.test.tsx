@@ -5,15 +5,15 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { HELP_CATEGORIES, HELP_TOPICS } from '../helpContent'
 import { HelpPage } from './HelpPage'
 
-function renderHelp(initialEntry = '/help') {
+function renderHelp(initialEntry = '/settings/help') {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
-        <Route path="/help" element={<HelpPage />} />
+        <Route path="/settings/help" element={<HelpPage />} />
         <Route path="/dashboard" element={<p>Dashboard page</p>} />
         <Route path="/budgets" element={<p>Budgets page</p>} />
         <Route path="/reports" element={<p>Reports page</p>} />
-        <Route path="/categories" element={<p>Categories page</p>} />
+        <Route path="/transactions/categories" element={<p>Categories page</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -61,7 +61,7 @@ describe('HelpPage', () => {
 
   it('opens a related page link from an article', async () => {
     const user = userEvent.setup()
-    renderHelp('/help?topic=what-is-dashboard')
+    renderHelp('/settings/help?topic=what-is-dashboard')
     const article = document.getElementById('what-is-dashboard')
     expect(article).not.toBeNull()
     const toggle = within(article as HTMLElement).getByRole('button', {
@@ -75,7 +75,7 @@ describe('HelpPage', () => {
   })
 
   it('prefilters with q query parameter', () => {
-    renderHelp('/help?q=csv')
+    renderHelp('/settings/help?q=csv')
     expect(screen.getByLabelText('Search help')).toHaveValue('csv')
     expect(screen.getByRole('button', { name: 'How to export CSV files' })).toBeInTheDocument()
   })

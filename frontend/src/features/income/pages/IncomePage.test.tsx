@@ -62,13 +62,13 @@ const sampleRecurring = {
   updatedAt: '2026-07-01T00:00:00Z',
 }
 
-function renderPage(initialEntry = '/income') {
+function renderPage(initialEntry = '/transactions/income') {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
-        <Route path="/income" element={<IncomePage />} />
-        <Route path="/income/add" element={<p>Add choice</p>} />
-        <Route path="/recurring-income/new" element={<p>Recurring form</p>} />
+        <Route path="/transactions/income" element={<IncomePage />} />
+        <Route path="/transactions/income/add" element={<p>Add choice</p>} />
+        <Route path="/transactions/recurring-income/new" element={<p>Recurring form</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -88,41 +88,33 @@ describe('IncomePage', () => {
     vi.mocked(recurringIncomeApi.getUpcomingRecurringIncome).mockResolvedValue([])
   })
 
-  it('renders received income and exposes recurring schedules tab', async () => {
+  it('renders received income and links to add income', async () => {
     vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue(sampleEntries)
     renderPage()
 
     expect(await screen.findByRole('heading', { name: 'Monthly paycheck' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Add income' })).toHaveAttribute('href', '/income/add')
-    expect(screen.getByRole('tab', { name: 'Received' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('tab', { name: 'Recurring schedules' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Add income' })).toHaveAttribute(
+      'href',
+      '/transactions/income/add',
+    )
   })
 
-  it('loads recurring schedules when that tab is selected', async () => {
-    const user = userEvent.setup()
-    vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue(sampleEntries)
-    vi.mocked(recurringIncomeApi.getRecurringIncome).mockResolvedValue([sampleRecurring])
-    vi.mocked(recurringIncomeApi.getUpcomingRecurringIncome).mockResolvedValue([sampleRecurring])
-    renderPage()
-
-    await screen.findByRole('heading', { name: 'Monthly paycheck' })
-    await user.click(screen.getByRole('tab', { name: 'Recurring schedules' }))
-
-    expect(await screen.findByRole('heading', { name: 'Weekly stipend' })).toBeInTheDocument()
-    expect(recurringIncomeApi.getRecurringIncome).toHaveBeenCalled()
-    expect(recurringIncomeApi.getUpcomingRecurringIncome).toHaveBeenCalled()
-  })
-
-  it('opens recurring section from query param', async () => {
+  it('redirects section=recurring to the recurring income hub', async () => {
     vi.mocked(recurringIncomeApi.getRecurringIncome).mockResolvedValue([sampleRecurring])
     vi.mocked(recurringIncomeApi.getUpcomingRecurringIncome).mockResolvedValue([])
-    renderPage('/income?section=recurring')
-
-    expect(await screen.findByRole('heading', { name: 'Weekly stipend' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Recurring schedules' })).toHaveAttribute(
-      'aria-selected',
-      'true',
+    render(
+      <MemoryRouter initialEntries={['/transactions/income?section=recurring']}>
+        <Routes>
+          <Route path="/transactions/income" element={<IncomePage />} />
+          <Route
+            path="/transactions/recurring-income"
+            element={<p>Recurring income hub</p>}
+          />
+        </Routes>
+      </MemoryRouter>,
     )
+
+    expect(await screen.findByText('Recurring income hub')).toBeInTheDocument()
   })
 
   it('shows empty received state with add income action', async () => {
@@ -153,13 +145,13 @@ describe('IncomePage', () => {
       <MemoryRouter
         initialEntries={[
           {
-            pathname: '/income',
+            pathname: '/transactions/income',
             state: { successMessage: 'Saved income entry "Bonus".' },
           },
         ]}
       >
         <Routes>
-          <Route path="/income" element={<IncomePage />} />
+          <Route path="/transactions/income" element={<IncomePage />} />
         </Routes>
       </MemoryRouter>,
     )
@@ -198,6 +190,6 @@ describe('IncomePage', () => {
     await waitFor(() => {
       expect(incomeApi.undoReceivedIncomeEntry).toHaveBeenCalledWith(2)
     })
-    expect(await screen.findByRole('status')).toHaveTextContent(/Undid receive for "Salary"/i)
+    expect(await screen.findByRole('status')).toHaveTextContent(/Undid receiving "Salary"/i)
   })
 })

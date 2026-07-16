@@ -105,7 +105,7 @@ export function ExpenseForm({
       <div className="status-panel" role="status">
         <h1>{mode === 'create' ? 'Add expense' : 'Edit expense'}</h1>
         <p>Create at least one category before adding expenses.</p>
-        <Link to="/categories/new" className="button button-primary">
+        <Link to="/transactions/categories/new" className="button button-primary">
           Add category
         </Link>
         <button type="button" className="button button-secondary" onClick={onCancel}>

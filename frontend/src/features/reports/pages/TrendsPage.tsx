@@ -4,7 +4,6 @@ import { HowThisWorks } from '../../../components/HowThisWorks'
 import { HelpLink } from '../../guidance/HelpLink'
 import { getMonthlyComparison } from '../api/reportsApi'
 import { MonthRangeForm } from '../components/MonthRangeForm'
-import { ReportsNav } from '../components/ReportsNav'
 import { TrendsTable } from '../components/TrendsTable'
 import { lastSixMonthsRange, monthLabel } from '../reportsFormat'
 import type { MonthlyComparisonResponse, MonthRange } from '../types'
@@ -90,10 +89,8 @@ export function TrendsPage() {
           Projected cash flow also includes expected recurring income and obligations for each
           month.
         </p>
-        <HelpLink to="/help?topic=reports-overview">Learn more</HelpLink>
+        <HelpLink to="/settings/help?topic=reports-overview">Learn more</HelpLink>
       </HowThisWorks>
-
-      <ReportsNav />
 
       <MonthRangeForm appliedRange={range} defaultRange={DEFAULT_RANGE} onApply={handleApplyRange} />
 

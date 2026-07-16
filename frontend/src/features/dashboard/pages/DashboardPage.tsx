@@ -105,7 +105,7 @@ export function DashboardPage() {
         <p>
           Projected totals also include upcoming recurring income and recurring obligations.
         </p>
-        <HelpLink to="/help?topic=what-is-dashboard">Learn more</HelpLink>
+        <HelpLink to="/settings/help?topic=what-is-dashboard">Learn more</HelpLink>
       </HowThisWorks>
 
       <DashboardPeriodForm appliedPeriod={period} onApply={handleApplyPeriod} />
@@ -242,7 +242,7 @@ export function DashboardPage() {
               Estimates for this month based on active recurring schedules. Not a guarantee of cash
               received or spent.
             </p>
-            <HelpLink to="/help?topic=projected-cash-flow">How is this calculated?</HelpLink>
+            <HelpLink to="/settings/help?topic=projected-cash-flow">How is this calculated?</HelpLink>
             <div className="dashboard-summary-grid">
               <article className="dashboard-card">
                 <h2 className="metric-heading">

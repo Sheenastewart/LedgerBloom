@@ -39,11 +39,11 @@ const sampleItem = {
 
 function renderPage() {
   return render(
-    <MemoryRouter initialEntries={['/recurring']}>
+    <MemoryRouter initialEntries={['/transactions/recurring-expenses']}>
       <Routes>
-        <Route path="/recurring" element={<RecurringPage />} />
-        <Route path="/recurring/new" element={<p>Create form</p>} />
-        <Route path="/recurring/:id/edit" element={<p>Edit form</p>} />
+        <Route path="/transactions/recurring-expenses" element={<RecurringPage />} />
+        <Route path="/transactions/recurring-expenses/new" element={<p>Create form</p>} />
+        <Route path="/transactions/recurring-expenses/:id/edit" element={<p>Edit form</p>} />
       </Routes>
     </MemoryRouter>,
   )

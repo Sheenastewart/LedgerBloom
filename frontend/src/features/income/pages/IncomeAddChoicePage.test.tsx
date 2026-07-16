@@ -10,19 +10,19 @@ describe('IncomeAddChoicePage', () => {
 
   it('asks whether income is recurring and routes to both flows', () => {
     render(
-      <MemoryRouter initialEntries={['/income/add']}>
+      <MemoryRouter initialEntries={['/transactions/income/add']}>
         <Routes>
-          <Route path="/income/add" element={<IncomeAddChoicePage />} />
+          <Route path="/transactions/income/add" element={<IncomeAddChoicePage />} />
         </Routes>
       </MemoryRouter>,
     )
 
     expect(screen.getByRole('heading', { name: 'Add income' })).toBeInTheDocument()
     expect(screen.getByText('Is this recurring?')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'One-time' })).toHaveAttribute('href', '/income/new')
+    expect(screen.getByRole('link', { name: 'One-time' })).toHaveAttribute('href', '/transactions/income/new')
     expect(screen.getByRole('link', { name: 'Recurring schedule' })).toHaveAttribute(
       'href',
-      '/recurring-income/new',
+      '/transactions/recurring-income/new',
     )
   })
 })

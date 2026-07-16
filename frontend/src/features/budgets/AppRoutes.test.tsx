@@ -162,10 +162,10 @@ describe('Budget routes', () => {
 
     expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Budgets' }))
-    expect(await screen.findByRole('heading', { name: 'Budgets' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Monthly budget' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Home' }))
     await user.click(screen.getByRole('link', { name: 'Manage budgets' }))
-    expect(await screen.findByRole('heading', { name: 'Budgets' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Monthly budget' })).toBeInTheDocument()
   })
 })
