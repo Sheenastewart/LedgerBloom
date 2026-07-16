@@ -1,7 +1,7 @@
 import { ApiClientError, requestJson } from '../../../api/apiClient'
 import type {
-  CategoryLimitCreateRequest,
-  CategoryLimitUpdateRequest,
+  GroupLimitCreateRequest,
+  GroupLimitUpdateRequest,
   MonthlyBudget,
   MonthlyBudgetUpdateRequest,
   MonthlyBudgetWriteRequest,
@@ -31,6 +31,13 @@ export async function createMonthlyBudget(
   })
 }
 
+export async function generateMonthlyBudget(period: BudgetPeriod): Promise<MonthlyBudget> {
+  return requestJson<MonthlyBudget>('/api/budgets/monthly/generate', {
+    method: 'POST',
+    body: JSON.stringify({ year: period.year, month: period.month }),
+  })
+}
+
 export async function updateMonthlyBudget(
   id: number,
   body: MonthlyBudgetUpdateRequest,
@@ -45,29 +52,29 @@ export async function deleteMonthlyBudget(id: number): Promise<void> {
   await requestJson<void>(`/api/budgets/monthly/${id}`, { method: 'DELETE' })
 }
 
-export async function createCategoryLimit(
+export async function createGroupLimit(
   budgetId: number,
-  body: CategoryLimitCreateRequest,
+  body: GroupLimitCreateRequest,
 ): Promise<MonthlyBudget> {
-  return requestJson<MonthlyBudget>(`/api/budgets/monthly/${budgetId}/categories`, {
+  return requestJson<MonthlyBudget>(`/api/budgets/monthly/${budgetId}/groups`, {
     method: 'POST',
     body: JSON.stringify(body),
   })
 }
 
-export async function updateCategoryLimit(
+export async function updateGroupLimit(
   budgetId: number,
   limitId: number,
-  body: CategoryLimitUpdateRequest,
+  body: GroupLimitUpdateRequest,
 ): Promise<MonthlyBudget> {
-  return requestJson<MonthlyBudget>(`/api/budgets/monthly/${budgetId}/categories/${limitId}`, {
+  return requestJson<MonthlyBudget>(`/api/budgets/monthly/${budgetId}/groups/${limitId}`, {
     method: 'PUT',
     body: JSON.stringify(body),
   })
 }
 
-export async function deleteCategoryLimit(budgetId: number, limitId: number): Promise<MonthlyBudget> {
-  return requestJson<MonthlyBudget>(`/api/budgets/monthly/${budgetId}/categories/${limitId}`, {
+export async function deleteGroupLimit(budgetId: number, limitId: number): Promise<MonthlyBudget> {
+  return requestJson<MonthlyBudget>(`/api/budgets/monthly/${budgetId}/groups/${limitId}`, {
     method: 'DELETE',
   })
 }

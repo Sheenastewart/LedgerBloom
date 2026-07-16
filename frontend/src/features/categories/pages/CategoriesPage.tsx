@@ -131,7 +131,7 @@ export function CategoriesPage() {
           >
             {addingStarter ? 'Adding starter categories…' : 'Add starter categories'}
           </button>
-          <Link to="/transactions/categories/new" className="button button-primary">
+          <Link to="/budgets/categories/new" className="button button-primary">
             Add category
           </Link>
         </div>
@@ -186,7 +186,7 @@ export function CategoriesPage() {
             >
               Add starter categories
             </button>
-            <Link to="/transactions/categories/new" className="button button-primary">
+            <Link to="/budgets/categories/new" className="button button-primary">
               Add category
             </Link>
           </div>

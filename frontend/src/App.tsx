@@ -22,9 +22,7 @@ import { IncomeAddChoicePage } from './features/income/pages/IncomeAddChoicePage
 import { IncomeFormPage } from './features/income/pages/IncomeFormPage'
 import { IncomePage } from './features/income/pages/IncomePage'
 import { RecurringFormPage } from './features/recurring/pages/RecurringFormPage'
-import { RecurringPage } from './features/recurring/pages/RecurringPage'
 import { RecurringIncomeFormPage } from './features/recurringIncome/pages/RecurringIncomeFormPage'
-import { RecurringIncomePage } from './features/recurringIncome/pages/RecurringIncomePage'
 import { ReportsLayout } from './features/reports/ReportsLayout'
 import { ExportsPage } from './features/reports/pages/ExportsPage'
 import { InsightsPage } from './features/reports/pages/InsightsPage'
@@ -97,18 +95,27 @@ export function AppRoutes() {
             <Route path="income/add" element={<IncomeAddChoicePage />} />
             <Route path="income/new" element={<IncomeFormPage mode="create" />} />
             <Route path="income/:id/edit" element={<IncomeFormPage mode="edit" />} />
-            <Route path="recurring-expenses" element={<RecurringPage />} />
+            <Route path="recurring-expenses" element={<Navigate to={paths.transactionsExpenses} replace />} />
             <Route path="recurring-expenses/new" element={<RecurringFormPage mode="create" />} />
             <Route path="recurring-expenses/:id/edit" element={<RecurringFormPage mode="edit" />} />
-            <Route path="recurring-income" element={<RecurringIncomePage />} />
+            <Route path="recurring-income" element={<Navigate to={paths.transactionsIncome} replace />} />
             <Route path="recurring-income/new" element={<RecurringIncomeFormPage mode="create" />} />
             <Route
               path="recurring-income/:id/edit"
               element={<RecurringIncomeFormPage mode="edit" />}
             />
-            <Route path="categories" element={<CategoriesPage />} />
-            <Route path="categories/new" element={<CategoryFormPage mode="create" />} />
-            <Route path="categories/:id/edit" element={<CategoryFormPage mode="edit" />} />
+            <Route
+              path="categories"
+              element={<Navigate to={paths.budgetsCategories} replace />}
+            />
+            <Route
+              path="categories/new"
+              element={<Navigate to={paths.budgetsCategoryNew} replace />}
+            />
+            <Route
+              path="categories/:id/edit"
+              element={<LegacyIdRedirect base={paths.budgetsCategories} suffix="/edit" />}
+            />
           </Route>
 
           <Route
@@ -120,8 +127,10 @@ export function AppRoutes() {
             }
           >
             <Route index element={<Navigate to={paths.budgetsMonthly} replace />} />
-            <Route path="monthly" element={<BudgetsPage view="monthly" />} />
-            <Route path="categories" element={<BudgetsPage view="categories" />} />
+            <Route path="monthly" element={<BudgetsPage />} />
+            <Route path="categories" element={<CategoriesPage />} />
+            <Route path="categories/new" element={<CategoryFormPage mode="create" />} />
+            <Route path="categories/:id/edit" element={<CategoryFormPage mode="edit" />} />
           </Route>
           <Route
             path="/budgets/new"
@@ -242,15 +251,15 @@ export function AppRoutes() {
           />
           <Route
             path="/categories"
-            element={<Navigate to={paths.transactionsCategories} replace />}
+            element={<Navigate to={paths.budgetsCategories} replace />}
           />
           <Route
             path="/categories/new"
-            element={<Navigate to={paths.transactionsCategoryNew} replace />}
+            element={<Navigate to={paths.budgetsCategoryNew} replace />}
           />
           <Route
             path="/categories/:id/edit"
-            element={<LegacyIdRedirect base={paths.transactionsCategories} suffix="/edit" />}
+            element={<LegacyIdRedirect base={paths.budgetsCategories} suffix="/edit" />}
           />
         </Route>
       </Routes>
@@ -270,10 +279,6 @@ function LegacyIdRedirect({ base, suffix }: { base: string; suffix: string }) {
 
 function IncomeLegacyRedirect() {
   const location = useLocation()
-  const params = new URLSearchParams(location.search)
-  if (params.get('section') === 'recurring') {
-    return <Navigate to={paths.transactionsRecurringIncome} replace state={location.state} />
-  }
   return <Navigate to={paths.transactionsIncome} replace state={location.state} />
 }
 

@@ -17,6 +17,7 @@ const sampleCategories = [
     id: 1,
     name: 'bills',
     description: 'Utilities',
+    color: null,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
   },
@@ -24,16 +25,17 @@ const sampleCategories = [
     id: 2,
     name: 'Housing',
     description: null,
+    color: null,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
   },
 ]
 
-function renderPage(initialEntry = '/transactions/categories') {
+function renderPage(initialEntry = '/budgets/categories') {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
-        <Route path="/transactions/categories" element={<CategoriesPage />} />
+        <Route path="/budgets/categories" element={<CategoriesPage />} />
       </Routes>
     </MemoryRouter>,
   )
@@ -139,13 +141,13 @@ describe('CategoriesPage', () => {
       <MemoryRouter
         initialEntries={[
           {
-            pathname: '/transactions/categories',
+            pathname: '/budgets/categories',
             state: { successMessage: 'Created category "Travel".' },
           },
         ]}
       >
         <Routes>
-          <Route path="/transactions/categories" element={<CategoriesPage />} />
+          <Route path="/budgets/categories" element={<CategoriesPage />} />
         </Routes>
       </MemoryRouter>,
     )
@@ -172,7 +174,7 @@ describe('CategoriesPage', () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce(sampleCategories)
     vi.mocked(categoryApi.addStarterCategories).mockResolvedValue({
-      createdCount: 22,
+      createdCount: 27,
       createdNames: ['Housing', 'Utilities'],
       skippedCount: 0,
       skippedNames: [],
@@ -187,7 +189,7 @@ describe('CategoriesPage', () => {
       expect(categoryApi.addStarterCategories).toHaveBeenCalledTimes(1)
     })
     expect(await screen.findByRole('heading', { name: 'bills' })).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent(/Added 22 starter categories/i)
+    expect(screen.getByRole('status')).toHaveTextContent(/Added 27 starter categories/i)
     expect(categoryApi.getCategories).toHaveBeenCalledTimes(2)
   })
 
@@ -197,7 +199,7 @@ describe('CategoriesPage', () => {
     vi.mocked(categoryApi.addStarterCategories).mockResolvedValue({
       createdCount: 0,
       createdNames: [],
-      skippedCount: 22,
+      skippedCount: 27,
       skippedNames: ['Housing'],
     })
     vi.spyOn(window, 'confirm').mockReturnValue(true)

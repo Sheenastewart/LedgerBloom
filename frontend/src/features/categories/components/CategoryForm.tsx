@@ -1,4 +1,10 @@
 import { useState, type FormEvent } from 'react'
+import {
+  CATEGORY_COLOR_PALETTE,
+  resolveCategoryColor,
+  softColorFromHex,
+} from '../../../utils/categoryColor'
+import { BUDGET_GROUPS } from '../../budgets/types'
 import type { CategoryFormErrors, CategoryFormValues } from '../types'
 
 type CategoryFormProps = {
@@ -24,6 +30,9 @@ function validate(values: CategoryFormValues): CategoryFormErrors {
   if (trimmedDescription.length > 255) {
     errors.description = 'Description must be at most 255 characters'
   }
+  if (!BUDGET_GROUPS.some((group) => group.key === values.budgetGroup)) {
+    errors.budgetGroup = 'Budget group is required'
+  }
 
   return errors
 }
@@ -41,7 +50,11 @@ export function CategoryForm({
 
   const nameError = clientErrors.name ?? serverErrors?.name
   const descriptionError = clientErrors.description ?? serverErrors?.description
+  const colorError = clientErrors.color ?? serverErrors?.color
+  const budgetGroupError = clientErrors.budgetGroup ?? serverErrors?.budgetGroup
   const formError = serverErrors?.form
+
+  const previewColor = resolveCategoryColor(values.name || 'Category', values.color || null)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -103,6 +116,94 @@ export function CategoryForm({
           </p>
         ) : null}
       </div>
+
+      <div className="field">
+        <label htmlFor="category-budget-group">Budget group</label>
+        <select
+          id="category-budget-group"
+          name="budgetGroup"
+          value={values.budgetGroup}
+          onChange={(event) => setValues((current) => ({ ...current, budgetGroup: event.target.value }))}
+          aria-invalid={budgetGroupError ? true : undefined}
+          aria-describedby={budgetGroupError ? 'category-budget-group-error' : 'category-budget-group-hint'}
+          disabled={submitting}
+        >
+          <option value="">Select a budget group</option>
+          {BUDGET_GROUPS.map((group) => (
+            <option key={group.key} value={group.key}>{group.label}</option>
+          ))}
+        </select>
+        <p id="category-budget-group-hint" className="field-hint">
+          Expenses in this category count toward this group’s monthly limit.
+        </p>
+        {budgetGroupError ? (
+          <p id="category-budget-group-error" className="field-error" role="alert">{budgetGroupError}</p>
+        ) : null}
+      </div>
+
+      <fieldset className="field category-color-field">
+        <legend>Color</legend>
+        <p className="field-hint" id="category-color-hint">
+          Used on expenses and activity lists so categories are easier to tell apart.
+        </p>
+        <div
+          className="category-color-preview"
+          style={{
+            ['--category-accent' as string]: previewColor,
+            ['--category-accent-soft' as string]: softColorFromHex(previewColor),
+          }}
+        >
+          <span className="category-color-preview__swatch" aria-hidden="true" />
+          <span>Preview</span>
+        </div>
+        <div
+          className="category-color-swatches"
+          role="radiogroup"
+          aria-label="Category color"
+          aria-describedby="category-color-hint"
+        >
+          <label className={`category-color-swatch ${values.color === '' ? 'is-selected' : ''}`}>
+            <input
+              type="radio"
+              name="category-color"
+              value=""
+              checked={values.color === ''}
+              disabled={submitting}
+              onChange={() => setValues((current) => ({ ...current, color: '' }))}
+            />
+            <span className="category-color-swatch__chip category-color-swatch__chip--auto">Auto</span>
+          </label>
+          {CATEGORY_COLOR_PALETTE.map((option) => {
+            const selected = (values.color ?? '').toUpperCase() === option.hex
+            return (
+              <label
+                key={option.id}
+                className={`category-color-swatch ${selected ? 'is-selected' : ''}`}
+                title={option.label}
+              >
+                <input
+                  type="radio"
+                  name="category-color"
+                  value={option.hex}
+                  checked={selected}
+                  disabled={submitting}
+                  onChange={() => setValues((current) => ({ ...current, color: option.hex }))}
+                />
+                <span
+                  className="category-color-swatch__chip"
+                  style={{ background: option.hex }}
+                  aria-label={option.label}
+                />
+              </label>
+            )
+          })}
+        </div>
+        {colorError ? (
+          <p className="field-error" role="alert">
+            {colorError}
+          </p>
+        ) : null}
+      </fieldset>
 
       <div className="form-actions">
         <button type="submit" className="button button-primary" disabled={submitting}>

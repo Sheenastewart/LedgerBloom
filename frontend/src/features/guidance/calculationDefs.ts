@@ -54,11 +54,11 @@ export const CALCULATION_DEFS = {
     detail:
       'On track means spending is below 80% of the limit. Near budget means 80% or more used but not over. Over budget means spending exceeds the limit.',
   },
-  categoryBudgetLimit: {
-    title: 'Category budget limit',
-    short: 'An optional spending ceiling for one category within the month.',
+  groupBudgetLimit: {
+    title: 'Budget group limit',
+    short: 'An optional spending ceiling for one budget group within the month.',
     detail:
-      'Category limits help plan spending within a category. They do not replace the overall monthly budget. Optional food assistance reduces how much of that category’s spend counts toward the limit and the overall monthly budget.',
+      'Group limits help plan spending across related categories. They do not replace the overall monthly budget. Optional assistance reduces how much covered group spending counts toward the limit and the overall monthly budget.',
   },
   cadence: {
     title: 'Cadence',

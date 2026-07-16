@@ -1,9 +1,13 @@
 import type { FieldErrorDetail } from '../../api/ApiClientError'
+import type { BudgetGroupKey } from '../budgets/types'
 
 export type Category = {
   id: number
   name: string
   description: string | null
+  color: string | null
+  budgetGroup?: BudgetGroupKey
+  budgetGroupLabel?: string
   createdAt: string
   updatedAt: string
 }
@@ -11,6 +15,8 @@ export type Category = {
 export type CategoryWriteRequest = {
   name: string
   description: string | null
+  color: string | null
+  budgetGroup: BudgetGroupKey
 }
 
 export type StarterCategoriesResult = {
@@ -23,12 +29,17 @@ export type StarterCategoriesResult = {
 export type CategoryFormValues = {
   name: string
   description: string
+  color: string
+  budgetGroup: string
 }
 
 export type CategoryFormErrors = {
   name?: string
   description?: string
+  color?: string
+  budgetGroup?: string
   form?: string
 }
 
 export type { FieldErrorDetail }
+export type { BudgetGroupKey }

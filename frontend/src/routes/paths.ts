@@ -25,6 +25,7 @@ export const paths = {
   transactionsRecurringIncomeEdit: (id: number | string) =>
     `/transactions/recurring-income/${id}/edit`,
 
+  /** @deprecated Prefer budgetsCategories — kept for legacy redirects */
   transactionsCategories: '/transactions/categories',
   transactionsCategoryNew: '/transactions/categories/new',
   transactionsCategoryEdit: (id: number | string) => `/transactions/categories/${id}/edit`,
@@ -32,6 +33,8 @@ export const paths = {
   budgets: '/budgets',
   budgetsMonthly: '/budgets/monthly',
   budgetsCategories: '/budgets/categories',
+  budgetsCategoryNew: '/budgets/categories/new',
+  budgetsCategoryEdit: (id: number | string) => `/budgets/categories/${id}/edit`,
   budgetsNew: '/budgets/new',
   budgetEdit: (id: number | string) => `/budgets/${id}/edit`,
 

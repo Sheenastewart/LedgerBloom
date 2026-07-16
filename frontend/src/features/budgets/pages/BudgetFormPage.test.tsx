@@ -11,9 +11,9 @@ vi.mock('../api/budgetApi', () => ({
   createMonthlyBudget: vi.fn(),
   updateMonthlyBudget: vi.fn(),
   deleteMonthlyBudget: vi.fn(),
-  createCategoryLimit: vi.fn(),
-  updateCategoryLimit: vi.fn(),
-  deleteCategoryLimit: vi.fn(),
+  createGroupLimit: vi.fn(),
+  updateGroupLimit: vi.fn(),
+  deleteGroupLimit: vi.fn(),
 }))
 
 function renderCreate(entry = '/budgets/new?year=2026&month=7') {
@@ -63,8 +63,9 @@ describe('BudgetFormPage', () => {
       remaining: 1000,
       percentUsed: 0,
       overBudget: false,
+      userModified: false,
       expenseCount: 0,
-      categoryLimits: [],
+      groupLimits: [],
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
     })
@@ -127,8 +128,9 @@ describe('BudgetFormPage', () => {
       remaining: 1000,
       percentUsed: 0,
       overBudget: false,
+      userModified: false,
       expenseCount: 0,
-      categoryLimits: [],
+      groupLimits: [],
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
     })
@@ -143,8 +145,9 @@ describe('BudgetFormPage', () => {
       remaining: 1500,
       percentUsed: 0,
       overBudget: false,
+      userModified: true,
       expenseCount: 0,
-      categoryLimits: [],
+      groupLimits: [],
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
     })

@@ -1,33 +1,33 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
+import { paths } from '../../../routes/paths'
 import { HowThisWorks } from '../../../components/HowThisWorks'
 import { InfoTooltip } from '../../../components/InfoTooltip'
 import { ProgressRing } from '../../../components/ui/ProgressRing'
 import { formatAmountForInput, formatCurrency } from '../../../utils/moneyUtils'
-import { getCategories } from '../../categories/api/categoryApi'
-import type { Category } from '../../categories/types'
 import { CALCULATION_DEFS } from '../../guidance/calculationDefs'
 import { HelpLink } from '../../guidance/HelpLink'
 import {
-  createCategoryLimit,
-  deleteCategoryLimit,
+  createGroupLimit,
+  deleteGroupLimit,
   deleteMonthlyBudget,
+  generateMonthlyBudget,
   getMonthlyBudget,
-  updateCategoryLimit,
+  updateGroupLimit,
 } from '../api/budgetApi'
 import { budgetStatus, budgetStatusLabel } from '../budgetStatus'
 import { BudgetPeriodForm } from '../components/BudgetPeriodForm'
 import {
-  CategoryLimitForm,
-  toCategoryLimitCreateRequest,
-  toCategoryLimitUpdateRequest,
-} from '../components/CategoryLimitForm'
+  GroupLimitForm,
+  toGroupLimitCreateRequest,
+  toGroupLimitUpdateRequest,
+} from '../components/GroupLimitForm'
 import type {
   BudgetPeriod,
-  CategoryLimitFormErrors,
-  CategoryLimitFormValues,
-  CategoryBudgetLimit,
+  GroupLimitFormErrors,
+  GroupLimitFormValues,
+  BudgetGroupLimit,
   MonthlyBudget,
 } from '../types'
 import '../budgets.css'
@@ -90,20 +90,14 @@ function periodToSearch(period: BudgetPeriod): string {
 
 type LimitEditor =
   | { mode: 'create' }
-  | { mode: 'edit'; limit: CategoryBudgetLimit }
+  | { mode: 'edit'; limit: BudgetGroupLimit }
   | null
 
 type LocationSuccessState = {
   successMessage?: string
 }
 
-export type BudgetsPageView = 'monthly' | 'categories'
-
-type BudgetsPageProps = {
-  view?: BudgetsPageView
-}
-
-export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
+export function BudgetsPage() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialPeriod = parsePeriodFromSearch(searchParams) ?? currentPeriod()
@@ -114,13 +108,15 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const [categories, setCategories] = useState<Category[]>([])
   const [limitEditor, setLimitEditor] = useState<LimitEditor>(null)
   const [limitSubmitting, setLimitSubmitting] = useState(false)
-  const [limitServerErrors, setLimitServerErrors] = useState<CategoryLimitFormErrors>({})
+  const [limitServerErrors, setLimitServerErrors] = useState<GroupLimitFormErrors>({})
   const [deletingLimitId, setDeletingLimitId] = useState<number | null>(null)
   const [deletingBudget, setDeletingBudget] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const autoGenerateAttemptedRef = useRef<string | null>(null)
 
+  const periodKey = `${period.year}-${period.month}`
   const incomingSuccess = (location.state as LocationSuccessState | null)?.successMessage
 
   useEffect(() => {
@@ -181,6 +177,30 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
     }
   }, [])
 
+  const handleGenerate = useCallback(
+    async (isAuto = false) => {
+      setGenerating(true)
+      if (!isAuto) {
+        setError(null)
+      }
+      try {
+        const data = await generateMonthlyBudget(period)
+        setBudget(data)
+        setNotFound(false)
+        setSuccessMessage('Budget ready with your group limits.')
+      } catch (err) {
+        if (err instanceof ApiClientError && err.code === 'INVALID_BUDGET_DATA') {
+          // Leave empty state with manual actions.
+        } else if (!isAuto) {
+          setError('Unable to set up the budget. Please try again.')
+        }
+      } finally {
+        setGenerating(false)
+      }
+    },
+    [period],
+  )
+
   useEffect(() => {
     const controller = new AbortController()
     void loadBudget(period, controller.signal)
@@ -188,20 +208,15 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
   }, [loadBudget, period])
 
   useEffect(() => {
-    const controller = new AbortController()
-    void getCategories(controller.signal)
-      .then((data) => {
-        if (!controller.signal.aborted) {
-          setCategories(data)
-        }
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setCategories([])
-        }
-      })
-    return () => controller.abort()
-  }, [])
+    if (loading || !notFound || error) {
+      return
+    }
+    if (autoGenerateAttemptedRef.current === periodKey) {
+      return
+    }
+    autoGenerateAttemptedRef.current = periodKey
+    void handleGenerate(true)
+  }, [loading, notFound, error, periodKey, handleGenerate])
 
   function handleApplyPeriod(nextPeriod: BudgetPeriod) {
     setSuccessMessage(null)
@@ -219,7 +234,7 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
       return
     }
     const confirmed = window.confirm(
-      `Delete the budget for ${periodLabel({ year: budget.year, month: budget.month })}? Category limits will also be removed.`,
+      `Delete the budget for ${periodLabel({ year: budget.year, month: budget.month })}? Group limits will also be removed.`,
     )
     if (!confirmed) {
       return
@@ -230,6 +245,7 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
       await deleteMonthlyBudget(budget.id)
       setSuccessMessage(`Deleted budget for ${periodLabel(period)}.`)
       setLimitEditor(null)
+      autoGenerateAttemptedRef.current = periodKey
       await loadBudget(period)
     } catch {
       setError('Could not delete this budget. Please try again.')
@@ -238,12 +254,12 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
     }
   }
 
-  async function handleDeleteLimit(limit: CategoryBudgetLimit) {
+  async function handleDeleteLimit(limit: BudgetGroupLimit) {
     if (!budget) {
       return
     }
     const confirmed = window.confirm(
-      `Delete the category limit for "${limit.category.name}"? This cannot be undone.`,
+      `Delete the group limit for "${limit.group.label}"? This cannot be undone.`,
     )
     if (!confirmed) {
       return
@@ -251,20 +267,20 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
     setDeletingLimitId(limit.id)
     setError(null)
     try {
-      const updated = await deleteCategoryLimit(budget.id, limit.id)
+      const updated = await deleteGroupLimit(budget.id, limit.id)
       setBudget(updated)
-      setSuccessMessage(`Deleted category limit for "${limit.category.name}".`)
+      setSuccessMessage(`Deleted group limit for "${limit.group.label}".`)
       if (limitEditor?.mode === 'edit' && limitEditor.limit.id === limit.id) {
         setLimitEditor(null)
       }
     } catch {
-      setError(`Could not delete the limit for "${limit.category.name}". Please try again.`)
+      setError(`Could not delete the limit for "${limit.group.label}". Please try again.`)
     } finally {
       setDeletingLimitId(null)
     }
   }
 
-  async function handleLimitSubmit(values: CategoryLimitFormValues) {
+  async function handleLimitSubmit(values: GroupLimitFormValues) {
     if (!budget || !limitEditor) {
       return
     }
@@ -273,54 +289,43 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
     try {
       let updated: MonthlyBudget
       if (limitEditor.mode === 'create') {
-        updated = await createCategoryLimit(budget.id, toCategoryLimitCreateRequest(values))
-        setSuccessMessage('Category limit added.')
+        updated = await createGroupLimit(budget.id, toGroupLimitCreateRequest(values))
+        setSuccessMessage('Group limit added.')
       } else {
-        updated = await updateCategoryLimit(
+        updated = await updateGroupLimit(
           budget.id,
           limitEditor.limit.id,
-          toCategoryLimitUpdateRequest(values),
+          toGroupLimitUpdateRequest(values),
         )
-        setSuccessMessage(`Updated category limit for "${limitEditor.limit.category.name}".`)
+        setSuccessMessage(`Updated group limit for "${limitEditor.limit.group.label}".`)
       }
       setBudget(updated)
       setLimitEditor(null)
     } catch (err) {
       if (err instanceof ApiClientError) {
-        const next: CategoryLimitFormErrors = {}
+        const next: GroupLimitFormErrors = {}
         for (const fieldError of err.fieldErrors) {
           if (
-            fieldError.field === 'categoryId' ||
+            fieldError.field === 'budgetGroup' ||
             fieldError.field === 'limitAmount' ||
             fieldError.field === 'assistanceAmount'
           ) {
             next[fieldError.field] = fieldError.message
           }
         }
-        if (err.code === 'CATEGORY_BUDGET_ALREADY_EXISTS') {
+        if (err.code === 'BUDGET_GROUP_ALREADY_EXISTS') {
           next.form = err.message
         } else if (Object.keys(next).length === 0) {
           next.form = err.message
         }
         setLimitServerErrors(next)
       } else {
-        setLimitServerErrors({ form: 'Unable to save category limit. Please try again.' })
+        setLimitServerErrors({ form: 'Unable to save group limit. Please try again.' })
       }
     } finally {
       setLimitSubmitting(false)
     }
   }
-
-  const availableCategories = useMemo(() => {
-    if (!budget) {
-      return categories
-    }
-    const used = new Set(budget.categoryLimits.map((limit) => limit.category.id))
-    if (limitEditor?.mode === 'edit') {
-      return categories
-    }
-    return categories.filter((category) => !used.has(category.id))
-  }, [budget, categories, limitEditor])
 
   const overallStatus = budget ? budgetStatus(budget.overBudget, budget.percentUsed) : null
 
@@ -328,28 +333,36 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
     <main className="budgets-page page">
       <div className="page-header">
         <div>
-          <h1>{view === 'categories' ? 'Budget categories' : 'Monthly budget'}</h1>
+          <h1>Monthly budget</h1>
           <p className="page-subtitle">
-            {view === 'categories'
-              ? 'Optional category ceilings within the selected monthly budget.'
-              : 'Plan monthly limits and compare them to actual expenses.'}
+            Nine budget groups with preset amounts — Bills, Subscriptions, Groceries, and more —
+            that update from your spending until you edit them.
           </p>
         </div>
-        {view === 'monthly' ? (
+        <div className="budget-actions-row">
+          <button
+            type="button"
+            className="button button-secondary"
+            disabled={generating || loading}
+            onClick={() => void handleGenerate()}
+          >
+            {generating ? 'Generating…' : 'Refresh auto budget'}
+          </button>
           <Link
-            to={`/budgets/new${periodToSearch(period)}`}
+            to={`${paths.budgetsNew}${periodToSearch(period)}`}
             className="button button-primary"
           >
             Create budget
           </Link>
-        ) : null}
+        </div>
       </div>
 
       <HowThisWorks>
         <p>
-          A monthly budget is a total spending limit for the month. Actual expenses always come
-          from saved Expense entries; category limits are optional planning ceilings tracked
-          separately from the overall budget.
+          Budgets use broad groups (not every expense category): Bills, Subscriptions, Groceries,
+          Eating Out, Transportation, Medical, Child Care, Debt Payments, and Personal &amp;
+          Household. Preset amounts start automatically and rise with recurring bills or actual
+          spending. Once you edit a group limit, that month locks and stops auto-changing.
         </p>
         <HelpLink to="/settings/help?topic=set-monthly-budget">Learn more</HelpLink>
       </HowThisWorks>
@@ -380,9 +393,22 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
       {!loading && !error && notFound ? (
         <div className="status-panel" role="status">
           <p>No budget set for {periodLabel(period)}.</p>
-          <Link to={`/budgets/new${periodToSearch(period)}`} className="button button-primary">
-            Create budget
-          </Link>
+          <div className="budget-actions-row">
+            <button
+              type="button"
+              className="button button-primary"
+              disabled={generating}
+              onClick={() => void handleGenerate()}
+            >
+              {generating ? 'Generating…' : 'Set up group budgets'}
+            </button>
+            <Link
+              to={`${paths.budgetsNew}${periodToSearch(period)}`}
+              className="button button-secondary"
+            >
+              Create manually
+            </Link>
+          </div>
         </div>
       ) : null}
 
@@ -390,114 +416,115 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
         <>
           <p className="status-banner" role="status" aria-live="polite">
             Showing {periodLabel({ year: budget.year, month: budget.month })}.
+            {' '}
+            {budget.userModified ? 'Your group limits are locked for this month.' : 'Group limits are auto-managed from your schedules.'}
           </p>
 
-          {view === 'monthly' ? (
-            <>
-              <section aria-label="Budget summary">
-                <div className="budget-summary-grid">
-                  <article className="budget-card budget-card--hero">
-                    <h2 className="metric-heading">
-                      Remaining
-                      <InfoTooltip label="About remaining budget">
-                        {CALCULATION_DEFS.remainingBudget.short}
-                      </InfoTooltip>
-                    </h2>
-                    <p className={budget.remaining < 0 ? 'budget-card-value negative' : 'budget-card-value'}>
-                      {formatCurrency(budget.remaining)}
-                    </p>
-                  </article>
-                  <article className="budget-card">
-                    <h2>Total budget</h2>
-                    <p className="budget-card-value">{formatCurrency(budget.totalLimit)}</p>
-                  </article>
-                  <article className="budget-card">
-                    <h2>Actual expenses</h2>
-                    <p className="budget-card-value">{formatCurrency(budget.actualExpenses)}</p>
-                  </article>
-                  {budget.assistanceApplied > 0 ? (
-                    <article className="budget-card">
-                      <h2>Counts toward budget</h2>
-                      <p className="budget-card-value">{formatCurrency(budget.budgetableExpenses)}</p>
-                      <p className="field-hint">
-                        {formatCurrency(budget.assistanceApplied)} covered by food assistance.
-                      </p>
-                    </article>
-                  ) : null}
-                  <article className="budget-card">
-                    <h2 className="metric-heading">
-                      Percent used
-                      <InfoTooltip label="About percent used">
-                        {CALCULATION_DEFS.percentUsed.short}
-                      </InfoTooltip>
-                    </h2>
-                    <p className="budget-card-value">{budget.percentUsed.toFixed(2)}%</p>
-                  </article>
-                  <article className="budget-card">
-                    <h2 className="metric-heading">
-                      Status
-                      <InfoTooltip label="About budget status">
-                        {CALCULATION_DEFS.budgetStatus.short}
-                      </InfoTooltip>
-                    </h2>
-                    <p className={`budget-status ${overallStatus ?? ''}`}>
-                      {overallStatus ? budgetStatusLabel(overallStatus) : '—'}
-                    </p>
-                    <HelpLink to="/settings/help?topic=budget-status-labels">What do these mean?</HelpLink>
-                  </article>
-                  <article className="budget-card">
-                    <h2>Expense entries</h2>
-                    <p className="budget-card-value">{budget.expenseCount}</p>
-                  </article>
-                </div>
-              </section>
+          <section aria-label="Budget summary">
+            <div className="budget-summary-grid">
+              <article className="budget-card budget-card--hero">
+                <h2 className="metric-heading">
+                  Remaining
+                  <InfoTooltip label="About remaining budget">
+                    {CALCULATION_DEFS.remainingBudget.short}
+                  </InfoTooltip>
+                </h2>
+                <p className={budget.remaining < 0 ? 'budget-card-value negative' : 'budget-card-value'}>
+                  {formatCurrency(budget.remaining)}
+                </p>
+              </article>
+              <article className="budget-card">
+                <h2>Total budget</h2>
+                <p className="budget-card-value">{formatCurrency(budget.totalLimit)}</p>
+              </article>
+              <article className="budget-card">
+                <h2>Actual expenses</h2>
+                <p className="budget-card-value">{formatCurrency(budget.actualExpenses)}</p>
+              </article>
+              {budget.assistanceApplied > 0 ? (
+                <article className="budget-card">
+                  <h2>Counts toward budget</h2>
+                  <p className="budget-card-value">{formatCurrency(budget.budgetableExpenses)}</p>
+                  <p className="field-hint">
+                    {formatCurrency(budget.assistanceApplied)} covered by food assistance.
+                  </p>
+                </article>
+              ) : null}
+              <article className="budget-card">
+                <h2 className="metric-heading">
+                  Percent used
+                  <InfoTooltip label="About percent used">
+                    {CALCULATION_DEFS.percentUsed.short}
+                  </InfoTooltip>
+                </h2>
+                <p className="budget-card-value">{budget.percentUsed.toFixed(2)}%</p>
+              </article>
+              <article className="budget-card">
+                <h2 className="metric-heading">
+                  Status
+                  <InfoTooltip label="About budget status">
+                    {CALCULATION_DEFS.budgetStatus.short}
+                  </InfoTooltip>
+                </h2>
+                <p className={`budget-status ${overallStatus ?? ''}`}>
+                  {overallStatus ? budgetStatusLabel(overallStatus) : '—'}
+                </p>
+                <HelpLink to="/settings/help?topic=budget-status-labels">What do these mean?</HelpLink>
+              </article>
+              <article className="budget-card">
+                <h2>Expense entries</h2>
+                <p className="budget-card-value">{budget.expenseCount}</p>
+              </article>
+            </div>
+          </section>
 
-              <div className="budget-actions-row">
-                <Link to={`/budgets/${budget.id}/edit${periodToSearch(period)}`} className="button button-secondary">
-                  Edit budget
-                </Link>
-                <button
-                  type="button"
-                  className="button button-secondary"
-                  disabled={deletingBudget}
-                  onClick={() => void handleDeleteBudget()}
-                >
-                  {deletingBudget ? 'Deleting…' : 'Delete budget'}
-                </button>
-                <Link to={`/budgets/categories${periodToSearch(period)}`} className="button button-primary">
-                  Manage category limits
-                </Link>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="budget-actions-row">
-                <button
-                  type="button"
-                  className="button button-primary"
-                  onClick={() => {
-                    setLimitServerErrors({})
-                    setLimitEditor({ mode: 'create' })
-                  }}
-                >
-                  Add category limit
-                </button>
-              </div>
+          <div className="budget-actions-row">
+            <Link
+              to={`${paths.budgetEdit(budget.id)}${periodToSearch(period)}`}
+              className="button button-secondary"
+            >
+              Edit total
+            </Link>
+            <button
+              type="button"
+              className="button button-secondary"
+              disabled={deletingBudget}
+              onClick={() => void handleDeleteBudget()}
+            >
+              {deletingBudget ? 'Deleting…' : 'Delete budget'}
+            </button>
+            <button
+              type="button"
+              className="button button-primary"
+              onClick={() => {
+                setLimitServerErrors({})
+                setLimitEditor({ mode: 'create' })
+              }}
+            >
+              Add group limit
+            </button>
+            <Link
+              to={`${paths.budgetsCategories}${periodToSearch(period)}`}
+              className="button button-secondary"
+            >
+              Manage categories
+            </Link>
+          </div>
 
-          <section className="budget-section" aria-labelledby="category-limits-heading">
-            <h2 id="category-limits-heading" className="metric-heading">
-              Category limits
-              <InfoTooltip label="About category budget limits">
-                {CALCULATION_DEFS.categoryBudgetLimit.short}
+          <section className="budget-section" aria-labelledby="group-limits-heading">
+            <h2 id="group-limits-heading" className="metric-heading">
+              Group limits
+              <InfoTooltip label="About group budget limits">
+                {CALCULATION_DEFS.groupBudgetLimit.short}
               </InfoTooltip>
             </h2>
-            {budget.categoryLimits.length === 0 ? (
+            {budget.groupLimits.length === 0 ? (
               <p className="dashboard-empty" role="status">
-                No category limits for this month.
+                No group limits for this month.
               </p>
             ) : (
-              <ul className="budget-limit-list" aria-label="Category budget limits">
-                {budget.categoryLimits.map((limit) => {
+              <ul className="budget-limit-list" aria-label="Budget group limits">
+                {budget.groupLimits.map((limit) => {
                   const status = budgetStatus(limit.overBudget, limit.percentUsed)
                   const tone =
                     status === 'over-budget'
@@ -510,12 +537,12 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
                       <ProgressRing
                         percent={limit.percentUsed}
                         tone={tone}
-                        label={`${limit.category.name} ${limit.percentUsed.toFixed(0)} percent used`}
+                        label={`${limit.group.label} ${limit.percentUsed.toFixed(0)} percent used`}
                       />
                       <div>
                         <p className="budget-limit-row__hero">
                           <span className="budget-limit-row__hero-label">
-                            {limit.category.name} · Remaining
+                            {limit.group.label} · Remaining
                           </span>
                           <span
                             className={`budget-limit-row__hero-value ${
@@ -566,21 +593,17 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
             <div className="budget-inline-form">
               <h3>
                 {limitEditor.mode === 'create'
-                  ? 'Add category limit'
-                  : `Edit limit for ${limitEditor.limit.category.name}`}
+                  ? 'Add group limit'
+                  : `Edit limit for ${limitEditor.limit.group.label}`}
               </h3>
-              {limitEditor.mode === 'create' && availableCategories.length === 0 ? (
-                <p role="status">All categories already have limits for this month.</p>
-              ) : (
-                <CategoryLimitForm
+              <GroupLimitForm
                   key={limitEditor.mode === 'create' ? 'create' : `edit-${limitEditor.limit.id}`}
                   mode={limitEditor.mode}
-                  categories={availableCategories}
                   initialValues={
                     limitEditor.mode === 'create'
-                      ? { categoryId: '', limitAmount: '', assistanceAmount: '' }
+                      ? { budgetGroup: '', limitAmount: '', assistanceAmount: '' }
                       : {
-                          categoryId: String(limitEditor.limit.category.id),
+                          budgetGroup: limitEditor.limit.group.key,
                           limitAmount: formatAmountForInput(limitEditor.limit.limitAmount),
                           assistanceAmount:
                             limitEditor.limit.assistanceAmount > 0
@@ -593,11 +616,8 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
                   onSubmit={(values) => void handleLimitSubmit(values)}
                   onCancel={() => setLimitEditor(null)}
                 />
-              )}
             </div>
           ) : null}
-            </>
-          )}
         </>
       ) : null}
     </main>

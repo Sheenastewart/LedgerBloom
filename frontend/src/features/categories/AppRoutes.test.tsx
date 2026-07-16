@@ -62,9 +62,10 @@ vi.mock('../budgets/api/budgetApi', () => ({
   createMonthlyBudget: vi.fn(),
   updateMonthlyBudget: vi.fn(),
   deleteMonthlyBudget: vi.fn(),
-  createCategoryLimit: vi.fn(),
-  updateCategoryLimit: vi.fn(),
-  deleteCategoryLimit: vi.fn(),
+  createGroupLimit: vi.fn(),
+  updateGroupLimit: vi.fn(),
+  deleteGroupLimit: vi.fn(),
+  generateMonthlyBudget: vi.fn(),
 }))
 
 vi.mock('../expenses/api/expenseApi', () => ({
@@ -150,7 +151,7 @@ describe('Category routes', () => {
     vi.mocked(categoryApi.getCategories).mockResolvedValue([])
   })
 
-  it('navigates from Dashboard to Categories via Transactions', async () => {
+  it('navigates from Dashboard to Categories via Budgets', async () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/dashboard']}>
@@ -159,7 +160,7 @@ describe('Category routes', () => {
     )
 
     expect(await screen.findByRole('heading', { name: /Test User/ })).toBeInTheDocument()
-    await user.click(screen.getByRole('link', { name: 'Transactions' }))
+    await user.click(screen.getByRole('link', { name: 'Budgets' }))
     await user.click(screen.getByRole('link', { name: 'Categories' }))
     expect(await screen.findByRole('heading', { name: 'Categories' })).toBeInTheDocument()
   })
@@ -167,7 +168,7 @@ describe('Category routes', () => {
   it('renders Add category from the Categories page', async () => {
     const user = userEvent.setup()
     render(
-      <MemoryRouter initialEntries={['/transactions/categories']}>
+      <MemoryRouter initialEntries={['/budgets/categories']}>
         <AppRoutes />
       </MemoryRouter>,
     )
@@ -179,7 +180,7 @@ describe('Category routes', () => {
 
   it('shows not found for an invalid edit id', async () => {
     render(
-      <MemoryRouter initialEntries={['/transactions/categories/0/edit']}>
+      <MemoryRouter initialEntries={['/budgets/categories/0/edit']}>
         <AppRoutes />
       </MemoryRouter>,
     )

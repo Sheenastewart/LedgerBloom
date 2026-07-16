@@ -12,9 +12,10 @@ vi.mock('../api/budgetApi', () => ({
   createMonthlyBudget: vi.fn(),
   updateMonthlyBudget: vi.fn(),
   deleteMonthlyBudget: vi.fn(),
-  createCategoryLimit: vi.fn(),
-  updateCategoryLimit: vi.fn(),
-  deleteCategoryLimit: vi.fn(),
+  generateMonthlyBudget: vi.fn(),
+  createGroupLimit: vi.fn(),
+  updateGroupLimit: vi.fn(),
+  deleteGroupLimit: vi.fn(),
 }))
 
 vi.mock('../../categories/api/categoryApi', () => ({
@@ -36,10 +37,11 @@ const sampleBudget = {
   percentUsed: 20,
   overBudget: false,
   expenseCount: 2,
-  categoryLimits: [
+  userModified: false,
+  groupLimits: [
     {
       id: 50,
-      category: { id: 1, name: 'Groceries' },
+      group: { key: 'GROCERIES', label: 'Groceries' },
       limitAmount: 300,
       assistanceAmount: 0,
       actualSpent: 150,
@@ -57,8 +59,7 @@ function renderPage(entry = '/budgets/monthly?year=2026&month=7') {
   return render(
     <MemoryRouter initialEntries={[entry]}>
       <Routes>
-        <Route path="/budgets/monthly" element={<BudgetsPage view="monthly" />} />
-        <Route path="/budgets/categories" element={<BudgetsPage view="categories" />} />
+        <Route path="/budgets/monthly" element={<BudgetsPage />} />
         <Route path="/budgets/new" element={<p>Create form</p>} />
         <Route path="/budgets/:id/edit" element={<p>Edit form</p>} />
       </Routes>
@@ -74,13 +75,14 @@ describe('BudgetsPage', () => {
 
   beforeEach(() => {
     vi.mocked(budgetApi.getMonthlyBudget).mockReset()
+    vi.mocked(budgetApi.generateMonthlyBudget).mockReset()
     vi.mocked(budgetApi.deleteMonthlyBudget).mockReset()
-    vi.mocked(budgetApi.createCategoryLimit).mockReset()
-    vi.mocked(budgetApi.updateCategoryLimit).mockReset()
-    vi.mocked(budgetApi.deleteCategoryLimit).mockReset()
+    vi.mocked(budgetApi.createGroupLimit).mockReset()
+    vi.mocked(budgetApi.updateGroupLimit).mockReset()
+    vi.mocked(budgetApi.deleteGroupLimit).mockReset()
     vi.mocked(categoryApi.getCategories).mockResolvedValue([
-      { id: 1, name: 'Groceries', description: null, createdAt: '', updatedAt: '' },
-      { id: 2, name: 'Utilities', description: null, createdAt: '', updatedAt: '' },
+      { id: 1, name: 'Groceries', description: null, color: null, createdAt: '', updatedAt: '' },
+      { id: 2, name: 'Utilities', description: null, color: null, createdAt: '', updatedAt: '' },
     ])
   })
 
@@ -94,18 +96,28 @@ describe('BudgetsPage', () => {
     expect(screen.getByText('$1,000.00')).toBeInTheDocument()
     expect(screen.getByText('$200.00')).toBeInTheDocument()
     expect(screen.getAllByText('On track').length).toBeGreaterThan(0)
-    expect(screen.getByRole('link', { name: 'Manage category limits' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add group limit' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Manage categories' })).toBeInTheDocument()
   })
 
   it('shows no-budget state with create action', async () => {
     vi.mocked(budgetApi.getMonthlyBudget).mockRejectedValue(
       new ApiClientError({ message: 'missing', code: 'BUDGET_NOT_FOUND', status: 404 }),
     )
+    vi.mocked(budgetApi.generateMonthlyBudget).mockRejectedValue(
+      new ApiClientError({
+        message: 'No recurring income or bills',
+        code: 'INVALID_BUDGET_DATA',
+        status: 400,
+      }),
+    )
 
     renderPage()
 
     expect(await screen.findByText(/No budget set for July 2026/)).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: 'Create budget' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: 'Set up group budgets' }).length).toBeGreaterThan(0)
+    expect(screen.getByRole('link', { name: 'Create manually' })).toBeInTheDocument()
+    expect(budgetApi.generateMonthlyBudget).toHaveBeenCalledWith({ year: 2026, month: 7 })
   })
 
   it('shows Retry when the API is unavailable', async () => {
@@ -132,6 +144,13 @@ describe('BudgetsPage', () => {
       .mockRejectedValueOnce(
         new ApiClientError({ message: 'missing', code: 'BUDGET_NOT_FOUND', status: 404 }),
       )
+    vi.mocked(budgetApi.generateMonthlyBudget).mockRejectedValue(
+      new ApiClientError({
+        message: 'No recurring income or bills',
+        code: 'INVALID_BUDGET_DATA',
+        status: 400,
+      }),
+    )
     vi.mocked(budgetApi.deleteMonthlyBudget).mockResolvedValue(undefined)
 
     renderPage()
@@ -160,26 +179,26 @@ describe('BudgetsPage', () => {
     confirmSpy.mockRestore()
   })
 
-  it('adds a category limit', async () => {
+  it('adds a group limit', async () => {
     const user = userEvent.setup()
     vi.mocked(budgetApi.getMonthlyBudget).mockResolvedValue({
       ...sampleBudget,
-      categoryLimits: [],
+      groupLimits: [],
     })
-    vi.mocked(budgetApi.createCategoryLimit).mockResolvedValue(sampleBudget)
+    vi.mocked(budgetApi.createGroupLimit).mockResolvedValue(sampleBudget)
 
-    renderPage('/budgets/categories?year=2026&month=7')
-    await screen.findByText('No category limits for this month.')
+    renderPage()
+    await screen.findByText('No group limits for this month.')
 
-    await user.click(screen.getByRole('button', { name: 'Add category limit' }))
-    await user.selectOptions(screen.getByLabelText('Category'), '1')
+    await user.click(screen.getByRole('button', { name: 'Add group limit' }))
+    await user.selectOptions(screen.getByLabelText('Budget group'), 'GROCERIES')
     await user.type(screen.getByLabelText('Limit amount'), '300.00')
-    await user.type(screen.getByLabelText('Food assistance'), '150.00')
-    await user.click(screen.getByRole('button', { name: 'Save category limit' }))
+    await user.type(screen.getByLabelText('Assistance amount'), '150.00')
+    await user.click(screen.getByRole('button', { name: 'Save group limit' }))
 
     await waitFor(() => {
-      expect(budgetApi.createCategoryLimit).toHaveBeenCalledWith(10, {
-        categoryId: 1,
+      expect(budgetApi.createGroupLimit).toHaveBeenCalledWith(10, {
+        budgetGroup: 'GROCERIES',
         limitAmount: 300,
         assistanceAmount: 150,
       })
@@ -202,28 +221,28 @@ describe('BudgetsPage', () => {
     expect(screen.getByText(/\$200\.00 covered by food assistance/i)).toBeInTheDocument()
   })
 
-  it('shows duplicate category limit errors', async () => {
+  it('shows duplicate group limit errors', async () => {
     const user = userEvent.setup()
     vi.mocked(budgetApi.getMonthlyBudget).mockResolvedValue({
       ...sampleBudget,
-      categoryLimits: [],
+      groupLimits: [],
     })
-    vi.mocked(budgetApi.createCategoryLimit).mockRejectedValue(
+    vi.mocked(budgetApi.createGroupLimit).mockRejectedValue(
       new ApiClientError({
-        message: 'A category budget limit already exists',
-        code: 'CATEGORY_BUDGET_ALREADY_EXISTS',
+        message: 'A budget group limit already exists',
+        code: 'BUDGET_GROUP_ALREADY_EXISTS',
         status: 409,
       }),
     )
 
-    renderPage('/budgets/categories?year=2026&month=7')
-    await screen.findByText('No category limits for this month.')
-    await user.click(screen.getByRole('button', { name: 'Add category limit' }))
-    await user.selectOptions(screen.getByLabelText('Category'), '1')
+    renderPage()
+    await screen.findByText('No group limits for this month.')
+    await user.click(screen.getByRole('button', { name: 'Add group limit' }))
+    await user.selectOptions(screen.getByLabelText('Budget group'), 'GROCERIES')
     await user.type(screen.getByLabelText('Limit amount'), '300.00')
-    await user.click(screen.getByRole('button', { name: 'Save category limit' }))
+    await user.click(screen.getByRole('button', { name: 'Save group limit' }))
 
-    expect(await screen.findByText('A category budget limit already exists')).toBeInTheDocument()
+    expect(await screen.findByText('A budget group limit already exists')).toBeInTheDocument()
   })
 
   it('updates report when month selection changes', async () => {

@@ -16,9 +16,9 @@ function renderEdit(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/transactions/categories/:id/edit" element={<CategoryFormPage mode="edit" />} />
-        <Route path="/transactions/categories" element={<p>Categories home</p>} />
-        <Route path="/transactions/categories/new" element={<CategoryFormPage mode="create" />} />
+        <Route path="/budgets/categories/:id/edit" element={<CategoryFormPage mode="edit" />} />
+        <Route path="/budgets/categories" element={<p>Categories home</p>} />
+        <Route path="/budgets/categories/new" element={<CategoryFormPage mode="create" />} />
       </Routes>
     </MemoryRouter>,
   )
@@ -41,11 +41,14 @@ describe('CategoryFormPage', () => {
       id: 7,
       name: 'Housing',
       description: 'Rent',
+      color: null,
+      budgetGroup: 'BILLS',
+      budgetGroupLabel: 'Bills',
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
     })
 
-    renderEdit('/transactions/categories/7/edit')
+    renderEdit('/budgets/categories/7/edit')
 
     expect(await screen.findByDisplayValue('Housing')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Rent')).toBeInTheDocument()
@@ -53,7 +56,7 @@ describe('CategoryFormPage', () => {
   })
 
   it('shows not-found for an invalid route id without calling the API', async () => {
-    renderEdit('/transactions/categories/abc/edit')
+    renderEdit('/budgets/categories/abc/edit')
 
     expect(await screen.findByRole('heading', { name: 'Category not found' })).toBeInTheDocument()
     expect(categoryApi.getCategory).not.toHaveBeenCalled()
@@ -64,7 +67,7 @@ describe('CategoryFormPage', () => {
       new ApiClientError({ message: 'missing', code: 'CATEGORY_NOT_FOUND', status: 404 }),
     )
 
-    renderEdit('/transactions/categories/99/edit')
+    renderEdit('/budgets/categories/99/edit')
 
     expect(await screen.findByRole('heading', { name: 'Category not found' })).toBeInTheDocument()
   })
@@ -75,6 +78,9 @@ describe('CategoryFormPage', () => {
       id: 7,
       name: 'Housing',
       description: 'Rent',
+      color: null,
+      budgetGroup: 'BILLS',
+      budgetGroupLabel: 'Bills',
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
     })
@@ -82,11 +88,14 @@ describe('CategoryFormPage', () => {
       id: 7,
       name: 'Housing',
       description: 'Mortgage',
+      color: null,
+      budgetGroup: 'BILLS',
+      budgetGroupLabel: 'Bills',
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-02T00:00:00Z',
     })
 
-    renderEdit('/transactions/categories/7/edit')
+    renderEdit('/budgets/categories/7/edit')
     await screen.findByDisplayValue('Housing')
 
     await user.clear(screen.getByLabelText('Description'))
@@ -97,6 +106,8 @@ describe('CategoryFormPage', () => {
       expect(categoryApi.updateCategory).toHaveBeenCalledWith(7, {
         name: 'Housing',
         description: 'Mortgage',
+        color: null,
+        budgetGroup: 'BILLS',
       })
     })
     expect(await screen.findByText('Categories home')).toBeInTheDocument()
@@ -108,26 +119,32 @@ describe('CategoryFormPage', () => {
       id: 3,
       name: 'Travel',
       description: null,
+      color: null,
+      budgetGroup: 'EATING_OUT',
+      budgetGroupLabel: 'Eating out',
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
     })
 
     render(
-      <MemoryRouter initialEntries={['/transactions/categories/new']}>
+      <MemoryRouter initialEntries={['/budgets/categories/new']}>
         <Routes>
-          <Route path="/transactions/categories/new" element={<CategoryFormPage mode="create" />} />
-          <Route path="/transactions/categories" element={<p>Categories home</p>} />
+          <Route path="/budgets/categories/new" element={<CategoryFormPage mode="create" />} />
+          <Route path="/budgets/categories" element={<p>Categories home</p>} />
         </Routes>
       </MemoryRouter>,
     )
 
     await user.type(screen.getByLabelText('Name'), 'Travel')
+    await user.selectOptions(screen.getByLabelText('Budget group'), 'EATING_OUT')
     await user.click(screen.getByRole('button', { name: 'Create category' }))
 
     await waitFor(() => {
       expect(categoryApi.createCategory).toHaveBeenCalledWith({
         name: 'Travel',
         description: null,
+        color: null,
+        budgetGroup: 'EATING_OUT',
       })
     })
     expect(await screen.findByText('Categories home')).toBeInTheDocument()

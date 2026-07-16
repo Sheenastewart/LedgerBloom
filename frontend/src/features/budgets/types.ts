@@ -1,11 +1,25 @@
-export type BudgetCategorySummary = {
-  id: number
-  name: string
+export const BUDGET_GROUPS = [
+  { key: 'BILLS', label: 'Bills' },
+  { key: 'SUBSCRIPTIONS', label: 'Subscriptions' },
+  { key: 'GROCERIES', label: 'Groceries' },
+  { key: 'EATING_OUT', label: 'Eating out' },
+  { key: 'TRANSPORTATION', label: 'Transportation' },
+  { key: 'MEDICAL', label: 'Medical' },
+  { key: 'CHILD_CARE', label: 'Child care' },
+  { key: 'DEBT_PAYMENTS', label: 'Debt payments' },
+  { key: 'PERSONAL_HOUSEHOLD', label: 'Personal & household' },
+] as const
+
+export type BudgetGroupKey = (typeof BUDGET_GROUPS)[number]['key']
+
+export type BudgetGroupSummary = {
+  key: string
+  label: string
 }
 
-export type CategoryBudgetLimit = {
+export type BudgetGroupLimit = {
   id: number
-  category: BudgetCategorySummary
+  group: BudgetGroupSummary
   limitAmount: number
   assistanceAmount: number
   actualSpent: number
@@ -26,8 +40,9 @@ export type MonthlyBudget = {
   remaining: number
   percentUsed: number
   overBudget: boolean
+  userModified: boolean
   expenseCount: number
-  categoryLimits: CategoryBudgetLimit[]
+  groupLimits: BudgetGroupLimit[]
   createdAt: string
   updatedAt: string
 }
@@ -65,26 +80,26 @@ export type MonthlyBudgetUpdateRequest = {
   totalLimit: number
 }
 
-export type CategoryLimitFormValues = {
-  categoryId: string
+export type GroupLimitFormValues = {
+  budgetGroup: string
   limitAmount: string
   assistanceAmount: string
 }
 
-export type CategoryLimitFormErrors = {
-  categoryId?: string
+export type GroupLimitFormErrors = {
+  budgetGroup?: string
   limitAmount?: string
   assistanceAmount?: string
   form?: string
 }
 
-export type CategoryLimitCreateRequest = {
-  categoryId: number
+export type GroupLimitCreateRequest = {
+  budgetGroup: BudgetGroupKey
   limitAmount: number
   assistanceAmount: number
 }
 
-export type CategoryLimitUpdateRequest = {
+export type GroupLimitUpdateRequest = {
   limitAmount: number
   assistanceAmount: number
 }

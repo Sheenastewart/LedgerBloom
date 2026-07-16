@@ -83,11 +83,24 @@
   border-radius: 0.65rem;
   background: var(--lb-color-surface);
   border: 1px solid var(--lb-color-border);
+  border-left: 4px solid var(--category-accent, var(--lb-color-primary));
 }
 
 .category-name {
   margin: 0;
   font-size: 1.125rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.category-swatch {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 999px;
+  background: var(--category-accent, var(--lb-color-primary));
+  box-shadow: 0 0 0 3px var(--category-accent-soft, var(--lb-color-primary-soft));
+  flex: 0 0 auto;
 }
 
 .category-description {
@@ -99,6 +112,76 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.category-color-field {
+  gap: 0.65rem;
+}
+
+.category-color-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  background: var(--category-accent-soft);
+  color: var(--category-accent);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.category-color-preview__swatch {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 999px;
+  background: var(--category-accent);
+}
+
+.category-color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.category-color-swatch {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.category-color-swatch input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  cursor: pointer;
+}
+
+.category-color-swatch__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.category-color-swatch__chip--auto {
+  width: auto;
+  min-width: 2.75rem;
+  padding: 0 0.55rem;
+  background: var(--lb-color-surface-solid);
+  color: var(--lb-color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.category-color-swatch.is-selected .category-color-swatch__chip,
+.category-color-swatch:focus-within .category-color-swatch__chip {
+  border-color: var(--lb-color-text);
+  outline: var(--lb-focus-ring);
+  outline-offset: 2px;
 }
 
 .category-form,

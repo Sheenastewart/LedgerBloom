@@ -6,7 +6,7 @@ import '../../components/sectionNav.css'
 
 const TABS = [
   { to: paths.budgetsMonthly, label: 'Monthly Budget', end: true },
-  { to: paths.budgetsCategories, label: 'Budget Categories', end: true },
+  { to: paths.budgetsCategories, label: 'Categories', end: true },
 ]
 
 export function BudgetsLayout() {
@@ -15,7 +15,7 @@ export function BudgetsLayout() {
       <div className="hub-header">
         <PageHeader
           title="Budgets"
-          description="Create monthly budgets and monitor planned versus actual spending."
+          description="Auto-build each month from your income and bills, then adjust as needed."
         />
       </div>
       <SectionTabs ariaLabel="Budgets sections" tabs={TABS} />

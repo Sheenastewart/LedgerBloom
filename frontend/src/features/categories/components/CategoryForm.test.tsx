@@ -14,7 +14,7 @@ describe('CategoryForm', () => {
     render(
       <CategoryForm
         mode="create"
-        initialValues={{ name: '', description: '' }}
+        initialValues={{ name: '', description: '', color: '', budgetGroup: '' }}
         submitting={false}
         onSubmit={vi.fn()}
         onCancel={vi.fn()}
@@ -32,7 +32,7 @@ describe('CategoryForm', () => {
     render(
       <CategoryForm
         mode="create"
-        initialValues={{ name: '   ', description: '' }}
+        initialValues={{ name: '   ', description: '', color: '', budgetGroup: 'GROCERIES' }}
         submitting={false}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
@@ -50,7 +50,7 @@ describe('CategoryForm', () => {
     render(
       <CategoryForm
         mode="create"
-        initialValues={{ name: 'a'.repeat(81), description: '' }}
+        initialValues={{ name: 'a'.repeat(81), description: '', color: '', budgetGroup: 'GROCERIES' }}
         submitting={false}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
@@ -70,7 +70,7 @@ describe('CategoryForm', () => {
     render(
       <CategoryForm
         mode="create"
-        initialValues={{ name: 'Travel', description: 'd'.repeat(256) }}
+        initialValues={{ name: 'Travel', description: 'd'.repeat(256), color: '', budgetGroup: 'GROCERIES' }}
         submitting={false}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
@@ -90,7 +90,7 @@ describe('CategoryForm', () => {
     render(
       <CategoryForm
         mode="create"
-        initialValues={{ name: '', description: '' }}
+        initialValues={{ name: '', description: '', color: '', budgetGroup: '' }}
         submitting={false}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
@@ -99,12 +99,15 @@ describe('CategoryForm', () => {
 
     await user.type(screen.getByLabelText('Name'), '  Groceries  ')
     await user.type(screen.getByLabelText('Description'), ' Food ')
+    await user.selectOptions(screen.getByLabelText('Budget group'), 'GROCERIES')
     await user.click(screen.getByRole('button', { name: 'Create category' }))
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({
         name: '  Groceries  ',
         description: ' Food ',
+        color: '',
+        budgetGroup: 'GROCERIES',
       })
     })
   })
@@ -113,7 +116,7 @@ describe('CategoryForm', () => {
     render(
       <CategoryForm
         mode="create"
-        initialValues={{ name: 'Groceries', description: '' }}
+        initialValues={{ name: 'Groceries', description: '', color: '', budgetGroup: 'GROCERIES' }}
         submitting={false}
         onSubmit={vi.fn()}
         onCancel={vi.fn()}
@@ -136,7 +139,7 @@ describe('CategoryForm', () => {
     render(
       <CategoryForm
         mode="create"
-        initialValues={{ name: 'Travel', description: '' }}
+        initialValues={{ name: 'Travel', description: '', color: '', budgetGroup: 'GROCERIES' }}
         submitting
         onSubmit={vi.fn()}
         onCancel={vi.fn()}

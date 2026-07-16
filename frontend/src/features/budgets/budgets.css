@@ -11,10 +11,11 @@
 }
 
 .budget-card {
-  padding: 1rem 1.1rem;
-  border-radius: 0.65rem;
-  background: var(--lb-color-surface);
-  border: 1px solid var(--lb-color-border);
+  padding: 1.15rem 1.2rem;
+  border-radius: var(--lb-radius-xl);
+  background: var(--lb-color-surface-solid);
+  border: 1px solid transparent;
+  box-shadow: var(--lb-shadow-sm);
   display: grid;
   gap: 0.35rem;
 }

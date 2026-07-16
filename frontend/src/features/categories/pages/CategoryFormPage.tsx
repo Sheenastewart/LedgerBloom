@@ -8,7 +8,7 @@ import {
 } from '../api/categoryApi'
 import { CategoryForm } from '../components/CategoryForm'
 import { parseCategoryRouteId } from '../parseCategoryRouteId'
-import type { CategoryFormErrors, CategoryFormValues } from '../types'
+import type { BudgetGroupKey, CategoryFormErrors, CategoryFormValues } from '../types'
 import '../categories.css'
 
 type CategoryFormPageProps = {
@@ -17,9 +17,12 @@ type CategoryFormPageProps = {
 
 function toWriteRequest(values: CategoryFormValues) {
   const description = values.description.trim()
+  const color = values.color.trim()
   return {
     name: values.name.trim(),
     description: description.length === 0 ? null : description,
+    color: color.length === 0 ? null : color,
+    budgetGroup: values.budgetGroup as BudgetGroupKey,
   }
 }
 
@@ -27,14 +30,19 @@ function mapServerErrors(error: ApiClientError): CategoryFormErrors {
   const next: CategoryFormErrors = {}
 
   for (const fieldError of error.fieldErrors) {
-    if (fieldError.field === 'name' || fieldError.field === 'description') {
+    if (
+      fieldError.field === 'name' ||
+      fieldError.field === 'description' ||
+      fieldError.field === 'color' ||
+      fieldError.field === 'budgetGroup'
+    ) {
       next[fieldError.field] = fieldError.message
     }
   }
 
   if (error.code === 'CATEGORY_NAME_ALREADY_EXISTS') {
     next.name = error.message
-  } else if (!next.name && !next.description) {
+  } else if (!next.name && !next.description && !next.color && !next.budgetGroup) {
     next.form = error.message
   }
 
@@ -54,6 +62,8 @@ export function CategoryFormPage({ mode }: CategoryFormPageProps) {
   const [initialValues, setInitialValues] = useState<CategoryFormValues>({
     name: '',
     description: '',
+    color: '',
+    budgetGroup: '',
   })
   const [formKey, setFormKey] = useState(0)
 
@@ -83,6 +93,8 @@ export function CategoryFormPage({ mode }: CategoryFormPageProps) {
         setInitialValues({
           name: category.name,
           description: category.description ?? '',
+          color: category.color ?? '',
+          budgetGroup: category.budgetGroup ?? '',
         })
         setFormKey((value) => value + 1)
       } catch (error) {
@@ -112,7 +124,7 @@ export function CategoryFormPage({ mode }: CategoryFormPageProps) {
       const body = toWriteRequest(values)
       if (mode === 'create') {
         await createCategory(body)
-        navigate('/transactions/categories', {
+        navigate('/budgets/categories', {
           state: { successMessage: `Created category "${body.name}".` },
         })
         return
@@ -124,7 +136,7 @@ export function CategoryFormPage({ mode }: CategoryFormPageProps) {
       }
 
       await updateCategory(routeId, body)
-      navigate('/transactions/categories', {
+      navigate('/budgets/categories', {
         state: { successMessage: `Updated category "${body.name}".` },
       })
     } catch (error) {
@@ -157,7 +169,7 @@ export function CategoryFormPage({ mode }: CategoryFormPageProps) {
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => navigate('/transactions/categories')}
+            onClick={() => navigate('/budgets/categories')}
           >
             Back to categories
           </button>
@@ -174,7 +186,7 @@ export function CategoryFormPage({ mode }: CategoryFormPageProps) {
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => navigate('/transactions/categories')}
+            onClick={() => navigate('/budgets/categories')}
           >
             Back to categories
           </button>
@@ -192,7 +204,7 @@ export function CategoryFormPage({ mode }: CategoryFormPageProps) {
         submitting={submitting}
         serverErrors={serverErrors}
         onSubmit={handleSubmit}
-        onCancel={() => navigate('/transactions/categories')}
+        onCancel={() => navigate('/budgets/categories')}
       />
     </main>
   )
