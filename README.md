@@ -148,6 +148,52 @@ Stage 10 does **not** include OAuth/social login, MFA, or role-based admin permi
 - Environment-driven CORS origin, session cookie Secure/HttpOnly/SameSite, and session timeout (see `.env.example`)
 - Settings Security page explains password, session, CSRF, logout, and reset behavior in plain language
 
+### Stage 12 — Budget Groups and Ledger UX
+
+Budget planning moved from per-category limits to nine preset **budget groups**, with category colors, mandatory category→group mapping, and a unified expenses/income experience.
+
+**Budget groups (backend)**
+
+- Flyway `V12__category_color.sql`: optional `categories.color` (`#RRGGBB`)
+- Flyway `V13__budget_groups.sql`:
+  - `categories.budget_group` (required) with name-based backfill
+  - `monthly_budgets.user_modified`
+  - `budget_group_limits` table replacing `category_budget_limits`
+  - Existing category limits are rolled up into group limits; those months are locked (`user_modified = TRUE`)
+- Nine groups with default monthly amounts: Bills $2,000 · Subscriptions $200 · Groceries $250 · Eating Out $200 · Transportation $200 · Medical $200 · Child Care $500 · Debt Payments $250 · Personal & Household $500
+- Group-limit CRUD at `/api/budgets/monthly/{id}/groups`
+- `POST /api/budgets/monthly/generate` creates or refreshes an auto-managed budget
+- Auto budgets stay unlocked until the user edits a total or group limit; unlocked budgets refresh from presets, recurring bills, and actual spend (`max` of the three)
+- Loading a budget backfills missing groups; migrated partial locked budgets with below-preset amounts are reset to the defaults
+- Expense and recurring-expense mutations sync unlocked auto budgets for the affected month(s)
+
+**Categories**
+
+- Create/update require a budget group so spending rolls into the correct bucket
+- Optional category color for list accents
+- Categories live under Budgets (`/budgets/categories`); legacy `/transactions/categories` and `/categories` routes redirect
+
+**Budget UI**
+
+- Monthly budget page shows the nine group limits, remaining/spend status, and auto-generate/refresh actions
+- Manual create still sets an overall total and seeds group presets (locked)
+- Help/calculation copy refers to group limits instead of category limits
+
+**Income and expense UX**
+
+- Expenses and income pages fold recorded rows, remaining/expected upcoming items, and all recurring schedules into one place
+- Legacy recurring list routes redirect into those pages
+- Display helpers: description/title vs merchant or source, monthly-equivalent amounts for short cadences, category color accents
+- Page-level “Looking at” scope filters (all / recorded / upcoming / schedules)
+
+**Current limitations**
+
+- Deleting a group limit locks the month; if fewer than nine groups remain, the next load may rebuild all groups from presets (migration-safe backfill, not a permanent “delete and keep deleted” policy)
+- No savings goals, budget rollovers, charts, or email delivery for password reset
+- Auto-budget refresh does not run for user-locked months
+
+Stage 12 does **not** include bank sync, OCR/receipts, push notifications, or production hosting.
+
 ## Repository structure
 
 ```text
