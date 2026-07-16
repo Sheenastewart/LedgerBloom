@@ -11,7 +11,7 @@ public record RegisterRequest(
 		String email,
 
 		@NotBlank(message = "Password is required")
-		@Size(min = 8, max = 100, message = "Password must be at least 8 characters")
+		@Size(min = 12, max = 100, message = "Password must be at least 12 characters")
 		String password,
 
 		@NotBlank(message = "Confirm password is required")

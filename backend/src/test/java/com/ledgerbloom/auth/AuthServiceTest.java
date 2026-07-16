@@ -3,6 +3,7 @@ package com.ledgerbloom.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -22,7 +23,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -43,6 +43,9 @@ class AuthServiceTest {
 	private SecurityContextRepository securityContextRepository;
 
 	@Mock
+	private LoginAttemptService loginAttemptService;
+
+	@Mock
 	private HttpServletRequest httpRequest;
 
 	@Mock
@@ -54,12 +57,18 @@ class AuthServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		// Real BCryptPasswordEncoder (not mocked) so hash-format assertions below are meaningful.
 		passwordEncoder = new BCryptPasswordEncoder();
-		authService = new AuthService(userRepository, categoryService, passwordEncoder, securityContextRepository);
+		authService = new AuthService(
+			userRepository,
+			categoryService,
+			passwordEncoder,
+			securityContextRepository,
+			loginAttemptService
+		);
 		org.mockito.Mockito.lenient()
 			.when(categoryService.createStarterSetForUser(any(User.class)))
 			.thenReturn(new StarterCategoriesResponse(22, StarterCategoryNames.ALL, 0, List.of()));
+		org.mockito.Mockito.lenient().when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
 	}
 
 	@Test
@@ -74,7 +83,7 @@ class AuthServiceTest {
 		when(categoryService.createStarterSetForUser(any(User.class)))
 			.thenReturn(new StarterCategoriesResponse(22, List.of("Housing"), 0, List.of()));
 
-		authService.register(new RegisterRequest("user@example.com", "supersecret", "supersecret", "Jane Doe"));
+		authService.register(new RegisterRequest("user@example.com", "supersecret12", "supersecret12", "Jane Doe"));
 
 		ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
 		verify(categoryService).createStarterSetForUser(captor.capture());
@@ -94,21 +103,22 @@ class AuthServiceTest {
 			.when(categoryService).createStarterSetForUser(any(User.class));
 
 		assertThatThrownBy(() -> authService.register(
-			new RegisterRequest("user@example.com", "supersecret", "supersecret", "Jane Doe")
+			new RegisterRequest("user@example.com", "supersecret12", "supersecret12", "Jane Doe")
 		)).isInstanceOf(RuntimeException.class)
 			.hasMessage("category seed failed");
 	}
 
 	@Test
 	void loginDoesNotRecreateStarterCategories() throws Exception {
-		User user = sampleUser(1L, "user@example.com", "supersecret");
+		User user = sampleUser(1L, "user@example.com", "supersecret12");
 		when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
 		when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-		authService.login(new LoginRequest("user@example.com", "supersecret"), httpRequest, httpResponse);
+		authService.login(new LoginRequest("user@example.com", "supersecret12"), httpRequest, httpResponse);
 
 		verify(categoryService, never()).createStarterSetForUser(any());
 		verify(categoryService, never()).addStarterSet();
+		verify(loginAttemptService).clear("user@example.com", "127.0.0.1");
 	}
 
 	@Test
@@ -122,7 +132,7 @@ class AuthServiceTest {
 		});
 
 		UserResponse response = authService.register(
-			new RegisterRequest("user@example.com", "supersecret", "supersecret", "Jane Doe")
+			new RegisterRequest("user@example.com", "supersecret12", "supersecret12", "Jane Doe")
 		);
 
 		assertThat(response.id()).isEqualTo(1L);
@@ -134,8 +144,8 @@ class AuthServiceTest {
 		verify(userRepository).saveAndFlush(captor.capture());
 		String storedHash = captor.getValue().getPasswordHash();
 		assertThat(storedHash).matches("^\\$2[aby]\\$.*");
-		assertThat(storedHash).isNotEqualTo("supersecret");
-		assertThat(passwordEncoder.matches("supersecret", storedHash)).isTrue();
+		assertThat(storedHash).isNotEqualTo("supersecret12");
+		assertThat(passwordEncoder.matches("supersecret12", storedHash)).isTrue();
 	}
 
 	@Test
@@ -143,7 +153,7 @@ class AuthServiceTest {
 		when(userRepository.existsByEmailIgnoreCase("user@example.com")).thenReturn(false);
 		when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-		authService.register(new RegisterRequest("  User@Example.com  ", "supersecret", "supersecret", "  Jane Doe  "));
+		authService.register(new RegisterRequest("  User@Example.com  ", "supersecret12", "supersecret12", "  Jane Doe  "));
 
 		ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
 		verify(userRepository).saveAndFlush(captor.capture());
@@ -154,7 +164,7 @@ class AuthServiceTest {
 	@Test
 	void registerRejectsMismatchedPasswords() {
 		assertThatThrownBy(() -> authService.register(
-			new RegisterRequest("user@example.com", "supersecret", "different", "Jane Doe")
+			new RegisterRequest("user@example.com", "supersecret12", "different", "Jane Doe")
 		)).isInstanceOf(InvalidRegistrationDataException.class);
 
 		verify(userRepository, never()).saveAndFlush(any());
@@ -165,7 +175,7 @@ class AuthServiceTest {
 		when(userRepository.existsByEmailIgnoreCase("user@example.com")).thenReturn(true);
 
 		assertThatThrownBy(() -> authService.register(
-			new RegisterRequest("user@example.com", "supersecret", "supersecret", "Jane Doe")
+			new RegisterRequest("user@example.com", "supersecret12", "supersecret12", "Jane Doe")
 		)).isInstanceOf(EmailAlreadyExistsException.class);
 
 		verify(userRepository, never()).saveAndFlush(any());
@@ -178,18 +188,18 @@ class AuthServiceTest {
 			.thenThrow(new DataIntegrityViolationException("unique constraint"));
 
 		assertThatThrownBy(() -> authService.register(
-			new RegisterRequest("user@example.com", "supersecret", "supersecret", "Jane Doe")
+			new RegisterRequest("user@example.com", "supersecret12", "supersecret12", "Jane Doe")
 		)).isInstanceOf(EmailAlreadyExistsException.class);
 	}
 
 	@Test
 	void loginValidCredentialsReturnsResponseAndUpdatesLastLogin() throws Exception {
-		User user = sampleUser(1L, "user@example.com", "supersecret");
+		User user = sampleUser(1L, "user@example.com", "supersecret12");
 		when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
 		when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		UserResponse response = authService.login(
-			new LoginRequest("user@example.com", "supersecret"),
+			new LoginRequest("user@example.com", "supersecret12"),
 			httpRequest,
 			httpResponse
 		);
@@ -205,7 +215,7 @@ class AuthServiceTest {
 
 	@Test
 	void loginWrongPasswordThrowsInvalidCredentials() throws Exception {
-		User user = sampleUser(1L, "user@example.com", "supersecret");
+		User user = sampleUser(1L, "user@example.com", "supersecret12");
 		when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
 
 		assertThatThrownBy(() -> authService.login(
@@ -215,6 +225,7 @@ class AuthServiceTest {
 		)).isInstanceOf(InvalidCredentialsException.class);
 
 		verify(userRepository, never()).saveAndFlush(any());
+		verify(loginAttemptService).recordFailure("user@example.com", "127.0.0.1");
 	}
 
 	@Test
@@ -226,11 +237,27 @@ class AuthServiceTest {
 			httpRequest,
 			httpResponse
 		)).isInstanceOf(InvalidCredentialsException.class);
+
+		verify(loginAttemptService).recordFailure("missing@example.com", "127.0.0.1");
+	}
+
+	@Test
+	void loginRespectsThrottleBeforeCredentialCheck() {
+		doThrow(new LoginThrottledException())
+			.when(loginAttemptService).assertNotThrottled(anyString(), anyString());
+
+		assertThatThrownBy(() -> authService.login(
+			new LoginRequest("user@example.com", "supersecret12"),
+			httpRequest,
+			httpResponse
+		)).isInstanceOf(LoginThrottledException.class);
+
+		verify(userRepository, never()).findByEmailIgnoreCase(anyString());
 	}
 
 	@Test
 	void currentUserReturnsResponseForExistingId() throws Exception {
-		User user = sampleUser(1L, "user@example.com", "supersecret");
+		User user = sampleUser(1L, "user@example.com", "supersecret12");
 		when(userRepository.findById(1L)).thenReturn(Optional.of(user));
 
 		UserResponse response = authService.currentUser(1L);

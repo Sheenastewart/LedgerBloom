@@ -134,7 +134,19 @@ Stage 9 does **not** include a product tour, onboarding checklist, sample data, 
 
 **Legacy data placeholder:** rows that existed before Stage 10 are attributed to `legacy@local.dev` solely to satisfy `NOT NULL` foreign keys. That account has a BCrypt hash of an unrecorded random password and is not a usable login or admin account. Do not treat it as default credentials.
 
-Stage 10 does **not** include OAuth/social login, password reset/email verification, MFA, or role-based admin permissions.
+Stage 10 does **not** include OAuth/social login, MFA, or role-based admin permissions. Password reset and account settings arrive in Stage 11.
+
+### Stage 11 — Account Management and Security Hardening
+
+- Account settings UI at `/settings/account`: view email, update display name, change password, log out
+- `GET /api/account`, `PUT /api/account/profile`, `PUT /api/account/password` (session-derived user only)
+- Password policy minimum **12** characters for register, password change, and reset
+- Password reset: `POST /api/auth/forgot-password`, `POST /api/auth/reset-password`; SPA routes `/forgot-password`, `/reset-password`
+- Flyway `V9__password_reset_tokens.sql` stores **hashed** single-use tokens with expiry (raw tokens never persisted or logged)
+- Local development may return a reset token only when `LEDGERBLOOM_DEV_RETURN_RESET_TOKEN=true`; production must keep this false and connect a real email provider later
+- Lightweight in-memory login throttling after repeated failures (single-instance only; move to shared infra when horizontally scaled)
+- Environment-driven CORS origin, session cookie Secure/HttpOnly/SameSite, and session timeout (see `.env.example`)
+- Settings Security page explains password, session, CSRF, logout, and reset behavior in plain language
 
 ## Repository structure
 
@@ -786,26 +798,35 @@ curl -i http://localhost:8080/api/categories/1
 
 ## CORS restriction
 
-The backend allows only:
+Allowed origins come from `LEDGERBLOOM_CORS_ALLOWED_ORIGINS` (comma-separated exact origins). Local default:
 
 `http://localhost:5173`
 
 No wildcard origin is configured. `allowCredentials(true)` is set so the browser sends/receives the session cookie (`LEDGERBLOOM_SESSION`) and the CSRF cookie (`XSRF-TOKEN`) on cross-port requests from the Vite dev server; browsers reject `allowCredentials(true)` combined with a wildcard origin or wildcard headers, so both the origin list and the allowed-headers list stay explicit.
 
-## Authentication API (Stage 10)
+## Authentication and account API
 
-Session-cookie authentication (see Stage 10 above). Send `credentials: 'include'` on every API request.
+Session-cookie authentication (see Stages 10–11). Send `credentials: 'include'` on every API request.
 
 ### Endpoints
 
 | Method | Path | Auth required | Success |
 | --- | --- | --- | --- |
 | `POST` | `/api/auth/register` | No (CSRF required) | `201` + user body / `400` validation / `409` `EMAIL_ALREADY_EXISTS` / `403` CSRF |
-| `POST` | `/api/auth/login` | No (CSRF required) | `200` + user body / `401` `INVALID_CREDENTIALS` / `403` CSRF |
+| `POST` | `/api/auth/login` | No (CSRF required) | `200` + user body / `401` `INVALID_CREDENTIALS` / `429` `LOGIN_THROTTLED` / `403` CSRF |
+| `POST` | `/api/auth/forgot-password` | No (CSRF required) | `200` generic message (optional local-only `devResetToken`) |
+| `POST` | `/api/auth/reset-password` | No (CSRF required) | `200` success message / `400` `INVALID_RESET_TOKEN` or validation |
 | `POST` | `/api/auth/logout` | Yes (CSRF required) | `204`, clears the session and cookies |
 | `GET` | `/api/auth/me` | Yes | `200` + user body / `401` `UNAUTHORIZED` |
+| `GET` | `/api/account` | Yes | `200` + safe profile fields |
+| `PUT` | `/api/account/profile` | Yes (CSRF) | `200` + updated profile |
+| `PUT` | `/api/account/password` | Yes (CSRF) | `200` + profile; current session stays authenticated; other sessions expire naturally |
 
 Every other `/api/**` endpoint requires an authenticated session. `/api/health` remains public and is also used by the SPA to initialize the CSRF cookie.
+
+### Production email delivery (password reset)
+
+Forgot-password generates a cryptographically secure token, stores only its SHA-256 hash, and invalidates prior unused tokens for that user. Connect a transactional email provider later by sending a link such as `{FRONTEND_ORIGIN}/reset-password?token=…` out-of-band. Keep `LEDGERBLOOM_DEV_RETURN_RESET_TOKEN` and `LEDGERBLOOM_DEV_RESET_INBOX_ENABLED` **false** in production so raw tokens never appear in API responses or logs.
 
 ### Register body shape
 
@@ -818,7 +839,7 @@ Every other `/api/**` endpoint requires an authenticated session. `/api/health` 
 }
 ```
 
-Do not commit real passwords. `password` must be at least 8 characters and must match `confirmPassword`. Responses never include the password or hash:
+Do not commit real passwords. `password` must be at least 12 characters and must match `confirmPassword`. Responses never include the password or hash:
 
 ```json
 {
@@ -879,7 +900,7 @@ Any cell value beginning with `=`, `+`, `-`, or `@` (after trimming) is prefixed
 
 ## Features intentionally deferred
 
-Deferred beyond Stage 10:
+Deferred beyond Stage 11:
 
 - Guided product tour, home onboarding checklist, sample/demo data, video tutorials
 - Backend-managed help content and admin help editor
@@ -887,10 +908,13 @@ Deferred beyond Stage 10:
 - Category detail page, search, pagination, sorting UI controls
 - Recurring budgets / budget rollover / savings goals
 - Email, SMS, or push reminders for recurring schedules
-- OAuth/social login, password reset, email verification, multi-factor authentication, role-based permissions
+- OAuth/social login, email verification, multi-factor authentication, role-based permissions
+- Production transactional email for password reset (local uses opt-in dev token return only)
+- Shared/distributed login throttling and multi-session revocation for horizontal scale
 - Receipt upload and OCR
 - Background jobs / automatic posting of recurring ledger rows
-- AWS or other cloud deployment
+- Visual redesign / design system
+- AWS or other cloud deployment beyond environment-based security configuration placeholders
 - Spring Boot Actuator
 
 Do not treat those as implemented until a later stage explicitly adds them.

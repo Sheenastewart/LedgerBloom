@@ -15,6 +15,8 @@ vi.mock('./api/authApi', () => ({
   login: vi.fn(),
   register: vi.fn(),
   logout: vi.fn(),
+  forgotPassword: vi.fn(),
+  resetPassword: vi.fn(),
 }))
 
 vi.mock('../categories/api/categoryApi', () => ({
@@ -184,13 +186,13 @@ describe('Auth routes', () => {
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
 
     await user.type(screen.getByLabelText('Email'), 'user@example.com')
-    await user.type(screen.getByLabelText('Password'), 'supersecret')
+    await user.type(screen.getByLabelText('Password'), 'supersecret12')
     await user.click(screen.getByRole('button', { name: 'Sign in' }))
 
     expect(await screen.findByRole('heading', { name: 'Categories' })).toBeInTheDocument()
     expect(authApi.login).toHaveBeenCalledWith({
       email: 'user@example.com',
-      password: 'supersecret',
+      password: 'supersecret12',
     })
   })
 
@@ -258,20 +260,20 @@ describe('Auth routes', () => {
 
     await user.type(screen.getByLabelText('Display name'), 'Jane Doe')
     await user.type(screen.getByLabelText('Email'), 'user@example.com')
-    await user.type(screen.getByLabelText('Password'), 'supersecret')
-    await user.type(screen.getByLabelText('Confirm password'), 'supersecret')
+    await user.type(screen.getByLabelText('Password'), 'supersecret12')
+    await user.type(screen.getByLabelText('Confirm password'), 'supersecret12')
     await user.click(screen.getByRole('button', { name: 'Create account' }))
 
     expect(await screen.findByRole('heading', { name: 'Monthly dashboard' })).toBeInTheDocument()
     expect(authApi.register).toHaveBeenCalledWith({
       email: 'user@example.com',
-      password: 'supersecret',
-      confirmPassword: 'supersecret',
+      password: 'supersecret12',
+      confirmPassword: 'supersecret12',
       displayName: 'Jane Doe',
     })
     expect(authApi.login).toHaveBeenCalledWith({
       email: 'user@example.com',
-      password: 'supersecret',
+      password: 'supersecret12',
     })
   })
 
@@ -296,8 +298,8 @@ describe('Auth routes', () => {
 
     await user.type(screen.getByLabelText('Display name'), 'Jane Doe')
     await user.type(screen.getByLabelText('Email'), 'user@example.com')
-    await user.type(screen.getByLabelText('Password'), 'supersecret')
-    await user.type(screen.getByLabelText('Confirm password'), 'supersecret')
+    await user.type(screen.getByLabelText('Password'), 'supersecret12')
+    await user.type(screen.getByLabelText('Confirm password'), 'supersecret12')
     await user.click(screen.getByRole('button', { name: 'Create account' }))
 
     expect(

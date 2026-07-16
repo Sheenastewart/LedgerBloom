@@ -3,7 +3,11 @@ package com.ledgerbloom.error;
 import com.ledgerbloom.auth.AuthenticationRequiredException;
 import com.ledgerbloom.auth.EmailAlreadyExistsException;
 import com.ledgerbloom.auth.InvalidCredentialsException;
+import com.ledgerbloom.auth.InvalidPasswordChangeException;
 import com.ledgerbloom.auth.InvalidRegistrationDataException;
+import com.ledgerbloom.auth.InvalidResetTokenException;
+import com.ledgerbloom.auth.LoginThrottledException;
+import com.ledgerbloom.account.InvalidAccountDataException;
 import com.ledgerbloom.budget.CategoryBudgetAlreadyExistsException;
 import com.ledgerbloom.budget.CategoryBudgetLimitNotFoundException;
 import com.ledgerbloom.budget.InvalidBudgetDataException;
@@ -440,6 +444,34 @@ public class GlobalExceptionHandler {
 			AuthenticationRequiredException ex,
 			HttpServletRequest request) {
 		return build(HttpStatus.UNAUTHORIZED, ErrorCode.AUTHENTICATION_REQUIRED, ex.getMessage(), request.getRequestURI(), null);
+	}
+
+	@ExceptionHandler(InvalidPasswordChangeException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidPasswordChange(
+			InvalidPasswordChangeException ex,
+			HttpServletRequest request) {
+		return build(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_PASSWORD_CHANGE, ex.getMessage(), request.getRequestURI(), null);
+	}
+
+	@ExceptionHandler(InvalidAccountDataException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidAccountData(
+			InvalidAccountDataException ex,
+			HttpServletRequest request) {
+		return build(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_ACCOUNT_DATA, ex.getMessage(), request.getRequestURI(), null);
+	}
+
+	@ExceptionHandler(InvalidResetTokenException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidResetToken(
+			InvalidResetTokenException ex,
+			HttpServletRequest request) {
+		return build(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_RESET_TOKEN, ex.getMessage(), request.getRequestURI(), null);
+	}
+
+	@ExceptionHandler(LoginThrottledException.class)
+	public ResponseEntity<ApiErrorResponse> handleLoginThrottled(
+			LoginThrottledException ex,
+			HttpServletRequest request) {
+		return build(HttpStatus.TOO_MANY_REQUESTS, ErrorCode.LOGIN_THROTTLED, ex.getMessage(), request.getRequestURI(), null);
 	}
 
 	@ExceptionHandler(AccessDeniedException.class)

@@ -3,8 +3,10 @@ import { AppLayout } from './components/AppLayout'
 import { AuthProvider } from './features/auth/AuthContext'
 import { ProtectedRoute } from './features/auth/components/ProtectedRoute'
 import { ForbiddenPage } from './features/auth/pages/ForbiddenPage'
+import { ForgotPasswordPage } from './features/auth/pages/ForgotPasswordPage'
 import { LoginPage } from './features/auth/pages/LoginPage'
 import { RegisterPage } from './features/auth/pages/RegisterPage'
+import { ResetPasswordPage } from './features/auth/pages/ResetPasswordPage'
 import { UnauthorizedPage } from './features/auth/pages/UnauthorizedPage'
 import { BudgetsLayout } from './features/budgets/BudgetsLayout'
 import { BudgetFormPage } from './features/budgets/pages/BudgetFormPage'
@@ -30,11 +32,11 @@ import { TrendsPage } from './features/reports/pages/TrendsPage'
 import { YtdPage } from './features/reports/pages/YtdPage'
 import { SettingsLayout } from './features/settings/SettingsLayout'
 import { SettingsAccountPage } from './features/settings/pages/SettingsAccountPage'
+import { SettingsSecurityPage } from './features/settings/pages/SettingsSecurityPage'
 import {
   ReportsCashFlowPage,
   SettingsAboutPage,
   SettingsPreferencesPage,
-  SettingsSecurityPage,
 } from './features/settings/pages/placeholderPages'
 import { TransactionsLayout } from './features/transactions/TransactionsLayout'
 import { HomePage } from './pages/HomePage'
@@ -58,6 +60,8 @@ export function AppRoutes() {
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
           <Route path="/forbidden" element={<ForbiddenPage />} />
 

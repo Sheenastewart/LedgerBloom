@@ -18,6 +18,24 @@ export type RegisterRequest = {
   displayName: string
 }
 
+export type ForgotPasswordRequest = {
+  email: string
+}
+
+export type ForgotPasswordResponse = {
+  message: string
+}
+
+export type ResetPasswordRequest = {
+  token: string
+  newPassword: string
+  confirmNewPassword: string
+}
+
+export type MessageResponse = {
+  message: string
+}
+
 export type LoginFormErrors = {
   email?: string
   password?: string

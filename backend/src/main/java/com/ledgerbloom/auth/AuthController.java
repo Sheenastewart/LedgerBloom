@@ -21,10 +21,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
 	private final AuthService authService;
+	private final PasswordResetService passwordResetService;
 	private final CurrentUser currentUser;
 
-	public AuthController(AuthService authService, CurrentUser currentUser) {
+	public AuthController(
+			AuthService authService,
+			PasswordResetService passwordResetService,
+			CurrentUser currentUser) {
 		this.authService = authService;
+		this.passwordResetService = passwordResetService;
 		this.currentUser = currentUser;
 	}
 
@@ -40,6 +45,16 @@ public class AuthController {
 			HttpServletRequest httpRequest,
 			HttpServletResponse httpResponse) {
 		return authService.login(request, httpRequest, httpResponse);
+	}
+
+	@PostMapping("/forgot-password")
+	public ForgotPasswordResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+		return passwordResetService.forgotPassword(request);
+	}
+
+	@PostMapping("/reset-password")
+	public MessageResponse resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+		return passwordResetService.resetPassword(request);
 	}
 
 	@GetMapping("/me")

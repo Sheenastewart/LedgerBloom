@@ -14,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 
 /**
  * Session-cookie authentication (JSESSIONID-style, but named LEDGERBLOOM_SESSION) with
@@ -31,6 +32,10 @@ import org.springframework.security.web.context.SecurityContextRepository;
  * XSRF-TOKEN cookie and the SPA echoes it back as the X-XSRF-TOKEN request header.
  * CSRF is required for every mutating request, including register and login — the SPA
  * must obtain the cookie first (for example via GET /api/health) before posting.
+ *
+ * Session fixation protection remains enabled via Spring Security defaults
+ * (changeSessionId on authentication). Cookie secure/HttpOnly/SameSite and session
+ * timeout are driven by environment-backed {@code server.servlet.session.*} settings.
  */
 @Configuration
 @EnableWebSecurity
@@ -54,12 +59,23 @@ public class SecurityConfig {
 			RestAccessDeniedHandler accessDeniedHandler) throws Exception {
 		http
 			.securityContext(context -> context.securityContextRepository(securityContextRepository))
-			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+			.sessionManagement(session -> session
+				.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+				.sessionFixation(fixation -> fixation.changeSessionId()))
 			.csrf(csrf -> csrf.spa())
+			.headers(headers -> headers
+				.referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+				.frameOptions(frame -> frame.deny()))
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/health").permitAll()
-				.requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
+				.requestMatchers(
+					HttpMethod.POST,
+					"/api/auth/register",
+					"/api/auth/login",
+					"/api/auth/forgot-password",
+					"/api/auth/reset-password"
+				).permitAll()
 				.requestMatchers("/api/**").authenticated()
 				.anyRequest().authenticated())
 			.exceptionHandling(handling -> handling
@@ -73,6 +89,7 @@ public class SecurityConfig {
 				.deleteCookies("LEDGERBLOOM_SESSION", "XSRF-TOKEN")
 				.invalidateHttpSession(true)
 				.clearAuthentication(true));
+
 		return http.build();
 	}
 }

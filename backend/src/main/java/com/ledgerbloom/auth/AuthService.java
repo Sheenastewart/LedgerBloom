@@ -25,22 +25,30 @@ public class AuthService {
 	private final CategoryService categoryService;
 	private final PasswordEncoder passwordEncoder;
 	private final SecurityContextRepository securityContextRepository;
+	private final LoginAttemptService loginAttemptService;
 
 	public AuthService(
 			UserRepository userRepository,
 			CategoryService categoryService,
 			PasswordEncoder passwordEncoder,
-			SecurityContextRepository securityContextRepository) {
+			SecurityContextRepository securityContextRepository,
+			LoginAttemptService loginAttemptService) {
 		this.userRepository = userRepository;
 		this.categoryService = categoryService;
 		this.passwordEncoder = passwordEncoder;
 		this.securityContextRepository = securityContextRepository;
+		this.loginAttemptService = loginAttemptService;
 	}
 
 	public UserResponse register(RegisterRequest request) {
 		String email = normalizeEmail(request.email());
 		String displayName = normalizeDisplayName(request.displayName());
-		validatePasswords(request.password(), request.confirmPassword());
+		try {
+			PasswordPolicy.validateNewPassword(request.password(), request.confirmPassword());
+		}
+		catch (InvalidPasswordChangeException ex) {
+			throw new InvalidRegistrationDataException(ex.getMessage());
+		}
 
 		if (userRepository.existsByEmailIgnoreCase(email)) {
 			throw new EmailAlreadyExistsException(email);
@@ -59,13 +67,16 @@ public class AuthService {
 
 	public UserResponse login(LoginRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
 		String email = normalizeEmail(request.email());
-		User user = userRepository.findByEmailIgnoreCase(email)
-			.orElseThrow(InvalidCredentialsException::new);
+		String clientAddress = clientAddress(httpRequest);
+		loginAttemptService.assertNotThrottled(email, clientAddress);
 
-		if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+		User user = userRepository.findByEmailIgnoreCase(email).orElse(null);
+		if (user == null || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+			loginAttemptService.recordFailure(email, clientAddress);
 			throw new InvalidCredentialsException();
 		}
 
+		loginAttemptService.clear(email, clientAddress);
 		user.setLastLoginAt(Instant.now());
 		userRepository.saveAndFlush(user);
 
@@ -78,6 +89,14 @@ public class AuthService {
 		User user = userRepository.findById(userId)
 			.orElseThrow(AuthenticationRequiredException::new);
 		return toResponse(user);
+	}
+
+	/**
+	 * Refreshes the authenticated SecurityContext for the current HTTP session after a
+	 * password change so the principal carries the updated password hash.
+	 */
+	public void refreshAuthenticatedSession(User user, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+		authenticateSession(user, httpRequest, httpResponse);
 	}
 
 	/**
@@ -96,10 +115,16 @@ public class AuthService {
 		securityContextRepository.saveContext(context, httpRequest, httpResponse);
 	}
 
-	private void validatePasswords(String password, String confirmPassword) {
-		if (password != null && !password.equals(confirmPassword)) {
-			throw new InvalidRegistrationDataException("Password and confirm password must match");
+	private String clientAddress(HttpServletRequest request) {
+		if (request == null) {
+			return "unknown";
 		}
+		String forwarded = request.getHeader("X-Forwarded-For");
+		if (forwarded != null && !forwarded.isBlank()) {
+			return forwarded.split(",")[0].trim();
+		}
+		String remote = request.getRemoteAddr();
+		return remote == null || remote.isBlank() ? "unknown" : remote;
 	}
 
 	private String normalizeEmail(String email) {

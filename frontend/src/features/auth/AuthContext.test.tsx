@@ -60,13 +60,13 @@ describe('AuthContext', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
 
     await act(async () => {
-      await result.current.login({ email: 'user@example.com', password: 'supersecret' })
+      await result.current.login({ email: 'user@example.com', password: 'supersecret12' })
     })
 
     expect(result.current.user).toEqual(sampleUser)
     expect(authApi.login).toHaveBeenCalledWith({
       email: 'user@example.com',
-      password: 'supersecret',
+      password: 'supersecret12',
     })
   })
 
@@ -104,8 +104,8 @@ describe('AuthContext', () => {
     await act(async () => {
       response = await result.current.register({
         email: 'user@example.com',
-        password: 'supersecret',
-        confirmPassword: 'supersecret',
+        password: 'supersecret12',
+        confirmPassword: 'supersecret12',
         displayName: 'Jane Doe',
       })
     })
@@ -115,7 +115,7 @@ describe('AuthContext', () => {
     expect(authApi.register).toHaveBeenCalled()
     expect(authApi.login).toHaveBeenCalledWith({
       email: 'user@example.com',
-      password: 'supersecret',
+      password: 'supersecret12',
     })
   })
 

@@ -30,6 +30,8 @@ function mapServerErrors(error: ApiClientError): LoginFormErrors {
 
   if (error.code === 'INVALID_CREDENTIALS') {
     next.form = 'Incorrect email or password. Please try again.'
+  } else if (error.code === 'LOGIN_THROTTLED') {
+    next.form = 'Too many sign-in attempts. Please wait a moment and try again.'
   } else if (!next.email && !next.password) {
     next.form = error.message
   }
@@ -145,6 +147,9 @@ export function LoginPage() {
 
         <p className="auth-switch">
           Don’t have an account? <Link to="/register">Create one</Link>
+        </p>
+        <p className="auth-switch">
+          <Link to="/forgot-password">Forgot your password?</Link>
         </p>
       </form>
     </main>

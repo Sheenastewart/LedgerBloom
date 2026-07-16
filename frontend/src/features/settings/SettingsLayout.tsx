@@ -8,7 +8,7 @@ const TABS = [
   { to: paths.settingsHelp, label: 'Help Center' },
   { to: paths.settingsSecurity, label: 'Security' },
   { to: paths.settingsPreferences, label: 'Preferences' },
-  { to: paths.settingsAbout, label: 'About' },
+  { to: paths.settingsAbout, label: 'About LedgerBloom' },
 ]
 
 export function SettingsLayout() {

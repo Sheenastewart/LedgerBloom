@@ -1,14 +1,5 @@
 import { ComingSoonPage } from './ComingSoonPage'
 
-export function SettingsSecurityPage() {
-  return (
-    <ComingSoonPage
-      title="Security"
-      description="Manage password changes, session controls, and account security options."
-    />
-  )
-}
-
 export function SettingsPreferencesPage() {
   return (
     <ComingSoonPage

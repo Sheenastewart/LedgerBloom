@@ -33,6 +33,9 @@ class AuthControllerTest {
 	private AuthService authService;
 
 	@MockitoBean
+	private PasswordResetService passwordResetService;
+
+	@MockitoBean
 	private CurrentUser currentUser;
 
 	private UserResponse sampleResponse() {
@@ -56,8 +59,8 @@ class AuthControllerTest {
 				.content("""
 						{
 						  "email":"user@example.com",
-						  "password":"supersecret",
-						  "confirmPassword":"supersecret",
+						  "password":"supersecret12",
+						  "confirmPassword":"supersecret12",
 						  "displayName":"Jane Doe"
 						}
 						"""))
@@ -78,8 +81,8 @@ class AuthControllerTest {
 				.content("""
 						{
 						  "email":"",
-						  "password":"supersecret",
-						  "confirmPassword":"supersecret",
+						  "password":"supersecret12",
+						  "confirmPassword":"supersecret12",
 						  "displayName":"Jane Doe"
 						}
 						"""))
@@ -117,8 +120,8 @@ class AuthControllerTest {
 				.content("""
 						{
 						  "email":"user@example.com",
-						  "password":"supersecret",
-						  "confirmPassword":"supersecret",
+						  "password":"supersecret12",
+						  "confirmPassword":"supersecret12",
 						  "displayName":"Jane Doe"
 						}
 						"""))
@@ -135,7 +138,7 @@ class AuthControllerTest {
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-						{"email":"user@example.com","password":"supersecret"}
+						{"email":"user@example.com","password":"supersecret12"}
 						"""))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.email").value("user@example.com"))
@@ -175,7 +178,7 @@ class AuthControllerTest {
 		mockMvc.perform(post("/api/auth/login")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-						{"email":"user@example.com","password":"supersecret"}
+						{"email":"user@example.com","password":"supersecret12"}
 						"""))
 			.andExpect(status().isForbidden())
 			.andExpect(jsonPath("$.code").value("FORBIDDEN"));
@@ -189,12 +192,70 @@ class AuthControllerTest {
 				.content("""
 						{
 						  "email":"user@example.com",
-						  "password":"supersecret",
-						  "confirmPassword":"supersecret",
+						  "password":"supersecret12",
+						  "confirmPassword":"supersecret12",
 						  "displayName":"Jane Doe"
 						}
 						"""))
 			.andExpect(status().isForbidden())
 			.andExpect(jsonPath("$.code").value("FORBIDDEN"));
+	}
+
+	@Test
+	@WithAnonymousUser
+	void forgotPasswordReturnsGenericMessage() throws Exception {
+		when(passwordResetService.forgotPassword(any(ForgotPasswordRequest.class)))
+			.thenReturn(ForgotPasswordResponse.generic());
+
+		mockMvc.perform(post("/api/auth/forgot-password")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"email":"user@example.com"}
+						"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.message").value(ForgotPasswordResponse.GENERIC_MESSAGE))
+			.andExpect(jsonPath("$.devResetToken").doesNotExist());
+	}
+
+	@Test
+	@WithAnonymousUser
+	void resetPasswordReturnsSuccessMessage() throws Exception {
+		when(passwordResetService.resetPassword(any(ResetPasswordRequest.class)))
+			.thenReturn(new MessageResponse("Your password has been updated. You can sign in with your new password."));
+
+		mockMvc.perform(post("/api/auth/reset-password")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "token":"opaque-token",
+						  "newPassword":"brandnewpass99",
+						  "confirmNewPassword":"brandnewpass99"
+						}
+						"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.message").exists())
+			.andExpect(jsonPath("$.password").doesNotExist());
+	}
+
+	@Test
+	@WithAnonymousUser
+	void resetPasswordWithInvalidTokenReturns400() throws Exception {
+		when(passwordResetService.resetPassword(any(ResetPasswordRequest.class)))
+			.thenThrow(new InvalidResetTokenException());
+
+		mockMvc.perform(post("/api/auth/reset-password")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "token":"invalid-token",
+						  "newPassword":"brandnewpass99",
+						  "confirmNewPassword":"brandnewpass99"
+						}
+						"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("INVALID_RESET_TOKEN"));
 	}
 }

@@ -21,8 +21,31 @@ server:
   port: 8080
   servlet:
     session:
+      # Override with LEDGERBLOOM_SESSION_TIMEOUT (e.g. 30m, 8h).
+      timeout: ${LEDGERBLOOM_SESSION_TIMEOUT:30m}
       cookie:
         name: LEDGERBLOOM_SESSION
-        http-only: true
-        same-site: lax
-        secure: false # local http
+        http-only: ${LEDGERBLOOM_SESSION_COOKIE_HTTP_ONLY:true}
+        # Use "none" only with Secure cookies behind HTTPS for true cross-site SPA hosting.
+        same-site: ${LEDGERBLOOM_SESSION_COOKIE_SAME_SITE:lax}
+        # Set LEDGERBLOOM_SESSION_COOKIE_SECURE=true in HTTPS production deployments.
+        secure: ${LEDGERBLOOM_SESSION_COOKIE_SECURE:false}
+
+ledgerbloom:
+  cors:
+    # Comma-separated exact origins. Never use "*" with credentialed CORS.
+    allowed-origins: ${LEDGERBLOOM_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  security:
+    # When true, Spring Security redirects HTTP to HTTPS (use behind TLS termination).
+    require-https: ${LEDGERBLOOM_REQUIRE_HTTPS:false}
+  password-reset:
+    token-ttl: ${LEDGERBLOOM_PASSWORD_RESET_TOKEN_TTL:1h}
+    # Local development only: include raw reset token in forgot-password JSON.
+    # Keep false in production. Set LEDGERBLOOM_DEV_RETURN_RESET_TOKEN=true locally when needed.
+    dev-return-token: ${LEDGERBLOOM_DEV_RETURN_RESET_TOKEN:false}
+    # Local development only: store raw token in an in-memory inbox for verification helpers.
+    dev-inbox-enabled: ${LEDGERBLOOM_DEV_RESET_INBOX_ENABLED:false}
+  login-throttle:
+    max-failures: ${LEDGERBLOOM_LOGIN_MAX_FAILURES:5}
+    cooldown: ${LEDGERBLOOM_LOGIN_COOLDOWN:15m}
+    max-entries: ${LEDGERBLOOM_LOGIN_THROTTLE_MAX_ENTRIES:10000}
