@@ -1,0 +1,57 @@
+.how-this-works {
+  margin: 0 0 1rem;
+}
+
+.how-this-works-toggle {
+  appearance: none;
+  border: 1px solid #9fb3a5;
+  background: rgba(255, 255, 255, 0.55);
+  color: #2f5d45;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.how-this-works-toggle:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.how-this-works-toggle:focus-visible {
+  outline: 2px solid #6f9b7c;
+  outline-offset: 2px;
+}
+
+.how-this-works-panel {
+  margin-top: 0.65rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.65rem;
+  border: 1px solid #c7d5cb;
+  background: rgba(255, 255, 255, 0.62);
+  color: #4c6356;
+  max-width: 42rem;
+}
+
+.how-this-works-panel p {
+  margin: 0 0 0.65rem;
+}
+
+.how-this-works-panel p:last-child {
+  margin-bottom: 0;
+}
+
+.how-this-works-panel a {
+  color: #2f5d45;
+  font-weight: 600;
+}
+
+.how-this-works-panel ul {
+  margin: 0.35rem 0 0.65rem;
+  padding-left: 1.2rem;
+}
+
+.how-this-works-panel li + li {
+  margin-top: 0.25rem;
+}

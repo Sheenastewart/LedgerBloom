@@ -48,6 +48,11 @@
   font-size: 0.95rem;
 }
 
+.cadence-with-info {
+  display: inline-flex;
+  align-items: center;
+}
+
 .recurring-actions {
   display: flex;
   flex-wrap: wrap;

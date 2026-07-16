@@ -60,6 +60,7 @@ describe('HomePage', () => {
       'href',
       '/income',
     )
+    expect(screen.getByRole('link', { name: 'View help' })).toHaveAttribute('href', '/help')
     expect(screen.queryByRole('heading', { name: 'Coming soon' })).not.toBeInTheDocument()
   })
 

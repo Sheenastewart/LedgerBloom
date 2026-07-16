@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom'
+import { InfoTooltip } from '../../../components/InfoTooltip'
 import { daysUntil, dueDateStatus } from '../../../utils/dueDateUtils'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
+import { CALCULATION_DEFS } from '../../guidance/calculationDefs'
+import { HelpLink } from '../../guidance/HelpLink'
 import { cadenceLabel, type RecurringIncome } from '../types'
 
 type RecurringIncomeListProps = {
@@ -41,8 +44,12 @@ export function RecurringIncomeList({
               <strong>{formatCurrency(item.amount)}</strong>
             </div>
             <p className="recurring-meta">
-              {item.source} · {cadenceLabel(item.cadence)} · Next{' '}
-              {formatIsoDate(item.nextIncomeDate)}
+              {item.source} ·{' '}
+              <span className="cadence-with-info">
+                {cadenceLabel(item.cadence)}
+                <InfoTooltip label="About cadence">{CALCULATION_DEFS.cadence.short}</InfoTooltip>
+              </span>{' '}
+              · Next {formatIsoDate(item.nextIncomeDate)}
             </p>
             {item.notes ? <p className="recurring-meta">{item.notes}</p> : null}
             <p className={`recurring-status ${status.className}`}>{status.label}</p>
@@ -60,6 +67,10 @@ export function RecurringIncomeList({
               >
                 {markingReceivedId === item.id ? 'Marking received…' : 'Mark Received'}
               </button>
+              <InfoTooltip label="About Mark Received">
+                {CALCULATION_DEFS.markReceived.short}{' '}
+                <HelpLink to="/help?topic=how-mark-received-works">Learn more</HelpLink>
+              </InfoTooltip>
               <button
                 type="button"
                 className="button button-secondary"

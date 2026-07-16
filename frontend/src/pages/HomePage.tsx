@@ -67,6 +67,9 @@ export function HomePage() {
           View reports
         </Link>
       </div>
+      <p className="home-help-link">
+        <Link to="/help">View help</Link>
+      </p>
     </main>
   )
 }

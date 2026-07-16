@@ -1,10 +1,14 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
+import { HowThisWorks } from '../../../components/HowThisWorks'
+import { InfoTooltip } from '../../../components/InfoTooltip'
+import { HelpLink } from '../../guidance/HelpLink'
 import { downloadMonthlySummaryCsv, downloadMonthlyTransactionsCsv, saveCsvDownload } from '../api/exportsApi'
 import { ReportsNav } from '../components/ReportsNav'
 import { currentPeriod } from '../reportsFormat'
 import '../reports.css'
+import '../../guidance/help.css'
 
 type DownloadTarget = 'transactions' | 'summary' | null
 
@@ -68,6 +72,14 @@ export function ReportsPage() {
         </div>
       </div>
 
+      <HowThisWorks>
+        <p>
+          Reports summarize saved ledger entries and clearly separate actual values from
+          projected recurring estimates.
+        </p>
+        <HelpLink to="/help?topic=reports-overview">Learn more</HelpLink>
+      </HowThisWorks>
+
       <ReportsNav />
 
       <div className="reports-overview-grid">
@@ -91,12 +103,20 @@ export function ReportsPage() {
           <Link to="/reports/monthly" className="button button-primary">
             View monthly report
           </Link>
+          <HelpLink to="/help?topic=print-monthly-report">How do I print or save as PDF?</HelpLink>
         </article>
       </div>
 
       <section className="reports-section" aria-labelledby="csv-exports-heading">
-        <h2 id="csv-exports-heading">CSV exports</h2>
+        <h2 id="csv-exports-heading" className="metric-heading">
+          CSV exports
+          <InfoTooltip label="About CSV exports">
+            Download monthly transactions or a monthly summary as CSV. Risky leading characters are
+            neutralized to reduce spreadsheet formula injection risk.
+          </InfoTooltip>
+        </h2>
         <p className="page-subtitle">Download a month's transactions or summary as a CSV file.</p>
+        <HelpLink to="/help?topic=export-csv">Learn more about CSV exports</HelpLink>
 
         {error ? (
           <p className="form-error" role="alert">

@@ -67,7 +67,7 @@ describe('RecurringPage', () => {
     expect(await screen.findByRole('heading', { name: 'Recurring' })).toBeInTheDocument()
     // Appears in both upcoming and list sections
     expect(screen.getAllByText('Netflix').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getByRole('heading', { name: 'Upcoming payments' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Upcoming payments/ })).toBeInTheDocument()
   })
 
   it('shows empty state', async () => {

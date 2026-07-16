@@ -59,6 +59,12 @@ export function AppLayout() {
           >
             Reports
           </NavLink>
+          <NavLink
+            to="/help"
+            className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+          >
+            Help
+          </NavLink>
         </nav>
       </header>
       <Outlet />

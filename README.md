@@ -106,6 +106,16 @@ Stage 7 does **not** include email/SMS/push notifications, scheduled jobs, backg
 
 Stage 8 does **not** include PDF libraries, scheduled/emailed reports, or chart libraries (browser print-to-PDF is supported).
 
+### Stage 9 — User Guidance and Help Center
+
+- Reusable accessible `InfoTooltip` (click, focus, hover/tap, Escape, outside click; not hover-only)
+- Expandable “How this works” panels on Dashboard, Budgets, Recurring Expenses/Income, Reports, Trends, and Monthly Report
+- Searchable Help Center at `/help` with static topics (no backend help APIs)
+- Shared calculation definitions and contextual Help links (`?topic=` / `?q=`)
+- Help nav link and home CTA
+
+Stage 9 does **not** include a product tour, onboarding checklist, sample data, videos, or backend-managed help content.
+
 ## Repository structure
 
 ```text
@@ -796,8 +806,10 @@ Any cell value beginning with `=`, `+`, `-`, or `@` (after trimming) is prefixed
 
 ## Features intentionally deferred
 
-Deferred beyond Stage 8:
+Deferred beyond Stage 9:
 
+- Guided product tour, home onboarding checklist, sample/demo data, video tutorials
+- Backend-managed help content and admin help editor
 - Charts / chart libraries and server-generated PDF exports
 - Category detail page, search, pagination, sorting UI controls
 - Recurring budgets / budget rollover / savings goals

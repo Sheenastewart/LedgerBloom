@@ -1,3 +1,4 @@
+import { InfoTooltip } from '../../../components/InfoTooltip'
 import { daysUntil, dueDateStatus } from '../../../utils/dueDateUtils'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
 import { cadenceLabel, type RecurringIncome } from '../types'
@@ -10,7 +11,12 @@ type UpcomingIncomeProps = {
 export function UpcomingIncome({ items, todayIso }: UpcomingIncomeProps) {
   return (
     <section className="recurring-section" aria-labelledby="upcoming-income-heading">
-      <h2 id="upcoming-income-heading">Upcoming income</h2>
+      <h2 id="upcoming-income-heading" className="metric-heading">
+        Upcoming income
+        <InfoTooltip label="About upcoming income">
+          Active recurring income schedules due in the selected window.
+        </InfoTooltip>
+      </h2>
       {items.length === 0 ? (
         <p className="dashboard-empty" role="status">
           No upcoming income in the next 30 days.

@@ -1,7 +1,11 @@
+import { InfoTooltip } from '../../../components/InfoTooltip'
 import { formatCurrency } from '../../../utils/moneyUtils'
+import { CALCULATION_DEFS } from '../../guidance/calculationDefs'
+import { HelpLink } from '../../guidance/HelpLink'
 import { monthLabel } from '../reportsFormat'
 import type { MonthMetricSummary, YearToDateResponse } from '../types'
 import { TrendsTable } from './TrendsTable'
+import '../../guidance/help.css'
 
 type YtdSummaryProps = {
   data: YearToDateResponse
@@ -38,12 +42,23 @@ export function YtdSummary({ data }: YtdSummaryProps) {
             </p>
           </article>
           <article className="reports-card">
-            <h2>Average monthly income</h2>
+            <h2 className="metric-heading">
+              Average monthly income
+              <InfoTooltip label="About year-to-date averages">
+                {CALCULATION_DEFS.yearToDateAverage.short}
+              </InfoTooltip>
+            </h2>
             <p className="reports-card-value">{formatCurrency(data.averages.averageIncome)}</p>
           </article>
           <article className="reports-card">
-            <h2>Average monthly expenses</h2>
+            <h2 className="metric-heading">
+              Average monthly expenses
+              <InfoTooltip label="About year-to-date averages">
+                {CALCULATION_DEFS.yearToDateAverage.short}
+              </InfoTooltip>
+            </h2>
             <p className="reports-card-value">{formatCurrency(data.averages.averageExpenses)}</p>
+            <HelpLink to="/help?topic=ytd-average">Learn more</HelpLink>
           </article>
           <article className="reports-card">
             <h2>Average net cash flow</h2>

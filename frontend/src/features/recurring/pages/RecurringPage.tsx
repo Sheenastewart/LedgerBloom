@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
+import { HowThisWorks } from '../../../components/HowThisWorks'
 import { getCategories } from '../../categories/api/categoryApi'
 import type { Category } from '../../categories/types'
+import { HelpLink } from '../../guidance/HelpLink'
 import {
   deleteRecurringExpense,
   getRecurringExpenses,
@@ -16,6 +18,7 @@ import type { RecurringExpense, RecurringFilters as RecurringFilterValues } from
 import '../recurring.css'
 import '../../categories/categories.css'
 import '../../dashboard/dashboard.css'
+import '../../guidance/help.css'
 
 type LocationSuccessState = {
   successMessage?: string
@@ -150,6 +153,14 @@ export function RecurringPage() {
           Add Recurring Expense
         </Link>
       </div>
+
+      <HowThisWorks>
+        <p>
+          Recurring schedules plan upcoming bills but do not become expenses on their own. Use
+          Mark Paid when a payment is actually made to create a real expense entry.
+        </p>
+        <HelpLink to="/help?topic=recurring-vs-actual">Recurring vs. actual entries</HelpLink>
+      </HowThisWorks>
 
       {successMessage ? (
         <p className="status-banner success" role="status" aria-live="polite">

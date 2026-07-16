@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
+import { HowThisWorks } from '../../../components/HowThisWorks'
+import { InfoTooltip } from '../../../components/InfoTooltip'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
 import { budgetStatus, budgetStatusLabel } from '../../budgets/budgetStatus'
 import { DashboardPeriodForm } from '../../dashboard/components/DashboardPeriodForm'
 import { getMonthlyDashboard } from '../../dashboard/api/dashboardApi'
 import type { DashboardPeriod, MonthlyDashboard } from '../../dashboard/types'
+import { CALCULATION_DEFS } from '../../guidance/calculationDefs'
+import { HelpLink } from '../../guidance/HelpLink'
 import { downloadMonthlySummaryCsv, downloadMonthlyTransactionsCsv, saveCsvDownload } from '../api/exportsApi'
 import { getMonthlyComparison } from '../api/reportsApi'
 import { ReportsNav } from '../components/ReportsNav'
@@ -12,6 +16,7 @@ import { TrendsTable } from '../components/TrendsTable'
 import { currentPeriod, monthLabel } from '../reportsFormat'
 import type { MonthlyComparisonItem } from '../types'
 import '../reports.css'
+import '../../guidance/help.css'
 
 type DownloadTarget = 'transactions' | 'summary' | null
 
@@ -112,6 +117,14 @@ export function MonthlyReportPage() {
           Print report
         </button>
       </div>
+
+      <HowThisWorks>
+        <p>
+          Actual totals come from saved Income and Expense entries. Cash flow planning also
+          includes expected recurring income and obligations for the selected month.
+        </p>
+        <HelpLink to="/help?topic=print-monthly-report">How do I print or save as PDF?</HelpLink>
+      </HowThisWorks>
 
       <div className="no-print">
         <ReportsNav />
@@ -229,17 +242,32 @@ export function MonthlyReportPage() {
             <h2 id="monthly-planning-heading">Cash flow planning</h2>
             <div className="reports-summary-grid">
               <article className="reports-card">
-                <h2>Expected income</h2>
+                <h2 className="metric-heading">
+                  Expected income
+                  <InfoTooltip label="About expected income">
+                    {CALCULATION_DEFS.expectedIncome.short}
+                  </InfoTooltip>
+                </h2>
                 <p className="reports-card-value">{formatCurrency(dashboard.planning.expectedIncome)}</p>
               </article>
               <article className="reports-card">
-                <h2>Expected obligations</h2>
+                <h2 className="metric-heading">
+                  Expected obligations
+                  <InfoTooltip label="About expected obligations">
+                    {CALCULATION_DEFS.expectedObligations.short}
+                  </InfoTooltip>
+                </h2>
                 <p className="reports-card-value">
                   {formatCurrency(dashboard.planning.expectedExpenses)}
                 </p>
               </article>
               <article className="reports-card">
-                <h2>Projected cash flow</h2>
+                <h2 className="metric-heading">
+                  Projected cash flow
+                  <InfoTooltip label="About projected cash flow">
+                    {CALCULATION_DEFS.projectedCashFlow.short}
+                  </InfoTooltip>
+                </h2>
                 <p
                   className={
                     dashboard.planning.projectedCashFlow < 0

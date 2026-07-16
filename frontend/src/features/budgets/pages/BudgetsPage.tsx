@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
+import { HowThisWorks } from '../../../components/HowThisWorks'
+import { InfoTooltip } from '../../../components/InfoTooltip'
 import { formatAmountForInput, formatCurrency } from '../../../utils/moneyUtils'
 import { getCategories } from '../../categories/api/categoryApi'
 import type { Category } from '../../categories/types'
+import { CALCULATION_DEFS } from '../../guidance/calculationDefs'
+import { HelpLink } from '../../guidance/HelpLink'
 import {
   createCategoryLimit,
   deleteCategoryLimit,
@@ -28,6 +32,7 @@ import type {
 import '../budgets.css'
 import '../../categories/categories.css'
 import '../../dashboard/dashboard.css'
+import '../../guidance/help.css'
 
 const MONTH_NAMES = [
   'January',
@@ -321,6 +326,15 @@ export function BudgetsPage() {
         </Link>
       </div>
 
+      <HowThisWorks>
+        <p>
+          A monthly budget is a total spending limit for the month. Actual expenses always come
+          from saved Expense entries; category limits are optional planning ceilings tracked
+          separately from the overall budget.
+        </p>
+        <HelpLink to="/help?topic=set-monthly-budget">Learn more</HelpLink>
+      </HowThisWorks>
+
       <BudgetPeriodForm appliedPeriod={period} onApply={handleApplyPeriod} />
 
       {successMessage ? (
@@ -370,20 +384,36 @@ export function BudgetsPage() {
                 <p className="budget-card-value">{formatCurrency(budget.actualExpenses)}</p>
               </article>
               <article className="budget-card">
-                <h2>Remaining</h2>
+                <h2 className="metric-heading">
+                  Remaining
+                  <InfoTooltip label="About remaining budget">
+                    {CALCULATION_DEFS.remainingBudget.short}
+                  </InfoTooltip>
+                </h2>
                 <p className={budget.remaining < 0 ? 'budget-card-value negative' : 'budget-card-value'}>
                   {formatCurrency(budget.remaining)}
                 </p>
               </article>
               <article className="budget-card">
-                <h2>Percent used</h2>
+                <h2 className="metric-heading">
+                  Percent used
+                  <InfoTooltip label="About percent used">
+                    {CALCULATION_DEFS.percentUsed.short}
+                  </InfoTooltip>
+                </h2>
                 <p className="budget-card-value">{budget.percentUsed.toFixed(2)}%</p>
               </article>
               <article className="budget-card">
-                <h2>Status</h2>
+                <h2 className="metric-heading">
+                  Status
+                  <InfoTooltip label="About budget status">
+                    {CALCULATION_DEFS.budgetStatus.short}
+                  </InfoTooltip>
+                </h2>
                 <p className={`budget-status ${overallStatus ?? ''}`}>
                   {overallStatus ? budgetStatusLabel(overallStatus) : '—'}
                 </p>
+                <HelpLink to="/help?topic=budget-status-labels">What do these mean?</HelpLink>
               </article>
               <article className="budget-card">
                 <h2>Expense entries</h2>
@@ -417,7 +447,12 @@ export function BudgetsPage() {
           </div>
 
           <section className="budget-section" aria-labelledby="category-limits-heading">
-            <h2 id="category-limits-heading">Category limits</h2>
+            <h2 id="category-limits-heading" className="metric-heading">
+              Category limits
+              <InfoTooltip label="About category budget limits">
+                {CALCULATION_DEFS.categoryBudgetLimit.short}
+              </InfoTooltip>
+            </h2>
             {budget.categoryLimits.length === 0 ? (
               <p className="dashboard-empty" role="status">
                 No category limits for this month.

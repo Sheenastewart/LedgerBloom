@@ -47,7 +47,7 @@ describe('ReportsPage', () => {
       'href',
       '/reports/monthly',
     )
-    expect(screen.getByRole('heading', { name: 'CSV exports' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /CSV exports/ })).toBeInTheDocument()
   })
 
   it('downloads a transactions CSV and shows a success message', async () => {

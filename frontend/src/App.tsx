@@ -13,6 +13,7 @@ import { RecurringFormPage } from './features/recurring/pages/RecurringFormPage'
 import { RecurringPage } from './features/recurring/pages/RecurringPage'
 import { RecurringIncomeFormPage } from './features/recurringIncome/pages/RecurringIncomeFormPage'
 import { RecurringIncomePage } from './features/recurringIncome/pages/RecurringIncomePage'
+import { HelpPage } from './features/guidance/pages/HelpPage'
 import { MonthlyReportPage } from './features/reports/pages/MonthlyReportPage'
 import { ReportsPage } from './features/reports/pages/ReportsPage'
 import { TrendsPage } from './features/reports/pages/TrendsPage'
@@ -47,6 +48,7 @@ export function AppRoutes() {
         <Route path="/reports/trends" element={<TrendsPage />} />
         <Route path="/reports/year-to-date" element={<YtdPage />} />
         <Route path="/reports/monthly" element={<MonthlyReportPage />} />
+        <Route path="/help" element={<HelpPage />} />
       </Route>
     </Routes>
   )

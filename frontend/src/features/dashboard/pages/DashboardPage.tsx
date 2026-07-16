@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
+import { HowThisWorks } from '../../../components/HowThisWorks'
+import { InfoTooltip } from '../../../components/InfoTooltip'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
 import { budgetStatus, budgetStatusLabel } from '../../budgets/budgetStatus'
+import { CALCULATION_DEFS } from '../../guidance/calculationDefs'
+import { HelpLink } from '../../guidance/HelpLink'
 import { getMonthlyDashboard } from '../api/dashboardApi'
 import { DashboardPeriodForm } from '../components/DashboardPeriodForm'
 import type { DashboardPeriod, MonthlyDashboard } from '../types'
 import '../dashboard.css'
 import '../../categories/categories.css'
 import '../../budgets/budgets.css'
+import '../../guidance/help.css'
 
 const MONTH_NAMES = [
   'January',
@@ -95,6 +100,14 @@ export function DashboardPage() {
         <p>Income and expense totals for a selected month.</p>
       </div>
 
+      <HowThisWorks>
+        <p>Actual totals come from saved Income and Expense entries.</p>
+        <p>
+          Projected totals also include upcoming recurring income and recurring obligations.
+        </p>
+        <HelpLink to="/help?topic=what-is-dashboard">Learn more</HelpLink>
+      </HowThisWorks>
+
       <DashboardPeriodForm appliedPeriod={period} onApply={handleApplyPeriod} />
 
       {error ? (
@@ -135,7 +148,12 @@ export function DashboardPage() {
                 <p className="dashboard-card-value">{formatCurrency(dashboard.totalExpenses)}</p>
               </article>
               <article className="dashboard-card">
-                <h2>Net cash flow</h2>
+                <h2 className="metric-heading">
+                  Net cash flow
+                  <InfoTooltip label="About net cash flow">
+                    {CALCULATION_DEFS.netCashFlow.short}
+                  </InfoTooltip>
+                </h2>
                 <p
                   className={
                     dashboard.netCashFlow < 0
@@ -166,7 +184,12 @@ export function DashboardPage() {
                   <p className="dashboard-card-value">{formatCurrency(dashboard.budget.totalLimit)}</p>
                 </article>
                 <article className="dashboard-card">
-                  <h2>Remaining budget</h2>
+                  <h2 className="metric-heading">
+                    Remaining budget
+                    <InfoTooltip label="About remaining budget">
+                      {CALCULATION_DEFS.remainingBudget.short}
+                    </InfoTooltip>
+                  </h2>
                   <p
                     className={
                       dashboard.budget.remaining < 0
@@ -178,7 +201,12 @@ export function DashboardPage() {
                   </p>
                 </article>
                 <article className="dashboard-card">
-                  <h2>Percent used</h2>
+                  <h2 className="metric-heading">
+                    Percent used
+                    <InfoTooltip label="About percent used">
+                      {CALCULATION_DEFS.percentUsed.short}
+                    </InfoTooltip>
+                  </h2>
                   <p className="dashboard-card-value">{dashboard.budget.percentUsed.toFixed(2)}%</p>
                 </article>
                 <article className="dashboard-card">
@@ -214,21 +242,37 @@ export function DashboardPage() {
               Estimates for this month based on active recurring schedules. Not a guarantee of cash
               received or spent.
             </p>
+            <HelpLink to="/help?topic=projected-cash-flow">How is this calculated?</HelpLink>
             <div className="dashboard-summary-grid">
               <article className="dashboard-card">
-                <h2>Expected income</h2>
+                <h2 className="metric-heading">
+                  Expected income
+                  <InfoTooltip label="About expected income">
+                    {CALCULATION_DEFS.expectedIncome.short}
+                  </InfoTooltip>
+                </h2>
                 <p className="dashboard-card-value">
                   {formatCurrency(dashboard.planning.expectedIncome)}
                 </p>
               </article>
               <article className="dashboard-card">
-                <h2>Expected obligations</h2>
+                <h2 className="metric-heading">
+                  Expected obligations
+                  <InfoTooltip label="About expected obligations">
+                    {CALCULATION_DEFS.expectedObligations.short}
+                  </InfoTooltip>
+                </h2>
                 <p className="dashboard-card-value">
                   {formatCurrency(dashboard.planning.expectedExpenses)}
                 </p>
               </article>
               <article className="dashboard-card">
-                <h2>Projected cash flow</h2>
+                <h2 className="metric-heading">
+                  Projected cash flow
+                  <InfoTooltip label="About projected cash flow">
+                    {CALCULATION_DEFS.projectedCashFlow.short}
+                  </InfoTooltip>
+                </h2>
                 <p
                   className={
                     dashboard.planning.projectedCashFlow < 0

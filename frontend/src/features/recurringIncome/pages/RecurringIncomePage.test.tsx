@@ -57,7 +57,7 @@ describe('RecurringIncomePage', () => {
     expect(screen.getByText('Loading recurring income…')).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Recurring Income' })).toBeInTheDocument()
     expect(screen.getAllByText('Paycheck').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getByRole('heading', { name: 'Upcoming income' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Upcoming income/ })).toBeInTheDocument()
   })
 
   it('shows empty state', async () => {

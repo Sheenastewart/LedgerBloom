@@ -1,0 +1,145 @@
+.help-page {
+  width: min(52rem, 100%);
+  margin: 0 auto;
+}
+
+.help-search {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.1rem;
+  border-radius: 0.65rem;
+  border: 1px solid #c7d5cb;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.help-search label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.help-search-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.help-search-row input {
+  flex: 1 1 14rem;
+  min-width: 0;
+  font: inherit;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.45rem;
+  border: 1px solid #9fb3a5;
+  background: #fff;
+}
+
+.help-search-row input:focus-visible {
+  outline: 2px solid #6f9b7c;
+  outline-offset: 2px;
+}
+
+.help-result-count {
+  margin: 0.65rem 0 0;
+  color: #4c6356;
+  font-size: 0.9375rem;
+}
+
+.help-category {
+  margin-bottom: 1.75rem;
+}
+
+.help-category h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
+}
+
+.help-category-intro {
+  margin: 0 0 0.85rem;
+  color: #4c6356;
+}
+
+.help-article-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.help-article {
+  padding: 0.85rem 1rem;
+  border-radius: 0.65rem;
+  border: 1px solid #c7d5cb;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.help-article h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.help-article-toggle {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+}
+
+.help-article-toggle:hover {
+  text-decoration-color: #2f5d45;
+}
+
+.help-article-toggle:focus-visible {
+  outline: 2px solid #6f9b7c;
+  outline-offset: 2px;
+}
+
+.help-article-summary {
+  margin: 0.4rem 0 0;
+  color: #4c6356;
+}
+
+.help-article-body {
+  margin-top: 0.75rem;
+  border-top: 1px solid #d7e2da;
+  padding-top: 0.75rem;
+}
+
+.help-article-body p {
+  margin: 0 0 0.65rem;
+}
+
+.help-article-body p:last-child {
+  margin-bottom: 0;
+}
+
+.help-article-body a {
+  color: #2f5d45;
+  font-weight: 600;
+}
+
+.help-link {
+  display: inline-block;
+  margin-top: 0.35rem;
+  color: #2f5d45;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.metric-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  margin: 0;
+}
+
+.metric-heading .info-tooltip {
+  margin-left: 0.25rem;
+}

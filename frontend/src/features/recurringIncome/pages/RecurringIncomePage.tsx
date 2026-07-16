@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
+import { HowThisWorks } from '../../../components/HowThisWorks'
+import { HelpLink } from '../../guidance/HelpLink'
 import {
   deleteRecurringIncome,
   getRecurringIncome,
@@ -13,6 +15,7 @@ import { UpcomingIncome } from '../components/UpcomingIncome'
 import type { RecurringIncome, RecurringIncomeFilters as RecurringIncomeFilterValues } from '../types'
 import '../recurringIncome.css'
 import '../../dashboard/dashboard.css'
+import '../../guidance/help.css'
 
 type LocationSuccessState = {
   successMessage?: string
@@ -146,6 +149,14 @@ export function RecurringIncomePage() {
           Add Recurring Income
         </Link>
       </div>
+
+      <HowThisWorks>
+        <p>
+          Recurring schedules plan upcoming paychecks but do not become income on their own. Use
+          Mark Received when the income actually arrives to create a real income entry.
+        </p>
+        <HelpLink to="/help?topic=recurring-vs-actual">Recurring vs. actual entries</HelpLink>
+      </HowThisWorks>
 
       {successMessage ? (
         <p className="status-banner success" role="status" aria-live="polite">

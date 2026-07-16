@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
+import { HowThisWorks } from '../../../components/HowThisWorks'
+import { HelpLink } from '../../guidance/HelpLink'
 import { getMonthlyComparison } from '../api/reportsApi'
 import { MonthRangeForm } from '../components/MonthRangeForm'
 import { ReportsNav } from '../components/ReportsNav'
@@ -7,6 +9,7 @@ import { TrendsTable } from '../components/TrendsTable'
 import { lastSixMonthsRange, monthLabel } from '../reportsFormat'
 import type { MonthlyComparisonResponse, MonthRange } from '../types'
 import '../reports.css'
+import '../../guidance/help.css'
 
 const DEFAULT_RANGE = lastSixMonthsRange()
 
@@ -80,6 +83,15 @@ export function TrendsPage() {
           <p className="page-subtitle">Compare income, expenses, and cash flow across a range of months.</p>
         </div>
       </div>
+
+      <HowThisWorks>
+        <p>
+          Income, expenses, and net cash flow in this table use actual saved ledger entries.
+          Projected cash flow also includes expected recurring income and obligations for each
+          month.
+        </p>
+        <HelpLink to="/help?topic=reports-overview">Learn more</HelpLink>
+      </HowThisWorks>
 
       <ReportsNav />
 

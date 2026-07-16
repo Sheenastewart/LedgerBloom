@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { isAbortError } from '../../../api/ApiClientError'
+import { HelpLink } from '../../guidance/HelpLink'
 import { deleteCategory, getCategories } from '../api/categoryApi'
 import { CategoryList } from '../components/CategoryList'
 import type { Category } from '../types'
 import '../categories.css'
+import '../../guidance/help.css'
 
 type LocationSuccessState = {
   successMessage?: string
@@ -85,6 +87,9 @@ export function CategoriesPage() {
         <div>
           <h1>Categories</h1>
           <p className="page-subtitle">Organize spending into reusable labels.</p>
+          <HelpLink to="/help?topic=why-category-cannot-delete">
+            Why can’t I delete this category?
+          </HelpLink>
         </div>
         <Link to="/categories/new" className="button button-primary">
           Add category

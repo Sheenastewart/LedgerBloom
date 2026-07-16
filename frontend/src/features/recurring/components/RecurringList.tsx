@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom'
+import { InfoTooltip } from '../../../components/InfoTooltip'
 import { daysUntil, dueDateStatus } from '../../../utils/dueDateUtils'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
+import { CALCULATION_DEFS } from '../../guidance/calculationDefs'
+import { HelpLink } from '../../guidance/HelpLink'
 import { cadenceLabel, type RecurringExpense } from '../types'
 
 type RecurringListProps = {
@@ -41,8 +44,12 @@ export function RecurringList({
               <strong>{formatCurrency(item.amount)}</strong>
             </div>
             <p className="recurring-meta">
-              {item.category.name} · {cadenceLabel(item.cadence)} · Next{' '}
-              {formatIsoDate(item.nextPaymentDate)}
+              {item.category.name} ·{' '}
+              <span className="cadence-with-info">
+                {cadenceLabel(item.cadence)}
+                <InfoTooltip label="About cadence">{CALCULATION_DEFS.cadence.short}</InfoTooltip>
+              </span>{' '}
+              · Next {formatIsoDate(item.nextPaymentDate)}
             </p>
             {item.merchant ? <p className="recurring-meta">Merchant: {item.merchant}</p> : null}
             {item.notes ? <p className="recurring-meta">{item.notes}</p> : null}
@@ -59,6 +66,10 @@ export function RecurringList({
               >
                 {markingPaidId === item.id ? 'Marking paid…' : 'Mark Paid'}
               </button>
+              <InfoTooltip label="About Mark Paid">
+                {CALCULATION_DEFS.markPaid.short}{' '}
+                <HelpLink to="/help?topic=how-mark-paid-works">Learn more</HelpLink>
+              </InfoTooltip>
               <button
                 type="button"
                 className="button button-secondary"
