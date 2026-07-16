@@ -18,10 +18,20 @@
 
 .dashboard-period {
   margin-bottom: 1.5rem;
-  padding: 1rem 1.1rem;
-  border-radius: 0.65rem;
-  background: var(--lb-color-surface);
-  border: 1px solid var(--lb-color-border);
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+}
+
+.dashboard-card {
+  padding: 1.15rem 1.2rem;
+  border-radius: var(--lb-radius-xl);
+  background: var(--lb-color-surface-solid);
+  border: 1px solid transparent;
+  box-shadow: var(--lb-shadow-sm);
+  display: grid;
+  gap: 0.35rem;
 }
 
 .dashboard-period fieldset {
@@ -39,7 +49,31 @@
 .dashboard-period-grid {
   display: grid;
   gap: 0.85rem;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 22rem;
+}
+
+.dashboard-period-grid .field {
+  min-width: 0;
+}
+
+.dashboard-period-grid .field select,
+.dashboard-period-grid .field input {
+  width: 100%;
+  min-height: 2.5rem;
+  box-sizing: border-box;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--lb-color-border-strong);
+  border-radius: var(--lb-radius-md);
+  background: var(--lb-color-surface-solid);
+  font: inherit;
+  color: inherit;
+}
+
+.dashboard-period-grid .field select:focus,
+.dashboard-period-grid .field input:focus {
+  outline: var(--lb-focus-ring);
+  outline-offset: 2px;
 }
 
 .dashboard-period-actions {
@@ -54,15 +88,6 @@
   gap: 0.85rem;
   grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
   margin-bottom: 1.5rem;
-}
-
-.dashboard-card {
-  padding: 1rem 1.1rem;
-  border-radius: 0.65rem;
-  background: var(--lb-color-surface);
-  border: 1px solid var(--lb-color-border);
-  display: grid;
-  gap: 0.35rem;
 }
 
 .dashboard-card h2 {

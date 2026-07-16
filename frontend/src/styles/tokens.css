@@ -1,50 +1,52 @@
-/* LedgerBloom design tokens — calm modern finance product */
+/* LedgerBloom design tokens — warm, approachable finance product */
 
 :root {
   /* Brand */
-  --lb-color-primary: #1f5c4d;
-  --lb-color-primary-hover: #17483c;
-  --lb-color-primary-soft: #e4f0eb;
-  --lb-color-secondary: #3d6b5c;
-  --lb-color-accent: #c47a2c;
+  --lb-color-primary: #216352;
+  --lb-color-primary-hover: #184c3e;
+  --lb-color-primary-soft: #eaf4ef;
+  --lb-color-secondary: #3f6f60;
+  --lb-color-accent: #c9842f;
 
-  /* Semantic hierarchy — use intentionally, not everything green */
+  /* Semantic hierarchy */
   --lb-color-success: #1f6b45;
-  --lb-color-success-bg: #e3f4ea;
-  --lb-color-success-border: #8fbf9a;
-  --lb-color-info: #245a78;
-  --lb-color-info-bg: #e7f1f7;
-  --lb-color-info-border: #8fb4c9;
-  --lb-color-warning: #b45309;
-  --lb-color-warning-bg: #fef3c7;
-  --lb-color-warning-border: #f0b429;
-  --lb-color-danger: #b91c1c;
-  --lb-color-danger-bg: #fef2f2;
-  --lb-color-danger-border: #fca5a5;
-  --lb-color-inactive: #6b7280;
-  --lb-color-inactive-bg: #f3f4f6;
-  --lb-color-inactive-border: #d1d5db;
+  --lb-color-success-bg: #e8f6ee;
+  --lb-color-success-border: #9ec9ae;
+  --lb-color-info: #2a6280;
+  --lb-color-info-bg: #eaf4f9;
+  --lb-color-info-border: #9dbfd1;
+  --lb-color-warning: #a35a12;
+  --lb-color-warning-bg: #fff6e8;
+  --lb-color-warning-border: #e8c48a;
+  --lb-color-danger: #b03a3a;
+  --lb-color-danger-bg: #fdf1f1;
+  --lb-color-danger-border: #e3b0b0;
+  --lb-color-inactive: #6a756f;
+  --lb-color-inactive-bg: #f2f4f3;
+  --lb-color-inactive-border: #d5dbd7;
 
   /* Money tones */
-  --lb-color-income: #1f6b45;
-  --lb-color-expense: #1a2b24;
+  --lb-color-income: #1f7a52;
+  --lb-color-income-bg: #e7f6ee;
+  --lb-color-expense: #b54a3c;
+  --lb-color-expense-bg: #fdf1ee;
   --lb-color-over-budget: var(--lb-color-danger);
   --lb-color-attention: var(--lb-color-warning);
 
-  /* Surfaces */
-  --lb-color-bg: #eef2ef;
-  --lb-color-bg-accent: #dce8e1;
-  --lb-color-surface: rgba(255, 255, 255, 0.88);
-  --lb-color-surface-solid: #fbfcfb;
-  --lb-color-border: #c5d3cb;
-  --lb-color-border-strong: #9fb3a5;
-  --lb-color-border-subtle: #dde5e0;
+  /* Surfaces — warmer, less clinical */
+  --lb-color-bg: #f3f6f3;
+  --lb-color-bg-accent: #e4eee7;
+  --lb-color-surface: rgba(255, 252, 248, 0.92);
+  --lb-color-surface-solid: #fffcf8;
+  --lb-color-border: #d5dfd7;
+  --lb-color-border-strong: #aebdb4;
+  --lb-color-border-subtle: #e7eee9;
 
   /* Text */
-  --lb-color-text: #1a2b24;
-  --lb-color-text-muted: #4d6358;
-  --lb-color-text-inverse: #f7fbf8;
-  --lb-color-link: #1f5c4d;
+  --lb-color-text: #1f2e27;
+  --lb-color-text-muted: #5a6d63;
+  --lb-color-text-inverse: #f8fbf9;
+  --lb-color-link: #216352;
 
   /* Spacing scale */
   --lb-space-1: 0.25rem;
@@ -56,34 +58,34 @@
   --lb-space-8: 2rem;
   --lb-space-10: 2.5rem;
 
-  /* Radii */
-  --lb-radius-sm: 0.35rem;
-  --lb-radius-md: 0.55rem;
-  --lb-radius-lg: 0.75rem;
-  --lb-radius-xl: 1rem;
+  /* Radii — slightly softer */
+  --lb-radius-sm: 0.45rem;
+  --lb-radius-md: 0.7rem;
+  --lb-radius-lg: 0.95rem;
+  --lb-radius-xl: 1.25rem;
   --lb-radius-full: 999px;
 
-  /* Shadows */
-  --lb-shadow-sm: 0 1px 2px rgba(26, 43, 36, 0.06);
-  --lb-shadow-md: 0 4px 14px rgba(26, 43, 36, 0.08);
-  --lb-shadow-lg: 0 10px 28px rgba(26, 43, 36, 0.12);
+  /* Shadows — softer lift, less hard edge */
+  --lb-shadow-sm: 0 1px 2px rgba(31, 46, 39, 0.04);
+  --lb-shadow-md: 0 8px 24px rgba(31, 46, 39, 0.06);
+  --lb-shadow-lg: 0 14px 36px rgba(31, 46, 39, 0.1);
 
   /* Typography */
-  --lb-font-sans: "Segoe UI", "Helvetica Neue", "Avenir Next", sans-serif;
+  --lb-font-sans: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
   --lb-font-display: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
   --lb-font-size-xs: 0.8125rem;
-  --lb-font-size-sm: 0.875rem;
+  --lb-font-size-sm: 0.9rem;
   --lb-font-size-md: 1rem;
   --lb-font-size-lg: 1.125rem;
-  --lb-font-size-xl: 1.35rem;
-  --lb-font-size-2xl: clamp(1.75rem, 4vw, 2.25rem);
-  --lb-font-size-3xl: clamp(2.25rem, 5vw, 3rem);
-  --lb-font-size-hero: clamp(2rem, 5vw, 2.75rem);
-  --lb-line-height-tight: 1.25;
-  --lb-line-height-body: 1.5;
+  --lb-font-size-xl: 1.4rem;
+  --lb-font-size-2xl: clamp(1.7rem, 3.5vw, 2.15rem);
+  --lb-font-size-3xl: clamp(2.1rem, 4.5vw, 2.75rem);
+  --lb-font-size-hero: clamp(2.1rem, 5vw, 2.85rem);
+  --lb-line-height-tight: 1.2;
+  --lb-line-height-body: 1.55;
 
   /* Focus */
-  --lb-focus-ring: 3px solid #6f9b7c;
+  --lb-focus-ring: 3px solid #7eaa8f;
   --lb-focus-offset: 2px;
 
   /* Layout */

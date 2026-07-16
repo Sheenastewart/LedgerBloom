@@ -153,16 +153,18 @@ export function IconEducation(props: IconProps) {
 
 const CATEGORY_ICON_MAP: Array<{ match: RegExp; Icon: (props: IconProps) => ReactNode }> = [
   { match: /grocer|food|supermarket/i, Icon: IconGroceries },
-  { match: /utilit|electric|gas|water|internet|phone/i, Icon: IconUtilities },
+  { match: /utilit|electric|gas|water|internet|phone|cell/i, Icon: IconUtilities },
+  { match: /insur/i, Icon: IconInsurance },
+  { match: /security|alarm/i, Icon: IconHousing },
+  { match: /gym|fitness|workout/i, Icon: IconHealth },
   { match: /transport|gas station|fuel|car|auto|transit/i, Icon: IconTransport },
   { match: /hous|rent|mortgage|home/i, Icon: IconHousing },
   { match: /health|medical|dental|pharmacy|doctor/i, Icon: IconHealth },
-  { match: /entertain|stream|movie|music|game/i, Icon: IconEntertainment },
+  { match: /entertain|stream|movie|music|game|subscri|netflix|hulu|peacock/i, Icon: IconEntertainment },
   { match: /child|daycare|kids/i, Icon: IconChildCare },
   { match: /dining|restaurant|cafe|coffee/i, Icon: IconDining },
   { match: /shop|retail|clothes|clothing/i, Icon: IconShopping },
   { match: /travel|vacation|flight|hotel/i, Icon: IconTravel },
-  { match: /insur/i, Icon: IconInsurance },
   { match: /educat|tuition|school/i, Icon: IconEducation },
   { match: /other/i, Icon: IconOther },
 ]
