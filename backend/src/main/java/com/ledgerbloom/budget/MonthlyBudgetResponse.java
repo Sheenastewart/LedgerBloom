@@ -15,8 +15,9 @@ public record MonthlyBudgetResponse(
 		BigDecimal remaining,
 		BigDecimal percentUsed,
 		boolean overBudget,
+		boolean userModified,
 		long expenseCount,
-		List<CategoryBudgetLimitResponse> categoryLimits,
+		List<BudgetGroupLimitResponse> groupLimits,
 		Instant createdAt,
 		Instant updatedAt
 ) {

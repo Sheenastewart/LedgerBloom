@@ -52,7 +52,7 @@ class ExpenseControllerTest {
 			"Market",
 			new BigDecimal("45.50"),
 			LocalDate.of(2026, 7, 10),
-			new ExpenseCategorySummary(1L, "Groceries"),
+			new ExpenseCategorySummary(1L, "Groceries", null),
 			null,
 			Instant.parse("2026-01-01T00:00:00Z"),
 			Instant.parse("2026-01-01T00:00:00Z")
@@ -90,7 +90,7 @@ class ExpenseControllerTest {
 				null,
 				new BigDecimal("10.00"),
 				LocalDate.of(2026, 7, 10),
-				new ExpenseCategorySummary(1L, "Groceries"),
+				new ExpenseCategorySummary(1L, "Groceries", null),
 				null,
 				Instant.parse("2026-01-01T00:00:00Z"),
 				Instant.parse("2026-01-01T00:00:00Z")

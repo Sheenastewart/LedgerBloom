@@ -44,6 +44,19 @@ public class MonthlyBudgetController {
 		return ResponseEntity.created(location).body(created);
 	}
 
+	@PostMapping("/generate")
+	public ResponseEntity<MonthlyBudgetResponse> generate(
+			@Valid @RequestBody MonthlyBudgetGenerateRequest request) {
+		MonthlyBudgetResponse generated = monthlyBudgetService.generateFromSchedules(request);
+		URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
+			.path("/api/budgets/monthly")
+			.queryParam("year", generated.year())
+			.queryParam("month", generated.month())
+			.build()
+			.toUri();
+		return ResponseEntity.created(location).body(generated);
+	}
+
 	@PutMapping("/{id}")
 	public MonthlyBudgetResponse update(
 			@PathVariable Long id,
@@ -57,37 +70,38 @@ public class MonthlyBudgetController {
 		monthlyBudgetService.delete(id);
 	}
 
-	@PostMapping("/{budgetId}/categories")
-	public ResponseEntity<MonthlyBudgetResponse> createCategoryLimit(
+	@PostMapping("/{budgetId}/groups")
+	public ResponseEntity<MonthlyBudgetResponse> createGroupLimit(
 			@PathVariable Long budgetId,
-			@Valid @RequestBody CategoryBudgetLimitCreateRequest request) {
-		MonthlyBudgetResponse updated = monthlyBudgetService.createCategoryLimit(budgetId, request);
+			@Valid @RequestBody BudgetGroupLimitCreateRequest request) {
+		MonthlyBudgetResponse updated = monthlyBudgetService.createGroupLimit(budgetId, request);
 		URI location = ServletUriComponentsBuilder.fromCurrentRequest()
 			.path("/{limitId}")
-			.buildAndExpand(findCreatedLimitId(updated, request.categoryId()))
+			.buildAndExpand(findCreatedLimitId(updated, request.budgetGroup()))
 			.toUri();
 		return ResponseEntity.created(location).body(updated);
 	}
 
-	@PutMapping("/{budgetId}/categories/{limitId}")
-	public MonthlyBudgetResponse updateCategoryLimit(
+	@PutMapping("/{budgetId}/groups/{limitId}")
+	public MonthlyBudgetResponse updateGroupLimit(
 			@PathVariable Long budgetId,
 			@PathVariable Long limitId,
-			@Valid @RequestBody CategoryBudgetLimitUpdateRequest request) {
-		return monthlyBudgetService.updateCategoryLimit(budgetId, limitId, request);
+			@Valid @RequestBody BudgetGroupLimitUpdateRequest request) {
+		return monthlyBudgetService.updateGroupLimit(budgetId, limitId, request);
 	}
 
-	@DeleteMapping("/{budgetId}/categories/{limitId}")
-	public MonthlyBudgetResponse deleteCategoryLimit(
+	@DeleteMapping("/{budgetId}/groups/{limitId}")
+	public MonthlyBudgetResponse deleteGroupLimit(
 			@PathVariable Long budgetId,
 			@PathVariable Long limitId) {
-		return monthlyBudgetService.deleteCategoryLimit(budgetId, limitId);
+		return monthlyBudgetService.deleteGroupLimit(budgetId, limitId);
 	}
 
-	private Long findCreatedLimitId(MonthlyBudgetResponse response, Long categoryId) {
-		return response.categoryLimits().stream()
-			.filter(limit -> limit.category().id().equals(categoryId))
-			.map(CategoryBudgetLimitResponse::id)
+	private Long findCreatedLimitId(MonthlyBudgetResponse response, String budgetGroup) {
+		BudgetGroup group = BudgetGroup.requireParse(budgetGroup);
+		return response.groupLimits().stream()
+			.filter(limit -> limit.group().key().equals(group.name()))
+			.map(BudgetGroupLimitResponse::id)
 			.findFirst()
 			.orElse(response.id());
 	}

@@ -8,8 +8,8 @@ import com.ledgerbloom.auth.InvalidRegistrationDataException;
 import com.ledgerbloom.auth.InvalidResetTokenException;
 import com.ledgerbloom.auth.LoginThrottledException;
 import com.ledgerbloom.account.InvalidAccountDataException;
-import com.ledgerbloom.budget.CategoryBudgetAlreadyExistsException;
-import com.ledgerbloom.budget.CategoryBudgetLimitNotFoundException;
+import com.ledgerbloom.budget.BudgetGroupAlreadyExistsException;
+import com.ledgerbloom.budget.BudgetGroupLimitNotFoundException;
 import com.ledgerbloom.budget.InvalidBudgetDataException;
 import com.ledgerbloom.budget.InvalidBudgetFilterException;
 import com.ledgerbloom.budget.MonthlyBudgetAlreadyExistsException;
@@ -106,9 +106,9 @@ public class GlobalExceptionHandler {
 		);
 	}
 
-	@ExceptionHandler(CategoryBudgetLimitNotFoundException.class)
-	public ResponseEntity<ApiErrorResponse> handleCategoryBudgetLimitNotFound(
-			CategoryBudgetLimitNotFoundException ex,
+	@ExceptionHandler(BudgetGroupLimitNotFoundException.class)
+	public ResponseEntity<ApiErrorResponse> handleBudgetGroupLimitNotFound(
+			BudgetGroupLimitNotFoundException ex,
 			HttpServletRequest request) {
 		return build(
 			HttpStatus.NOT_FOUND,
@@ -171,9 +171,9 @@ public class GlobalExceptionHandler {
 		);
 	}
 
-	@ExceptionHandler(CategoryBudgetAlreadyExistsException.class)
-	public ResponseEntity<ApiErrorResponse> handleCategoryBudgetAlreadyExists(
-			CategoryBudgetAlreadyExistsException ex,
+	@ExceptionHandler(BudgetGroupAlreadyExistsException.class)
+	public ResponseEntity<ApiErrorResponse> handleBudgetGroupAlreadyExists(
+			BudgetGroupAlreadyExistsException ex,
 			HttpServletRequest request) {
 		return build(
 			HttpStatus.CONFLICT,

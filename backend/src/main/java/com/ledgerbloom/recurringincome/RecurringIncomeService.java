@@ -16,10 +16,12 @@ import com.ledgerbloom.recurring.support.HistorySetupMode;
 import com.ledgerbloom.recurring.support.OccurrencePreviewItem;
 import com.ledgerbloom.recurring.support.OccurrencePreviewRequest;
 import com.ledgerbloom.recurring.support.OccurrencePreviewResponse;
+import com.ledgerbloom.recurring.support.RecurringPeriodProjection;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -71,6 +73,10 @@ public class RecurringIncomeService {
 			.toList();
 	}
 
+	/**
+	 * Returns every unpaid occurrence in {@code [today, today + days]}, expanding weekly
+	 * (and other multi-hit) cadences so each payday appears as its own row.
+	 */
 	@Transactional(readOnly = true)
 	public List<RecurringIncomeResponse> findUpcoming(Integer days) {
 		int windowDays = days == null ? DEFAULT_UPCOMING_DAYS : days;
@@ -80,9 +86,17 @@ public class RecurringIncomeService {
 		LocalDate today = LocalDate.now();
 		LocalDate toInclusive = today.plusDays(windowDays);
 		Long userId = currentUser.requireUserId();
-		return recurringIncomeRepository.findUpcoming(userId, today, toInclusive).stream()
-			.map(this::toResponse)
-			.toList();
+		List<RecurringIncomeResponse> occurrences = new ArrayList<>();
+		for (RecurringIncome schedule : recurringIncomeRepository.findActiveDueOnOrBefore(userId, toInclusive)) {
+			for (LocalDate occurrenceDate : RecurringPeriodProjection.incomeDatesInPeriod(
+					schedule, today, toInclusive)) {
+				occurrences.add(toResponse(schedule, occurrenceDate));
+			}
+		}
+		occurrences.sort(Comparator
+			.comparing(RecurringIncomeResponse::nextIncomeDate)
+			.thenComparing(RecurringIncomeResponse::id));
+		return List.copyOf(occurrences);
 	}
 
 	@Transactional(readOnly = true)
@@ -574,13 +588,18 @@ public class RecurringIncomeService {
 	}
 
 	private RecurringIncomeResponse toResponse(RecurringIncome entity) {
+		return toResponse(entity, entity.getNextIncomeDate());
+	}
+
+	/** Upcoming rows use {@code occurrenceDate} so each payday in the window is listed. */
+	private RecurringIncomeResponse toResponse(RecurringIncome entity, LocalDate occurrenceDate) {
 		return new RecurringIncomeResponse(
 			entity.getId(),
 			entity.getDescription(),
 			entity.getSource(),
 			entity.getAmount(),
 			entity.getCadence(),
-			entity.getNextIncomeDate(),
+			occurrenceDate,
 			entity.isActive(),
 			entity.getNotes(),
 			entity.getCreatedAt(),

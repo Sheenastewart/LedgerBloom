@@ -1,6 +1,7 @@
 package com.ledgerbloom.expense;
 
 import com.ledgerbloom.auth.CurrentUser;
+import com.ledgerbloom.budget.MonthlyBudgetService;
 import com.ledgerbloom.category.Category;
 import com.ledgerbloom.category.CategoryNotFoundException;
 import com.ledgerbloom.category.CategoryRepository;
@@ -21,14 +22,17 @@ public class ExpenseService {
 
 	private final ExpenseRepository expenseRepository;
 	private final CategoryRepository categoryRepository;
+	private final MonthlyBudgetService monthlyBudgetService;
 	private final CurrentUser currentUser;
 
 	public ExpenseService(
 			ExpenseRepository expenseRepository,
 			CategoryRepository categoryRepository,
+			MonthlyBudgetService monthlyBudgetService,
 			CurrentUser currentUser) {
 		this.expenseRepository = expenseRepository;
 		this.categoryRepository = categoryRepository;
+		this.monthlyBudgetService = monthlyBudgetService;
 		this.currentUser = currentUser;
 	}
 
@@ -92,12 +96,15 @@ public class ExpenseService {
 			data.notes(),
 			category
 		);
-		return toResponse(saveExpense(expense));
+		ExpenseResponse response = toResponse(saveExpense(expense));
+		monthlyBudgetService.syncAutoBudgetForDate(data.expenseDate());
+		return response;
 	}
 
 	public ExpenseResponse update(Long id, ExpenseUpdateRequest request) {
 		Long userId = currentUser.requireUserId();
 		Expense expense = getExpenseOrThrow(id, userId);
+		LocalDate previousDate = expense.getExpenseDate();
 		NormalizedExpenseData data = normalize(request.description(), request.merchant(), request.amount(),
 			request.expenseDate(), request.categoryId(), request.notes());
 		Category category = getCategoryOrThrow(data.categoryId(), userId);
@@ -108,12 +115,17 @@ public class ExpenseService {
 		expense.setExpenseDate(data.expenseDate());
 		expense.setNotes(data.notes());
 		expense.setCategory(category);
-		return toResponse(saveExpense(expense));
+		ExpenseResponse response = toResponse(saveExpense(expense));
+		monthlyBudgetService.syncAutoBudgetForDate(previousDate);
+		monthlyBudgetService.syncAutoBudgetForDate(data.expenseDate());
+		return response;
 	}
 
 	public void delete(Long id) {
 		Expense expense = getExpenseOrThrow(id, currentUser.requireUserId());
+		LocalDate expenseDate = expense.getExpenseDate();
 		expenseRepository.delete(expense);
+		monthlyBudgetService.syncAutoBudgetForDate(expenseDate);
 	}
 
 	private Expense saveExpense(Expense expense) {
@@ -240,7 +252,7 @@ public class ExpenseService {
 			expense.getMerchant(),
 			expense.getAmount(),
 			expense.getExpenseDate(),
-			new ExpenseCategorySummary(category.getId(), category.getName()),
+			new ExpenseCategorySummary(category.getId(), category.getName(), category.getColor()),
 			expense.getNotes(),
 			expense.getCreatedAt(),
 			expense.getUpdatedAt()

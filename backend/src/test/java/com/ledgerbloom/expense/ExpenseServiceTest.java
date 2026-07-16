@@ -41,6 +41,9 @@ class ExpenseServiceTest {
 	private CategoryRepository categoryRepository;
 
 	@Mock
+	private com.ledgerbloom.budget.MonthlyBudgetService monthlyBudgetService;
+
+	@Mock
 	private CurrentUser currentUser;
 
 	@InjectMocks

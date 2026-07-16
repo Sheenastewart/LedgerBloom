@@ -7,11 +7,11 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -41,27 +41,40 @@ class CategoryControllerTest {
 	@MockitoBean
 	private CategoryService categoryService;
 
-	@Test
-	void createReturns201WithLocation() throws Exception {
-		CategoryResponse created = new CategoryResponse(
-			5L,
-			"Groceries",
-			"Food",
+	private static CategoryResponse sample(
+			Long id,
+			String name,
+			String description,
+			String budgetGroup,
+			String budgetGroupLabel) {
+		return new CategoryResponse(
+			id,
+			name,
+			description,
+			null,
+			budgetGroup,
+			budgetGroupLabel,
 			Instant.parse("2026-01-01T00:00:00Z"),
 			Instant.parse("2026-01-01T00:00:00Z")
 		);
-		when(categoryService.create(any(CategoryCreateRequest.class))).thenReturn(created);
+	}
+
+	@Test
+	void createReturns201WithLocation() throws Exception {
+		when(categoryService.create(any(CategoryCreateRequest.class)))
+			.thenReturn(sample(5L, "Groceries", "Food", "GROCERIES", "Groceries"));
 
 		mockMvc.perform(post("/api/categories")
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-						{"name":"Groceries","description":"Food"}
+						{"name":"Groceries","description":"Food","budgetGroup":"GROCERIES"}
 						"""))
 			.andExpect(status().isCreated())
 			.andExpect(header().string("Location", containsString("/api/categories/5")))
 			.andExpect(jsonPath("$.id").value(5))
-			.andExpect(jsonPath("$.name").value("Groceries"));
+			.andExpect(jsonPath("$.name").value("Groceries"))
+			.andExpect(jsonPath("$.budgetGroup").value("GROCERIES"));
 	}
 
 	@Test
@@ -70,7 +83,7 @@ class CategoryControllerTest {
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-						{"name":"","description":"x"}
+						{"name":"","description":"x","budgetGroup":"GROCERIES"}
 						"""))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.status").value(400))
@@ -91,7 +104,7 @@ class CategoryControllerTest {
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-						{"name":"groceries"}
+						{"name":"groceries","budgetGroup":"GROCERIES"}
 						"""))
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("CATEGORY_NAME_ALREADY_EXISTS"))
@@ -119,8 +132,8 @@ class CategoryControllerTest {
 	@Test
 	void listReturnsCategories() throws Exception {
 		when(categoryService.findAll()).thenReturn(List.of(
-			new CategoryResponse(1L, "bills", null, Instant.now(), Instant.now()),
-			new CategoryResponse(2L, "Housing", null, Instant.now(), Instant.now())
+			sample(1L, "bills", null, "BILLS", "Bills"),
+			sample(2L, "Housing", null, "BILLS", "Bills")
 		));
 
 		mockMvc.perform(get("/api/categories"))
@@ -132,17 +145,18 @@ class CategoryControllerTest {
 	@Test
 	void updateReturnsUpdatedCategory() throws Exception {
 		when(categoryService.update(eq(1L), any(CategoryUpdateRequest.class)))
-			.thenReturn(new CategoryResponse(1L, "Housing", "Rent", Instant.now(), Instant.now()));
+			.thenReturn(sample(1L, "Housing", "Rent", "BILLS", "Bills"));
 
 		mockMvc.perform(put("/api/categories/1")
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-						{"name":"Housing","description":"Rent"}
+						{"name":"Housing","description":"Rent","budgetGroup":"BILLS"}
 						"""))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.name").value("Housing"))
-			.andExpect(jsonPath("$.description").value("Rent"));
+			.andExpect(jsonPath("$.description").value("Rent"))
+			.andExpect(jsonPath("$.budgetGroup").value("BILLS"));
 	}
 
 	@Test

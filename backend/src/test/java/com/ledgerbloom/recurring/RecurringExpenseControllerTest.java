@@ -56,7 +56,7 @@ class RecurringExpenseControllerTest {
 			"Netflix",
 			"Netflix Inc",
 			new BigDecimal("15.99"),
-			new RecurringExpenseCategorySummary(1L, "Entertainment"),
+			new RecurringExpenseCategorySummary(1L, "Entertainment", null),
 			RecurringExpenseCadence.MONTHLY,
 			LocalDate.of(2026, 8, 1),
 			true,
@@ -119,7 +119,7 @@ class RecurringExpenseControllerTest {
 				null,
 				null,
 				new BigDecimal("15.99"),
-				new RecurringExpenseCategorySummary(1L, "Entertainment"),
+				new RecurringExpenseCategorySummary(1L, "Entertainment", null),
 				RecurringExpenseCadence.MONTHLY,
 				LocalDate.of(2026, 8, 1),
 				true,
@@ -239,7 +239,7 @@ class RecurringExpenseControllerTest {
 					"Netflix Inc",
 					new BigDecimal("15.99"),
 					LocalDate.of(2026, 8, 1),
-					new ExpenseCategorySummary(1L, "Entertainment"),
+					new ExpenseCategorySummary(1L, "Entertainment", null),
 					null,
 					Instant.parse("2026-01-01T00:00:00Z"),
 					Instant.parse("2026-01-01T00:00:00Z")
@@ -387,13 +387,13 @@ class RecurringExpenseControllerTest {
 				List.of(
 					new ExpenseResponse(
 						51L, "Netflix", "Netflix Inc", new BigDecimal("15.99"), LocalDate.of(2026, 6, 1),
-						new ExpenseCategorySummary(1L, "Entertainment"),
+						new ExpenseCategorySummary(1L, "Entertainment", null),
 						null,
 						Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z")
 					),
 					new ExpenseResponse(
 						52L, "Netflix", "Netflix Inc", new BigDecimal("15.99"), LocalDate.of(2026, 7, 1),
-						new ExpenseCategorySummary(1L, "Entertainment"),
+						new ExpenseCategorySummary(1L, "Entertainment", null),
 						null,
 						Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z")
 					)

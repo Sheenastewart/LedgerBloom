@@ -36,6 +36,10 @@ public class MonthlyBudget {
 	@Column(name = "total_limit", nullable = false, precision = 12, scale = 2)
 	private BigDecimal totalLimit;
 
+	/** When true, auto-generation / auto-refresh will not change this budget. */
+	@Column(name = "user_modified", nullable = false)
+	private boolean userModified = false;
+
 	@Column(name = "created_at", nullable = false)
 	private Instant createdAt;
 
@@ -46,10 +50,20 @@ public class MonthlyBudget {
 	}
 
 	public MonthlyBudget(User user, Integer budgetYear, Integer budgetMonth, BigDecimal totalLimit) {
+		this(user, budgetYear, budgetMonth, totalLimit, false);
+	}
+
+	public MonthlyBudget(
+			User user,
+			Integer budgetYear,
+			Integer budgetMonth,
+			BigDecimal totalLimit,
+			boolean userModified) {
 		this.user = user;
 		this.budgetYear = budgetYear;
 		this.budgetMonth = budgetMonth;
 		this.totalLimit = totalLimit;
+		this.userModified = userModified;
 	}
 
 	@PrePersist
@@ -94,6 +108,14 @@ public class MonthlyBudget {
 
 	public void setTotalLimit(BigDecimal totalLimit) {
 		this.totalLimit = totalLimit;
+	}
+
+	public boolean isUserModified() {
+		return userModified;
+	}
+
+	public void setUserModified(boolean userModified) {
+		this.userModified = userModified;
 	}
 
 	public Instant getCreatedAt() {

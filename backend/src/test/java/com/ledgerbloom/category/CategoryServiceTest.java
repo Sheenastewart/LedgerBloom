@@ -10,7 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.ledgerbloom.auth.CurrentUser;
-import com.ledgerbloom.budget.CategoryBudgetLimitRepository;
+import com.ledgerbloom.budget.BudgetGroup;
 import com.ledgerbloom.expense.ExpenseRepository;
 import com.ledgerbloom.recurring.RecurringExpenseRepository;
 import com.ledgerbloom.user.User;
@@ -38,8 +38,6 @@ class CategoryServiceTest {
 	@Mock
 	private ExpenseRepository expenseRepository;
 
-	@Mock
-	private CategoryBudgetLimitRepository categoryBudgetLimitRepository;
 
 	@Mock
 	private RecurringExpenseRepository recurringExpenseRepository;
@@ -75,7 +73,7 @@ class CategoryServiceTest {
 			return category;
 		});
 
-		CategoryResponse response = categoryService.create(new CategoryCreateRequest("Groceries", "Food"));
+		CategoryResponse response = categoryService.create(new CategoryCreateRequest("Groceries", "Food", null, "GROCERIES"));
 
 		assertThat(response.id()).isEqualTo(10L);
 		assertThat(response.name()).isEqualTo("Groceries");
@@ -94,7 +92,7 @@ class CategoryServiceTest {
 			return category;
 		});
 
-		categoryService.create(new CategoryCreateRequest("  Groceries  ", "Food"));
+		categoryService.create(new CategoryCreateRequest("  Groceries  ", "Food", null, "GROCERIES"));
 
 		ArgumentCaptor<Category> captor = ArgumentCaptor.forClass(Category.class);
 		verify(categoryRepository).saveAndFlush(captor.capture());
@@ -111,7 +109,7 @@ class CategoryServiceTest {
 			return category;
 		});
 
-		CategoryResponse response = categoryService.create(new CategoryCreateRequest("Groceries", "   "));
+		CategoryResponse response = categoryService.create(new CategoryCreateRequest("Groceries", "   ", null, "GROCERIES"));
 
 		assertThat(response.description()).isNull();
 	}
@@ -120,7 +118,7 @@ class CategoryServiceTest {
 	void createRejectsDuplicateName() {
 		when(categoryRepository.existsByUser_IdAndNameIgnoreCase(USER_ID, "groceries")).thenReturn(true);
 
-		assertThatThrownBy(() -> categoryService.create(new CategoryCreateRequest("groceries", null)))
+		assertThatThrownBy(() -> categoryService.create(new CategoryCreateRequest("groceries", null, null, "GROCERIES")))
 			.isInstanceOf(CategoryNameAlreadyExistsException.class);
 
 		verify(categoryRepository, never()).saveAndFlush(any());
@@ -132,7 +130,7 @@ class CategoryServiceTest {
 		when(categoryRepository.saveAndFlush(any(Category.class)))
 			.thenThrow(new DataIntegrityViolationException("unique"));
 
-		assertThatThrownBy(() -> categoryService.create(new CategoryCreateRequest("Groceries", null)))
+		assertThatThrownBy(() -> categoryService.create(new CategoryCreateRequest("Groceries", null, null, "GROCERIES")))
 			.isInstanceOf(CategoryNameAlreadyExistsException.class);
 	}
 
@@ -177,7 +175,7 @@ class CategoryServiceTest {
 		when(categoryRepository.existsByUser_IdAndNameIgnoreCaseAndIdNot(USER_ID, "Housing", 1L)).thenReturn(false);
 		when(categoryRepository.saveAndFlush(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-		CategoryResponse response = categoryService.update(1L, new CategoryUpdateRequest("Housing", "Rent"));
+		CategoryResponse response = categoryService.update(1L, new CategoryUpdateRequest("Housing", "Rent", null, "BILLS"));
 
 		assertThat(response.name()).isEqualTo("Housing");
 		assertThat(response.description()).isEqualTo("Rent");
@@ -189,7 +187,7 @@ class CategoryServiceTest {
 		when(categoryRepository.existsByUser_IdAndNameIgnoreCaseAndIdNot(USER_ID, "Groceries", 1L)).thenReturn(false);
 		when(categoryRepository.saveAndFlush(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-		CategoryResponse response = categoryService.update(1L, new CategoryUpdateRequest("Groceries", "Updated"));
+		CategoryResponse response = categoryService.update(1L, new CategoryUpdateRequest("Groceries", "Updated", null, "GROCERIES"));
 
 		assertThat(response.name()).isEqualTo("Groceries");
 		assertThat(response.description()).isEqualTo("Updated");
@@ -200,7 +198,7 @@ class CategoryServiceTest {
 		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(existing));
 		when(categoryRepository.existsByUser_IdAndNameIgnoreCaseAndIdNot(USER_ID, "Housing", 1L)).thenReturn(true);
 
-		assertThatThrownBy(() -> categoryService.update(1L, new CategoryUpdateRequest("Housing", null)))
+		assertThatThrownBy(() -> categoryService.update(1L, new CategoryUpdateRequest("Housing", null, null, "BILLS")))
 			.isInstanceOf(CategoryNameAlreadyExistsException.class);
 
 		verify(categoryRepository, never()).saveAndFlush(any());
@@ -210,7 +208,6 @@ class CategoryServiceTest {
 	void deleteExistingCategory() {
 		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(existing));
 		when(expenseRepository.existsByCategory_Id(1L)).thenReturn(false);
-		when(categoryBudgetLimitRepository.existsByCategory_Id(1L)).thenReturn(false);
 		when(recurringExpenseRepository.existsByCategory_Id(1L)).thenReturn(false);
 
 		categoryService.delete(1L);
@@ -231,22 +228,9 @@ class CategoryServiceTest {
 	}
 
 	@Test
-	void deleteRejectsCategoryWithBudgetLimit() {
-		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(existing));
-		when(expenseRepository.existsByCategory_Id(1L)).thenReturn(false);
-		when(categoryBudgetLimitRepository.existsByCategory_Id(1L)).thenReturn(true);
-
-		assertThatThrownBy(() -> categoryService.delete(1L))
-			.isInstanceOf(CategoryInUseException.class);
-
-		verify(categoryRepository, never()).delete(any());
-	}
-
-	@Test
 	void deleteRejectsCategoryWithRecurringExpense() {
 		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(existing));
 		when(expenseRepository.existsByCategory_Id(1L)).thenReturn(false);
-		when(categoryBudgetLimitRepository.existsByCategory_Id(1L)).thenReturn(false);
 		when(recurringExpenseRepository.existsByCategory_Id(1L)).thenReturn(true);
 
 		assertThatThrownBy(() -> categoryService.delete(1L))
@@ -259,7 +243,6 @@ class CategoryServiceTest {
 	void deleteMapsIntegrityRaceToCategoryInUse() {
 		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(existing));
 		when(expenseRepository.existsByCategory_Id(1L)).thenReturn(false);
-		when(categoryBudgetLimitRepository.existsByCategory_Id(1L)).thenReturn(false);
 		when(recurringExpenseRepository.existsByCategory_Id(1L)).thenReturn(false);
 		org.mockito.Mockito.doThrow(new DataIntegrityViolationException("fk"))
 			.when(categoryRepository).delete(existing);
@@ -302,7 +285,7 @@ class CategoryServiceTest {
 
 	@Test
 	void createRejectsBlankNormalizedName() {
-		assertThatThrownBy(() -> categoryService.create(new CategoryCreateRequest("   ", null)))
+		assertThatThrownBy(() -> categoryService.create(new CategoryCreateRequest("   ", null, null, "GROCERIES")))
 			.isInstanceOf(InvalidCategoryDataException.class);
 	}
 

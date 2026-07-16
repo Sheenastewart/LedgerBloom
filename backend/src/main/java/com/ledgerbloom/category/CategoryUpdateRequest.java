@@ -1,6 +1,7 @@
 package com.ledgerbloom.category;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record CategoryUpdateRequest(
@@ -9,6 +10,13 @@ public record CategoryUpdateRequest(
 		String name,
 
 		@Size(max = 255, message = "Description must be at most 255 characters")
-		String description
+		String description,
+
+		@Pattern(regexp = "^$|^#[0-9A-Fa-f]{6}$", message = "Color must be a #RRGGBB hex value")
+		@Size(max = 7, message = "Color must be at most 7 characters")
+		String color,
+
+		@NotBlank(message = "Budget group is required")
+		String budgetGroup
 ) {
 }

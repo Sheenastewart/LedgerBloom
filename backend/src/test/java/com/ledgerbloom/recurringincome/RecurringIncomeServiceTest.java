@@ -26,6 +26,7 @@ import com.ledgerbloom.recurring.support.CatchUpRequest;
 import com.ledgerbloom.recurring.support.HistorySetupMode;
 import com.ledgerbloom.recurring.support.OccurrencePreviewRequest;
 import com.ledgerbloom.recurring.support.OccurrencePreviewResponse;
+import com.ledgerbloom.recurring.support.RecurringPeriodProjection;
 import com.ledgerbloom.user.User;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -237,14 +238,45 @@ class RecurringIncomeServiceTest {
 	@Test
 	void upcomingDefaultAndCustomDays() {
 		LocalDate today = LocalDate.now();
-		when(recurringIncomeRepository.findUpcoming(USER_ID, today, today.plusDays(30))).thenReturn(List.of());
-		when(recurringIncomeRepository.findUpcoming(USER_ID, today, today.plusDays(7))).thenReturn(List.of());
+		when(recurringIncomeRepository.findActiveDueOnOrBefore(USER_ID, today.plusDays(30))).thenReturn(List.of());
+		when(recurringIncomeRepository.findActiveDueOnOrBefore(USER_ID, today.plusDays(7))).thenReturn(List.of());
 
 		recurringIncomeService.findUpcoming(null);
 		recurringIncomeService.findUpcoming(7);
 
-		verify(recurringIncomeRepository).findUpcoming(USER_ID, today, today.plusDays(30));
-		verify(recurringIncomeRepository).findUpcoming(USER_ID, today, today.plusDays(7));
+		verify(recurringIncomeRepository).findActiveDueOnOrBefore(USER_ID, today.plusDays(30));
+		verify(recurringIncomeRepository).findActiveDueOnOrBefore(USER_ID, today.plusDays(7));
+	}
+
+	@Test
+	void upcomingExpandsWeeklyIntoEachOccurrence() throws Exception {
+		LocalDate today = LocalDate.now();
+		LocalDate toInclusive = today.plusDays(30);
+		RecurringIncome weekly = new RecurringIncome(
+			user,
+			"Allowance",
+			"Parents",
+			new BigDecimal("50.00"),
+			RecurringIncomeCadence.WEEKLY,
+			today,
+			true,
+			null
+		);
+		setId(weekly, 42L);
+		setTimestamps(weekly);
+		when(recurringIncomeRepository.findActiveDueOnOrBefore(USER_ID, toInclusive))
+			.thenReturn(List.of(weekly));
+
+		List<RecurringIncomeResponse> upcoming = recurringIncomeService.findUpcoming(30);
+
+		List<LocalDate> expectedDates = RecurringPeriodProjection.incomeDatesInPeriod(
+			weekly, today, toInclusive);
+		assertThat(upcoming).hasSize(expectedDates.size());
+		assertThat(upcoming.stream().map(RecurringIncomeResponse::nextIncomeDate).toList())
+			.containsExactlyElementsOf(expectedDates);
+		assertThat(upcoming).allMatch(row -> row.id().equals(42L));
+		assertThat(upcoming).allMatch(row -> row.amount().compareTo(new BigDecimal("50.00")) == 0);
+		assertThat(expectedDates.size()).isGreaterThanOrEqualTo(4);
 	}
 
 	@Test

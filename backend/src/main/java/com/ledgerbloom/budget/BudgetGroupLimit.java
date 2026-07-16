@@ -1,9 +1,10 @@
 package com.ledgerbloom.budget;
 
-import com.ledgerbloom.category.Category;
 import com.ledgerbloom.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -17,8 +18,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
-@Table(name = "category_budget_limits")
-public class CategoryBudgetLimit {
+@Table(name = "budget_group_limits")
+public class BudgetGroupLimit {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,9 +33,9 @@ public class CategoryBudgetLimit {
 	@JoinColumn(name = "monthly_budget_id", nullable = false)
 	private MonthlyBudget monthlyBudget;
 
-	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "category_id", nullable = false)
-	private Category category;
+	@Enumerated(EnumType.STRING)
+	@Column(name = "budget_group", nullable = false, length = 40)
+	private BudgetGroup budgetGroup;
 
 	@Column(name = "limit_amount", nullable = false, precision = 12, scale = 2)
 	private BigDecimal limitAmount;
@@ -48,24 +49,20 @@ public class CategoryBudgetLimit {
 	@Column(name = "updated_at", nullable = false)
 	private Instant updatedAt;
 
-	protected CategoryBudgetLimit() {
+	protected BudgetGroupLimit() {
 	}
 
-	public CategoryBudgetLimit(
+	public BudgetGroupLimit(
 			User user,
 			MonthlyBudget monthlyBudget,
-			Category category,
+			BudgetGroup budgetGroup,
 			BigDecimal limitAmount,
 			BigDecimal assistanceAmount) {
 		this.user = user;
 		this.monthlyBudget = monthlyBudget;
-		this.category = category;
+		this.budgetGroup = budgetGroup;
 		this.limitAmount = limitAmount;
 		this.assistanceAmount = assistanceAmount != null ? assistanceAmount : BigDecimal.ZERO;
-	}
-
-	public CategoryBudgetLimit(User user, MonthlyBudget monthlyBudget, Category category, BigDecimal limitAmount) {
-		this(user, monthlyBudget, category, limitAmount, BigDecimal.ZERO);
 	}
 
 	@PrePersist
@@ -95,16 +92,12 @@ public class CategoryBudgetLimit {
 		return monthlyBudget;
 	}
 
-	public void setMonthlyBudget(MonthlyBudget monthlyBudget) {
-		this.monthlyBudget = monthlyBudget;
+	public BudgetGroup getBudgetGroup() {
+		return budgetGroup;
 	}
 
-	public Category getCategory() {
-		return category;
-	}
-
-	public void setCategory(Category category) {
-		this.category = category;
+	public void setBudgetGroup(BudgetGroup budgetGroup) {
+		this.budgetGroup = budgetGroup;
 	}
 
 	public BigDecimal getLimitAmount() {

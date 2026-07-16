@@ -1,7 +1,7 @@
 package com.ledgerbloom.category;
 
 import com.ledgerbloom.auth.CurrentUser;
-import com.ledgerbloom.budget.CategoryBudgetLimitRepository;
+import com.ledgerbloom.budget.BudgetGroup;
 import com.ledgerbloom.expense.ExpenseRepository;
 import com.ledgerbloom.recurring.RecurringExpenseRepository;
 import com.ledgerbloom.user.User;
@@ -17,19 +17,16 @@ public class CategoryService {
 
 	private final CategoryRepository categoryRepository;
 	private final ExpenseRepository expenseRepository;
-	private final CategoryBudgetLimitRepository categoryBudgetLimitRepository;
 	private final RecurringExpenseRepository recurringExpenseRepository;
 	private final CurrentUser currentUser;
 
 	public CategoryService(
 			CategoryRepository categoryRepository,
 			ExpenseRepository expenseRepository,
-			CategoryBudgetLimitRepository categoryBudgetLimitRepository,
 			RecurringExpenseRepository recurringExpenseRepository,
 			CurrentUser currentUser) {
 		this.categoryRepository = categoryRepository;
 		this.expenseRepository = expenseRepository;
-		this.categoryBudgetLimitRepository = categoryBudgetLimitRepository;
 		this.recurringExpenseRepository = recurringExpenseRepository;
 		this.currentUser = currentUser;
 	}
@@ -51,9 +48,12 @@ public class CategoryService {
 		Long userId = currentUser.requireUserId();
 		String name = normalizeRequiredName(request.name());
 		String description = normalizeDescription(request.description());
+		String color = normalizeColor(request.color());
+		BudgetGroup budgetGroup = requireBudgetGroup(request.budgetGroup(), name);
 		ensureNameAvailable(userId, name, null);
 
-		Category category = new Category(currentUser.requireUserReference(), name, description);
+		Category category = new Category(currentUser.requireUserReference(), name, description, budgetGroup);
+		category.setColor(color);
 		return toResponse(saveCategory(category, name));
 	}
 
@@ -62,10 +62,14 @@ public class CategoryService {
 		Category category = getCategoryOrThrow(id, userId);
 		String name = normalizeRequiredName(request.name());
 		String description = normalizeDescription(request.description());
+		String color = normalizeColor(request.color());
+		BudgetGroup budgetGroup = requireBudgetGroup(request.budgetGroup(), name);
 		ensureNameAvailable(userId, name, id);
 
 		category.setName(name);
 		category.setDescription(description);
+		category.setColor(color);
+		category.setBudgetGroup(budgetGroup);
 		return toResponse(saveCategory(category, name));
 	}
 
@@ -87,7 +91,7 @@ public class CategoryService {
 				skippedNames.add(name);
 				continue;
 			}
-			Category category = new Category(user, name, null);
+			Category category = new Category(user, name, null, BudgetGroup.fromCategoryName(name));
 			saveCategory(category, name);
 			createdNames.add(name);
 		}
@@ -103,7 +107,6 @@ public class CategoryService {
 	public void delete(Long id) {
 		Category category = getCategoryOrThrow(id, currentUser.requireUserId());
 		if (expenseRepository.existsByCategory_Id(id)
-				|| categoryBudgetLimitRepository.existsByCategory_Id(id)
 				|| recurringExpenseRepository.existsByCategory_Id(id)) {
 			throw new CategoryInUseException(id);
 		}
@@ -130,10 +133,6 @@ public class CategoryService {
 		}
 	}
 
-	/**
-	 * Persists a category after application-level duplicate checks. Integrity
-	 * exceptions from this save are treated as the race on ux_categories_user_id_name_lower.
-	 */
 	private Category saveCategory(Category category, String normalizedName) {
 		try {
 			return categoryRepository.saveAndFlush(category);
@@ -141,6 +140,15 @@ public class CategoryService {
 		catch (DataIntegrityViolationException ex) {
 			throw new CategoryNameAlreadyExistsException(normalizedName);
 		}
+	}
+
+	private BudgetGroup requireBudgetGroup(String raw, String categoryName) {
+		if (raw == null || raw.isBlank()) {
+			return BudgetGroup.fromCategoryName(categoryName);
+		}
+		return BudgetGroup.tryParse(raw).orElseThrow(() ->
+			new InvalidCategoryDataException("Budget group is required and must be a valid budget bucket")
+		);
 	}
 
 	private String normalizeRequiredName(String name) {
@@ -168,11 +176,31 @@ public class CategoryService {
 		return normalized;
 	}
 
+	private String normalizeColor(String color) {
+		if (color == null) {
+			return null;
+		}
+		String normalized = color.trim();
+		if (normalized.isBlank()) {
+			return null;
+		}
+		if (!normalized.matches("^#[0-9A-Fa-f]{6}$")) {
+			throw new InvalidCategoryDataException("Color must be a #RRGGBB hex value");
+		}
+		return normalized.toUpperCase();
+	}
+
 	private CategoryResponse toResponse(Category category) {
+		BudgetGroup group = category.getBudgetGroup() != null
+			? category.getBudgetGroup()
+			: BudgetGroup.fromCategoryName(category.getName());
 		return new CategoryResponse(
 			category.getId(),
 			category.getName(),
 			category.getDescription(),
+			category.getColor(),
+			group.name(),
+			group.getLabel(),
 			category.getCreatedAt(),
 			category.getUpdatedAt()
 		);

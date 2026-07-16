@@ -2,9 +2,9 @@ package com.ledgerbloom.budget;
 
 import java.math.BigDecimal;
 
-public record CategoryBudgetLimitResponse(
+public record BudgetGroupLimitResponse(
 		Long id,
-		BudgetCategorySummary category,
+		BudgetGroupSummary group,
 		BigDecimal limitAmount,
 		BigDecimal assistanceAmount,
 		BigDecimal actualSpent,

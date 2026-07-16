@@ -67,7 +67,12 @@ class AuthServiceTest {
 		);
 		org.mockito.Mockito.lenient()
 			.when(categoryService.createStarterSetForUser(any(User.class)))
-			.thenReturn(new StarterCategoriesResponse(22, StarterCategoryNames.ALL, 0, List.of()));
+			.thenReturn(new StarterCategoriesResponse(
+				StarterCategoryNames.ALL.size(),
+				StarterCategoryNames.ALL,
+				0,
+				List.of()
+			));
 		org.mockito.Mockito.lenient().when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
 	}
 
@@ -81,7 +86,12 @@ class AuthServiceTest {
 			return user;
 		});
 		when(categoryService.createStarterSetForUser(any(User.class)))
-			.thenReturn(new StarterCategoriesResponse(22, List.of("Housing"), 0, List.of()));
+			.thenReturn(new StarterCategoriesResponse(
+				StarterCategoryNames.ALL.size(),
+				List.of("Housing"),
+				0,
+				List.of()
+			));
 
 		authService.register(new RegisterRequest("user@example.com", "supersecret12", "supersecret12", "Jane Doe"));
 

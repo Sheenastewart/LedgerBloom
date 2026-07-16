@@ -1,6 +1,7 @@
 package com.ledgerbloom.recurring;
 
 import com.ledgerbloom.auth.CurrentUser;
+import com.ledgerbloom.budget.MonthlyBudgetService;
 import com.ledgerbloom.category.Category;
 import com.ledgerbloom.category.CategoryNotFoundException;
 import com.ledgerbloom.category.CategoryRepository;
@@ -16,10 +17,12 @@ import com.ledgerbloom.recurring.support.HistorySetupMode;
 import com.ledgerbloom.recurring.support.OccurrencePreviewItem;
 import com.ledgerbloom.recurring.support.OccurrencePreviewRequest;
 import com.ledgerbloom.recurring.support.OccurrencePreviewResponse;
+import com.ledgerbloom.recurring.support.RecurringPeriodProjection;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -39,6 +42,7 @@ public class RecurringExpenseService {
 	private final CategoryRepository categoryRepository;
 	private final ExpenseService expenseService;
 	private final ExpenseRepository expenseRepository;
+	private final MonthlyBudgetService monthlyBudgetService;
 	private final CurrentUser currentUser;
 
 	public RecurringExpenseService(
@@ -47,12 +51,14 @@ public class RecurringExpenseService {
 			CategoryRepository categoryRepository,
 			ExpenseService expenseService,
 			ExpenseRepository expenseRepository,
+			MonthlyBudgetService monthlyBudgetService,
 			CurrentUser currentUser) {
 		this.recurringExpenseRepository = recurringExpenseRepository;
 		this.occurrenceRecordRepository = occurrenceRecordRepository;
 		this.categoryRepository = categoryRepository;
 		this.expenseService = expenseService;
 		this.expenseRepository = expenseRepository;
+		this.monthlyBudgetService = monthlyBudgetService;
 		this.currentUser = currentUser;
 	}
 
@@ -66,6 +72,10 @@ public class RecurringExpenseService {
 			.toList();
 	}
 
+	/**
+	 * Returns every unpaid occurrence in {@code [today, today + days]}, expanding weekly
+	 * (and other multi-hit) cadences so each bill date appears as its own row.
+	 */
 	@Transactional(readOnly = true)
 	public List<RecurringExpenseResponse> findUpcoming(Integer days) {
 		int windowDays = days == null ? DEFAULT_UPCOMING_DAYS : days;
@@ -75,9 +85,17 @@ public class RecurringExpenseService {
 		LocalDate today = LocalDate.now();
 		LocalDate toInclusive = today.plusDays(windowDays);
 		Long userId = currentUser.requireUserId();
-		return recurringExpenseRepository.findUpcoming(userId, today, toInclusive).stream()
-			.map(this::toResponse)
-			.toList();
+		List<RecurringExpenseResponse> occurrences = new ArrayList<>();
+		for (RecurringExpense schedule : recurringExpenseRepository.findActiveDueOnOrBefore(userId, toInclusive)) {
+			for (LocalDate occurrenceDate : RecurringPeriodProjection.expenseDatesInPeriod(
+					schedule, today, toInclusive)) {
+				occurrences.add(toResponse(schedule, occurrenceDate));
+			}
+		}
+		occurrences.sort(Comparator
+			.comparing(RecurringExpenseResponse::nextPaymentDate)
+			.thenComparing(RecurringExpenseResponse::id));
+		return List.copyOf(occurrences);
 	}
 
 	@Transactional(readOnly = true)
@@ -179,6 +197,7 @@ public class RecurringExpenseService {
 			recordHistoricalOccurrence(saved, date);
 		}
 
+		monthlyBudgetService.syncAutoBudgetsAround(effectiveNext);
 		return toResponse(saved);
 	}
 
@@ -208,12 +227,16 @@ public class RecurringExpenseService {
 		entity.setNotes(data.notes());
 		entity.setFirstPaymentDay(data.firstPaymentDay());
 		entity.setSecondPaymentDay(data.secondPaymentDay());
-		return toResponse(recurringExpenseRepository.saveAndFlush(entity));
+		RecurringExpenseResponse response = toResponse(recurringExpenseRepository.saveAndFlush(entity));
+		monthlyBudgetService.syncAutoBudgetsAround(data.nextPaymentDate());
+		return response;
 	}
 
 	public void delete(Long id) {
 		RecurringExpense entity = getOrThrow(id, currentUser.requireUserId());
+		LocalDate nextPaymentDate = entity.getNextPaymentDate();
 		recurringExpenseRepository.delete(entity);
+		monthlyBudgetService.syncAutoBudgetsAround(nextPaymentDate);
 	}
 
 	/**
@@ -534,14 +557,23 @@ public class RecurringExpenseService {
 	}
 
 	private RecurringExpenseResponse toResponse(RecurringExpense entity) {
+		return toResponse(entity, entity.getNextPaymentDate());
+	}
+
+	/** Upcoming rows use {@code occurrenceDate} so each bill date in the window is listed. */
+	private RecurringExpenseResponse toResponse(RecurringExpense entity, LocalDate occurrenceDate) {
 		return new RecurringExpenseResponse(
 			entity.getId(),
 			entity.getDescription(),
 			entity.getMerchant(),
 			entity.getAmount(),
-			new RecurringExpenseCategorySummary(entity.getCategory().getId(), entity.getCategory().getName()),
+			new RecurringExpenseCategorySummary(
+				entity.getCategory().getId(),
+				entity.getCategory().getName(),
+				entity.getCategory().getColor()
+			),
 			entity.getCadence(),
-			entity.getNextPaymentDate(),
+			occurrenceDate,
 			entity.isActive(),
 			entity.getNotes(),
 			entity.getCreatedAt(),

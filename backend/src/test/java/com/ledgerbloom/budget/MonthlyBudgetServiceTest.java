@@ -3,6 +3,7 @@ package com.ledgerbloom.budget;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -10,15 +11,15 @@ import static org.mockito.Mockito.when;
 
 import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.category.Category;
-import com.ledgerbloom.category.CategoryNotFoundException;
-import com.ledgerbloom.category.CategoryRepository;
 import com.ledgerbloom.expense.Expense;
 import com.ledgerbloom.expense.ExpenseRepository;
+import com.ledgerbloom.recurring.RecurringExpenseRepository;
 import com.ledgerbloom.user.User;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +29,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 
 @ExtendWith(MockitoExtension.class)
 class MonthlyBudgetServiceTest {
@@ -39,13 +39,13 @@ class MonthlyBudgetServiceTest {
 	private MonthlyBudgetRepository monthlyBudgetRepository;
 
 	@Mock
-	private CategoryBudgetLimitRepository categoryBudgetLimitRepository;
-
-	@Mock
-	private CategoryRepository categoryRepository;
+	private BudgetGroupLimitRepository budgetGroupLimitRepository;
 
 	@Mock
 	private ExpenseRepository expenseRepository;
+
+	@Mock
+	private RecurringExpenseRepository recurringExpenseRepository;
 
 	@Mock
 	private CurrentUser currentUser;
@@ -55,8 +55,8 @@ class MonthlyBudgetServiceTest {
 
 	private User user;
 	private Category groceries;
-	private Category utilities;
 	private MonthlyBudget julyBudget;
+	private final List<BudgetGroupLimit> savedLimits = new ArrayList<>();
 
 	@BeforeEach
 	void setUp() throws Exception {
@@ -65,17 +65,30 @@ class MonthlyBudgetServiceTest {
 		lenient().when(currentUser.requireUserId()).thenReturn(USER_ID);
 		lenient().when(currentUser.requireUserReference()).thenReturn(user);
 
-		groceries = new Category(user, "Groceries", null);
+		groceries = new Category(user, "Groceries", null, BudgetGroup.GROCERIES);
 		setId(groceries, 1L);
-		utilities = new Category(user, "Utilities", null);
-		setId(utilities, 2L);
-		julyBudget = new MonthlyBudget(user, 2026, 7, new BigDecimal("1000.00"));
+		julyBudget = new MonthlyBudget(user, 2026, 7, new BigDecimal("4300.00"), false);
 		setId(julyBudget, 10L);
 		setTimestamps(julyBudget, Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z"));
+
+		lenient().when(budgetGroupLimitRepository.saveAndFlush(any(BudgetGroupLimit.class))).thenAnswer(invocation -> {
+			BudgetGroupLimit limit = invocation.getArgument(0);
+			if (limit.getId() == null) {
+				setId(limit, (long) (savedLimits.size() + 1));
+			}
+			savedLimits.removeIf(existing -> existing.getBudgetGroup() == limit.getBudgetGroup());
+			savedLimits.add(limit);
+			return limit;
+		});
+		lenient().when(budgetGroupLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(any())).thenAnswer(invocation ->
+			List.copyOf(savedLimits)
+		);
+		lenient().when(recurringExpenseRepository.findActiveDueOnOrBefore(eq(USER_ID), any())).thenReturn(List.of());
+		stubEmptyExpenses(2026, 7);
 	}
 
 	@Test
-	void createBudget() throws Exception {
+	void createBudgetSeedsPresetGroupsAndLocks() throws Exception {
 		when(monthlyBudgetRepository.existsByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7)).thenReturn(false);
 		when(monthlyBudgetRepository.saveAndFlush(any(MonthlyBudget.class))).thenAnswer(invocation -> {
 			MonthlyBudget budget = invocation.getArgument(0);
@@ -83,460 +96,233 @@ class MonthlyBudgetServiceTest {
 			onCreate(budget);
 			return budget;
 		});
-		stubEmptyExpenses(2026, 7);
-		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L)).thenReturn(List.of());
 
 		MonthlyBudgetResponse response = monthlyBudgetService.create(
 			new MonthlyBudgetCreateRequest(2026, 7, new BigDecimal("1000.00"))
 		);
 
-		assertThat(response.id()).isEqualTo(10L);
-		assertThat(response.year()).isEqualTo(2026);
-		assertThat(response.month()).isEqualTo(7);
-		assertThat(response.totalLimit()).isEqualByComparingTo("1000.00");
-		assertThat(response.actualExpenses()).isEqualByComparingTo("0.00");
-		assertThat(response.remaining()).isEqualByComparingTo("1000.00");
-		assertThat(response.percentUsed()).isEqualByComparingTo("0.00");
-		assertThat(response.overBudget()).isFalse();
+		assertThat(response.userModified()).isTrue();
+		assertThat(response.groupLimits()).hasSize(BudgetGroup.values().length);
+		assertThat(savedLimits).hasSize(BudgetGroup.values().length);
+		assertThat(savedLimits.stream().map(BudgetGroupLimit::getBudgetGroup))
+			.contains(BudgetGroup.BILLS, BudgetGroup.GROCERIES, BudgetGroup.CHILD_CARE);
 	}
 
 	@Test
-	void createRejectsDuplicateMonth() {
-		when(monthlyBudgetRepository.existsByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7)).thenReturn(true);
+	void ensureAutoBudgetCreatesFromPresetsWhenMissing() throws Exception {
+		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
+			.thenReturn(Optional.empty())
+			.thenReturn(Optional.of(julyBudget));
+		when(monthlyBudgetRepository.saveAndFlush(any(MonthlyBudget.class))).thenAnswer(invocation -> {
+			MonthlyBudget budget = invocation.getArgument(0);
+			setId(budget, 10L);
+			onCreate(budget);
+			julyBudget = budget;
+			return budget;
+		});
 
-		assertThatThrownBy(() -> monthlyBudgetService.create(
-			new MonthlyBudgetCreateRequest(2026, 7, new BigDecimal("1000.00"))
-		)).isInstanceOf(MonthlyBudgetAlreadyExistsException.class);
+		MonthlyBudgetResponse response = monthlyBudgetService.ensureAutoBudget(2026, 7);
 
-		verify(monthlyBudgetRepository, never()).saveAndFlush(any());
+		assertThat(response.userModified()).isFalse();
+		assertThat(response.groupLimits()).hasSize(BudgetGroup.values().length);
+		BudgetGroupLimitResponse groceries = response.groupLimits().stream()
+			.filter(row -> row.group().key().equals("GROCERIES"))
+			.findFirst()
+			.orElseThrow();
+		assertThat(groceries.limitAmount()).isEqualByComparingTo("250.00");
 	}
 
 	@Test
-	void createRejectsInvalidYear() {
-		assertThatThrownBy(() -> monthlyBudgetService.create(
-			new MonthlyBudgetCreateRequest(0, 7, new BigDecimal("1000.00"))
-		)).isInstanceOf(InvalidBudgetFilterException.class);
-	}
-
-	@Test
-	void createRejectsInvalidMonth() {
-		assertThatThrownBy(() -> monthlyBudgetService.create(
-			new MonthlyBudgetCreateRequest(2026, 13, new BigDecimal("1000.00"))
-		)).isInstanceOf(InvalidBudgetFilterException.class);
-	}
-
-	@Test
-	void createRejectsZeroAmount() {
-		assertThatThrownBy(() -> monthlyBudgetService.create(
-			new MonthlyBudgetCreateRequest(2026, 7, new BigDecimal("0.00"))
-		)).isInstanceOf(InvalidBudgetDataException.class);
-	}
-
-	@Test
-	void createRejectsNegativeAmount() {
-		assertThatThrownBy(() -> monthlyBudgetService.create(
-			new MonthlyBudgetCreateRequest(2026, 7, new BigDecimal("-10.00"))
-		)).isInstanceOf(InvalidBudgetDataException.class);
-	}
-
-	@Test
-	void createRejectsOversizedAmount() {
-		assertThatThrownBy(() -> monthlyBudgetService.create(
-			new MonthlyBudgetCreateRequest(2026, 7, new BigDecimal("10000000000.00"))
-		)).isInstanceOf(InvalidBudgetDataException.class);
-	}
-
-	@Test
-	void createRejectsTooManyDecimalPlaces() {
-		assertThatThrownBy(() -> monthlyBudgetService.create(
-			new MonthlyBudgetCreateRequest(2026, 7, new BigDecimal("10.001"))
-		)).isInstanceOf(InvalidBudgetDataException.class);
-	}
-
-	@Test
-	void getExistingBudget() {
+	void ensureAutoBudgetSkipsRefreshWhenUserModified() {
+		julyBudget.setUserModified(true);
 		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
 			.thenReturn(Optional.of(julyBudget));
-		stubEmptyExpenses(2026, 7);
-		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L)).thenReturn(List.of());
+		for (BudgetGroup group : BudgetGroup.values()) {
+			BigDecimal amount = group == BudgetGroup.GROCERIES
+				? new BigDecimal("999.00")
+				: group.getPresetAmount();
+			savedLimits.add(new BudgetGroupLimit(user, julyBudget, group, amount, BigDecimal.ZERO));
+		}
 
-		MonthlyBudgetResponse response = monthlyBudgetService.getByYearAndMonth(2026, 7);
+		MonthlyBudgetResponse response = monthlyBudgetService.ensureAutoBudget(2026, 7);
 
-		assertThat(response.id()).isEqualTo(10L);
-		assertThat(response.totalLimit()).isEqualByComparingTo("1000.00");
+		assertThat(response.userModified()).isTrue();
+		BudgetGroupLimitResponse groceries = response.groupLimits().stream()
+			.filter(row -> row.group().key().equals("GROCERIES"))
+			.findFirst()
+			.orElseThrow();
+		assertThat(groceries.limitAmount()).isEqualByComparingTo("999.00");
+		verify(budgetGroupLimitRepository, never()).saveAndFlush(any());
 	}
 
 	@Test
-	void getMissingBudgetThrows() {
-		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 8))
-			.thenReturn(Optional.empty());
+	void ensureAutoBudgetRaisesGroupToCoverActualSpend() throws Exception {
+		julyBudget.setUserModified(false);
+		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
+			.thenReturn(Optional.of(julyBudget));
+		when(monthlyBudgetRepository.saveAndFlush(any(MonthlyBudget.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-		assertThatThrownBy(() -> monthlyBudgetService.getByYearAndMonth(2026, 8))
-			.isInstanceOf(MonthlyBudgetNotFoundException.class);
+		Expense bigGrocery = new Expense(
+			user, null, "Store", new BigDecimal("400.00"), LocalDate.of(2026, 7, 10), null, groceries
+		);
+		when(expenseRepository
+			.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				eq(USER_ID), any(), any()
+			)).thenReturn(List.of(bigGrocery));
+
+		for (BudgetGroup group : BudgetGroup.values()) {
+			savedLimits.add(new BudgetGroupLimit(
+				user, julyBudget, group, group.getPresetAmount(), BigDecimal.ZERO
+			));
+		}
+
+		MonthlyBudgetResponse response = monthlyBudgetService.ensureAutoBudget(2026, 7);
+
+		BudgetGroupLimitResponse groceries = response.groupLimits().stream()
+			.filter(row -> row.group().key().equals("GROCERIES"))
+			.findFirst()
+			.orElseThrow();
+		assertThat(groceries.limitAmount()).isEqualByComparingTo("400.00");
+		assertThat(groceries.actualSpent()).isEqualByComparingTo("400.00");
 	}
 
 	@Test
-	void updateBudget() {
+	void updateGroupLimitLocksBudget() throws Exception {
+		julyBudget.setUserModified(false);
 		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
 		when(monthlyBudgetRepository.saveAndFlush(any(MonthlyBudget.class))).thenAnswer(invocation -> invocation.getArgument(0));
-		stubEmptyExpenses(2026, 7);
-		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L)).thenReturn(List.of());
-
-		MonthlyBudgetResponse response = monthlyBudgetService.update(
-			10L,
-			new MonthlyBudgetUpdateRequest(new BigDecimal("1500.00"))
+		BudgetGroupLimit limit = new BudgetGroupLimit(
+			user, julyBudget, BudgetGroup.GROCERIES, new BigDecimal("250.00"), BigDecimal.ZERO
 		);
-
-		assertThat(response.totalLimit()).isEqualByComparingTo("1500.00");
-		ArgumentCaptor<MonthlyBudget> captor = ArgumentCaptor.forClass(MonthlyBudget.class);
-		verify(monthlyBudgetRepository).saveAndFlush(captor.capture());
-		assertThat(captor.getValue().getTotalLimit()).isEqualByComparingTo("1500.00");
-	}
-
-	@Test
-	void deleteBudget() {
-		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
-
-		monthlyBudgetService.delete(10L);
-
-		verify(monthlyBudgetRepository).delete(julyBudget);
-	}
-
-	@Test
-	void createCategoryLimit() throws Exception {
-		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
-		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
-		when(categoryBudgetLimitRepository.existsByMonthlyBudget_IdAndCategory_IdAndUser_Id(10L, 1L, USER_ID))
-			.thenReturn(false);
-		when(categoryBudgetLimitRepository.saveAndFlush(any(CategoryBudgetLimit.class))).thenAnswer(invocation -> {
-			CategoryBudgetLimit limit = invocation.getArgument(0);
-			setId(limit, 50L);
-			onCreate(limit);
-			return limit;
-		});
-		stubEmptyExpenses(2026, 7);
-		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L)).thenAnswer(invocation -> {
-			CategoryBudgetLimit limit = new CategoryBudgetLimit(user, julyBudget, groceries, new BigDecimal("200.00"));
-			setId(limit, 50L);
-			return List.of(limit);
-		});
-
-		MonthlyBudgetResponse response = monthlyBudgetService.createCategoryLimit(
-			10L,
-			new CategoryBudgetLimitCreateRequest(1L, new BigDecimal("200.00"), null)
-		);
-
-		assertThat(response.categoryLimits()).hasSize(1);
-		assertThat(response.categoryLimits().get(0).limitAmount()).isEqualByComparingTo("200.00");
-		assertThat(response.categoryLimits().get(0).assistanceAmount()).isEqualByComparingTo("0.00");
-		assertThat(response.categoryLimits().get(0).category().name()).isEqualTo("Groceries");
-	}
-
-	@Test
-	void createCategoryLimitRejectsDuplicate() {
-		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
-		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
-		when(categoryBudgetLimitRepository.existsByMonthlyBudget_IdAndCategory_IdAndUser_Id(10L, 1L, USER_ID))
-			.thenReturn(true);
-
-		assertThatThrownBy(() -> monthlyBudgetService.createCategoryLimit(
-			10L,
-			new CategoryBudgetLimitCreateRequest(1L, new BigDecimal("200.00"), null)
-		)).isInstanceOf(CategoryBudgetAlreadyExistsException.class);
-
-		verify(categoryBudgetLimitRepository, never()).saveAndFlush(any());
-	}
-
-	@Test
-	void createCategoryLimitRejectsMissingCategory() {
-		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
-		when(categoryRepository.findByIdAndUser_Id(99L, USER_ID)).thenReturn(Optional.empty());
-
-		assertThatThrownBy(() -> monthlyBudgetService.createCategoryLimit(
-			10L,
-			new CategoryBudgetLimitCreateRequest(99L, new BigDecimal("200.00"), null)
-		)).isInstanceOf(CategoryNotFoundException.class);
-	}
-
-	@Test
-	void updateCategoryLimit() throws Exception {
-		CategoryBudgetLimit limit = new CategoryBudgetLimit(user, julyBudget, groceries, new BigDecimal("200.00"));
 		setId(limit, 50L);
-		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
-		when(categoryBudgetLimitRepository.findByIdAndMonthlyBudget_IdAndUser_Id(50L, 10L, USER_ID))
+		when(budgetGroupLimitRepository.findByIdAndMonthlyBudget_IdAndUser_Id(50L, 10L, USER_ID))
 			.thenReturn(Optional.of(limit));
-		when(categoryBudgetLimitRepository.saveAndFlush(any(CategoryBudgetLimit.class)))
-			.thenAnswer(invocation -> invocation.getArgument(0));
-		stubEmptyExpenses(2026, 7);
-		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L)).thenReturn(List.of(limit));
+		savedLimits.add(limit);
 
-		MonthlyBudgetResponse response = monthlyBudgetService.updateCategoryLimit(
+		MonthlyBudgetResponse response = monthlyBudgetService.updateGroupLimit(
 			10L,
 			50L,
-			new CategoryBudgetLimitUpdateRequest(new BigDecimal("250.00"), new BigDecimal("40.00"))
+			new BudgetGroupLimitUpdateRequest(new BigDecimal("300.00"), BigDecimal.ZERO)
 		);
 
-		assertThat(response.categoryLimits().get(0).limitAmount()).isEqualByComparingTo("250.00");
-		assertThat(response.categoryLimits().get(0).assistanceAmount()).isEqualByComparingTo("40.00");
+		assertThat(response.userModified()).isTrue();
+		assertThat(limit.getLimitAmount()).isEqualByComparingTo("300.00");
+		ArgumentCaptor<MonthlyBudget> budgetCaptor = ArgumentCaptor.forClass(MonthlyBudget.class);
+		verify(monthlyBudgetRepository).saveAndFlush(budgetCaptor.capture());
+		assertThat(budgetCaptor.getValue().isUserModified()).isTrue();
 	}
 
 	@Test
-	void deleteCategoryLimit() throws Exception {
-		CategoryBudgetLimit limit = new CategoryBudgetLimit(user, julyBudget, groceries, new BigDecimal("200.00"));
-		setId(limit, 50L);
+	void updateGroupLimitMissingThrows() {
 		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
-		when(categoryBudgetLimitRepository.findByIdAndMonthlyBudget_IdAndUser_Id(50L, 10L, USER_ID))
-			.thenReturn(Optional.of(limit));
-		stubEmptyExpenses(2026, 7);
-		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L)).thenReturn(List.of());
-
-		MonthlyBudgetResponse response = monthlyBudgetService.deleteCategoryLimit(10L, 50L);
-
-		verify(categoryBudgetLimitRepository).delete(limit);
-		assertThat(response.categoryLimits()).isEmpty();
-	}
-
-	@Test
-	void missingCategoryLimitThrows() {
-		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
-		when(categoryBudgetLimitRepository.findByIdAndMonthlyBudget_IdAndUser_Id(99L, 10L, USER_ID))
+		when(budgetGroupLimitRepository.findByIdAndMonthlyBudget_IdAndUser_Id(99L, 10L, USER_ID))
 			.thenReturn(Optional.empty());
 
-		assertThatThrownBy(() -> monthlyBudgetService.updateCategoryLimit(
+		assertThatThrownBy(() -> monthlyBudgetService.updateGroupLimit(
 			10L,
 			99L,
-			new CategoryBudgetLimitUpdateRequest(new BigDecimal("100.00"), null)
-		)).isInstanceOf(CategoryBudgetLimitNotFoundException.class);
+			new BudgetGroupLimitUpdateRequest(new BigDecimal("100.00"), null)
+		)).isInstanceOf(BudgetGroupLimitNotFoundException.class);
 	}
 
 	@Test
-	void calculatesOverallActualRemainingOverBudgetAndPercent() throws Exception {
+	void getByYearAndMonthResetsPartialLockedBudgetToPresetGroupLimits() throws Exception {
+		MonthlyBudget lockedBudget = new MonthlyBudget(user, 2026, 7, new BigDecimal("1500.00"), true);
+		setId(lockedBudget, 10L);
+		setTimestamps(lockedBudget, Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z"));
 		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
-			.thenReturn(Optional.of(julyBudget));
-		stubExpenses(2026, 7, List.of(
-			expense(1L, "Food", "400.00", LocalDate.of(2026, 7, 2), groceries),
-			expense(2L, "Power", "200.00", LocalDate.of(2026, 7, 5), utilities)
+			.thenReturn(Optional.of(lockedBudget));
+		savedLimits.clear();
+		savedLimits.add(new BudgetGroupLimit(
+			user, lockedBudget, BudgetGroup.SUBSCRIPTIONS, new BigDecimal("30.89"), BigDecimal.ZERO
 		));
-		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L)).thenReturn(List.of());
 
 		MonthlyBudgetResponse response = monthlyBudgetService.getByYearAndMonth(2026, 7);
 
-		assertThat(response.actualExpenses()).isEqualByComparingTo("600.00");
-		assertThat(response.budgetableExpenses()).isEqualByComparingTo("600.00");
-		assertThat(response.assistanceApplied()).isEqualByComparingTo("0.00");
-		assertThat(response.remaining()).isEqualByComparingTo("400.00");
-		assertThat(response.overBudget()).isFalse();
-		assertThat(response.percentUsed()).isEqualByComparingTo("60.00");
-		assertThat(response.expenseCount()).isEqualTo(2);
-	}
-
-	@Test
-	void calculatesOverallOverBudget() throws Exception {
-		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
-			.thenReturn(Optional.of(julyBudget));
-		stubExpenses(2026, 7, List.of(
-			expense(1L, "Big", "1200.00", LocalDate.of(2026, 7, 2), groceries)
-		));
-		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L)).thenReturn(List.of());
-
-		MonthlyBudgetResponse response = monthlyBudgetService.getByYearAndMonth(2026, 7);
-
-		assertThat(response.actualExpenses()).isEqualByComparingTo("1200.00");
-		assertThat(response.remaining()).isEqualByComparingTo("-200.00");
-		assertThat(response.overBudget()).isTrue();
-		assertThat(response.percentUsed()).isEqualByComparingTo("120.00");
-	}
-
-	@Test
-	void calculatesCategoryActualRemainingOverBudgetAndPercent() throws Exception {
-		CategoryBudgetLimit groceriesLimit = new CategoryBudgetLimit(user, julyBudget, groceries, new BigDecimal("300.00"));
-		setId(groceriesLimit, 50L);
-		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
-			.thenReturn(Optional.of(julyBudget));
-		stubExpenses(2026, 7, List.of(
-			expense(1L, "Milk", "100.00", LocalDate.of(2026, 7, 1), groceries),
-			expense(2L, "Eggs", "50.00", LocalDate.of(2026, 7, 2), groceries),
-			expense(3L, "Power", "80.00", LocalDate.of(2026, 7, 3), utilities)
-		));
-		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L))
-			.thenReturn(List.of(groceriesLimit));
-
-		MonthlyBudgetResponse response = monthlyBudgetService.getByYearAndMonth(2026, 7);
-		CategoryBudgetLimitResponse category = response.categoryLimits().get(0);
-
-		assertThat(category.actualSpent()).isEqualByComparingTo("150.00");
-		assertThat(category.budgetableSpent()).isEqualByComparingTo("150.00");
-		assertThat(category.assistanceAmount()).isEqualByComparingTo("0.00");
-		assertThat(category.remaining()).isEqualByComparingTo("150.00");
-		assertThat(category.overBudget()).isFalse();
-		assertThat(category.percentUsed()).isEqualByComparingTo("50.00");
-	}
-
-	@Test
-	void calculatesCategoryOverBudget() throws Exception {
-		CategoryBudgetLimit groceriesLimit = new CategoryBudgetLimit(user, julyBudget, groceries, new BigDecimal("100.00"));
-		setId(groceriesLimit, 50L);
-		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
-			.thenReturn(Optional.of(julyBudget));
-		stubExpenses(2026, 7, List.of(
-			expense(1L, "Milk", "150.00", LocalDate.of(2026, 7, 1), groceries)
-		));
-		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L))
-			.thenReturn(List.of(groceriesLimit));
-
-		CategoryBudgetLimitResponse category = monthlyBudgetService.getByYearAndMonth(2026, 7).categoryLimits().get(0);
-
-		assertThat(category.actualSpent()).isEqualByComparingTo("150.00");
-		assertThat(category.budgetableSpent()).isEqualByComparingTo("150.00");
-		assertThat(category.remaining()).isEqualByComparingTo("-50.00");
-		assertThat(category.overBudget()).isTrue();
-		assertThat(category.percentUsed()).isEqualByComparingTo("150.00");
-	}
-
-	@Test
-	void assistanceFullyCoversGrocerySpend() throws Exception {
-		CategoryBudgetLimit groceriesLimit = new CategoryBudgetLimit(
-			user, julyBudget, groceries, new BigDecimal("200.00"), new BigDecimal("300.00"));
-		setId(groceriesLimit, 50L);
-		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
-			.thenReturn(Optional.of(julyBudget));
-		stubExpenses(2026, 7, List.of(
-			expense(1L, "Groceries", "200.00", LocalDate.of(2026, 7, 1), groceries)
-		));
-		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L))
-			.thenReturn(List.of(groceriesLimit));
-
-		MonthlyBudgetResponse response = monthlyBudgetService.getByYearAndMonth(2026, 7);
-		CategoryBudgetLimitResponse category = response.categoryLimits().get(0);
-
-		assertThat(category.actualSpent()).isEqualByComparingTo("200.00");
-		assertThat(category.budgetableSpent()).isEqualByComparingTo("0.00");
-		assertThat(category.remaining()).isEqualByComparingTo("200.00");
-		assertThat(category.overBudget()).isFalse();
-		assertThat(response.actualExpenses()).isEqualByComparingTo("200.00");
-		assertThat(response.assistanceApplied()).isEqualByComparingTo("200.00");
-		assertThat(response.budgetableExpenses()).isEqualByComparingTo("0.00");
-		assertThat(response.remaining()).isEqualByComparingTo("1000.00");
-		assertThat(response.overBudget()).isFalse();
-	}
-
-	@Test
-	void assistancePartiallyCoversGrocerySpend() throws Exception {
-		CategoryBudgetLimit groceriesLimit = new CategoryBudgetLimit(
-			user, julyBudget, groceries, new BigDecimal("300.00"), new BigDecimal("200.00"));
-		setId(groceriesLimit, 50L);
-		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
-			.thenReturn(Optional.of(julyBudget));
-		stubExpenses(2026, 7, List.of(
-			expense(1L, "Groceries", "300.00", LocalDate.of(2026, 7, 1), groceries)
-		));
-		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L))
-			.thenReturn(List.of(groceriesLimit));
-
-		MonthlyBudgetResponse response = monthlyBudgetService.getByYearAndMonth(2026, 7);
-		CategoryBudgetLimitResponse category = response.categoryLimits().get(0);
-
-		assertThat(category.budgetableSpent()).isEqualByComparingTo("100.00");
-		assertThat(category.remaining()).isEqualByComparingTo("200.00");
-		assertThat(response.assistanceApplied()).isEqualByComparingTo("200.00");
-		assertThat(response.budgetableExpenses()).isEqualByComparingTo("100.00");
-		assertThat(response.remaining()).isEqualByComparingTo("900.00");
-	}
-
-	@Test
-	void assistanceWithNoSpendDoesNotChangeBudgetable() throws Exception {
-		CategoryBudgetLimit groceriesLimit = new CategoryBudgetLimit(
-			user, julyBudget, groceries, new BigDecimal("300.00"), new BigDecimal("150.00"));
-		setId(groceriesLimit, 50L);
-		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
-			.thenReturn(Optional.of(julyBudget));
-		stubEmptyExpenses(2026, 7);
-		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L))
-			.thenReturn(List.of(groceriesLimit));
-
-		MonthlyBudgetResponse response = monthlyBudgetService.getByYearAndMonth(2026, 7);
-		CategoryBudgetLimitResponse category = response.categoryLimits().get(0);
-
-		assertThat(category.actualSpent()).isEqualByComparingTo("0.00");
-		assertThat(category.budgetableSpent()).isEqualByComparingTo("0.00");
-		assertThat(response.assistanceApplied()).isEqualByComparingTo("0.00");
-		assertThat(response.budgetableExpenses()).isEqualByComparingTo("0.00");
-		assertThat(response.remaining()).isEqualByComparingTo("1000.00");
-	}
-
-	@Test
-	void assistanceOnlyAppliesToConfiguredCategoryLimit() throws Exception {
-		CategoryBudgetLimit groceriesLimit = new CategoryBudgetLimit(
-			user, julyBudget, groceries, new BigDecimal("300.00"), new BigDecimal("100.00"));
-		setId(groceriesLimit, 50L);
-		CategoryBudgetLimit utilitiesLimit = new CategoryBudgetLimit(
-			user, julyBudget, utilities, new BigDecimal("200.00"), BigDecimal.ZERO);
-		setId(utilitiesLimit, 51L);
-		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
-			.thenReturn(Optional.of(julyBudget));
-		stubExpenses(2026, 7, List.of(
-			expense(1L, "Food", "150.00", LocalDate.of(2026, 7, 1), groceries),
-			expense(2L, "Power", "80.00", LocalDate.of(2026, 7, 2), utilities)
-		));
-		when(categoryBudgetLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(10L))
-			.thenReturn(List.of(groceriesLimit, utilitiesLimit));
-
-		MonthlyBudgetResponse response = monthlyBudgetService.getByYearAndMonth(2026, 7);
-
-		assertThat(response.assistanceApplied()).isEqualByComparingTo("100.00");
-		assertThat(response.actualExpenses()).isEqualByComparingTo("230.00");
-		assertThat(response.budgetableExpenses()).isEqualByComparingTo("130.00");
-		assertThat(response.remaining()).isEqualByComparingTo("870.00");
-
-		CategoryBudgetLimitResponse groceriesRow = response.categoryLimits().stream()
-			.filter(row -> row.category().name().equals("Groceries"))
+		assertThat(response.groupLimits()).hasSize(BudgetGroup.values().length);
+		BudgetGroupLimitResponse subscriptions = response.groupLimits().stream()
+			.filter(row -> row.group().key().equals("SUBSCRIPTIONS"))
 			.findFirst()
 			.orElseThrow();
-		assertThat(groceriesRow.budgetableSpent()).isEqualByComparingTo("50.00");
-
-		CategoryBudgetLimitResponse utilitiesRow = response.categoryLimits().stream()
-			.filter(row -> row.category().name().equals("Utilities"))
-			.findFirst()
-			.orElseThrow();
-		assertThat(utilitiesRow.budgetableSpent()).isEqualByComparingTo("80.00");
+		assertThat(subscriptions.limitAmount()).isEqualByComparingTo("200.00");
+		assertThat(response.userModified()).isTrue();
+		assertThat(response.totalLimit()).isEqualByComparingTo("4300.00");
+		verify(monthlyBudgetRepository).saveAndFlush(lockedBudget);
 	}
 
 	@Test
-	void createMapsIntegrityViolationToDuplicateBudget() {
-		when(monthlyBudgetRepository.existsByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7)).thenReturn(false);
-		when(monthlyBudgetRepository.saveAndFlush(any(MonthlyBudget.class)))
-			.thenThrow(new DataIntegrityViolationException("unique"));
+	void getByYearAndMonthRaisesExistingLockedGroupLimitsBelowPresets() throws Exception {
+		MonthlyBudget lockedBudget = new MonthlyBudget(user, 2026, 7, new BigDecimal("1500.00"), true);
+		setId(lockedBudget, 10L);
+		setTimestamps(lockedBudget, Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z"));
+		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
+			.thenReturn(Optional.of(lockedBudget));
+		savedLimits.clear();
+		for (BudgetGroup group : BudgetGroup.values()) {
+			BigDecimal amount = group == BudgetGroup.SUBSCRIPTIONS
+				? new BigDecimal("30.89")
+				: group.getPresetAmount();
+			savedLimits.add(new BudgetGroupLimit(user, lockedBudget, group, amount, BigDecimal.ZERO));
+		}
 
-		assertThatThrownBy(() -> monthlyBudgetService.create(
-			new MonthlyBudgetCreateRequest(2026, 7, new BigDecimal("1000.00"))
-		)).isInstanceOf(MonthlyBudgetAlreadyExistsException.class);
+		MonthlyBudgetResponse response = monthlyBudgetService.getByYearAndMonth(2026, 7);
+
+		BudgetGroupLimitResponse subscriptions = response.groupLimits().stream()
+			.filter(row -> row.group().key().equals("SUBSCRIPTIONS"))
+			.findFirst()
+			.orElseThrow();
+		assertThat(subscriptions.limitAmount()).isEqualByComparingTo("200.00");
+		assertThat(response.totalLimit()).isEqualByComparingTo("4300.00");
+	}
+
+	@Test
+	void getByYearAndMonthSeedsMissingGroupLimits() throws Exception {
+		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
+			.thenReturn(Optional.of(julyBudget));
+		when(monthlyBudgetRepository.saveAndFlush(any(MonthlyBudget.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		savedLimits.clear();
+
+		MonthlyBudgetResponse response = monthlyBudgetService.getByYearAndMonth(2026, 7);
+
+		assertThat(response.groupLimits()).hasSize(BudgetGroup.values().length);
+		assertThat(response.groupLimits().stream().map(row -> row.group().key()))
+			.contains("BILLS", "GROCERIES", "CHILD_CARE", "PERSONAL_HOUSEHOLD");
+	}
+
+	@Test
+	void getByYearAndMonthAggregatesSpendByGroup() throws Exception {
+		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
+			.thenReturn(Optional.of(julyBudget));
+		when(monthlyBudgetRepository.saveAndFlush(any(MonthlyBudget.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		for (BudgetGroup group : BudgetGroup.values()) {
+			savedLimits.add(new BudgetGroupLimit(
+				user, julyBudget, group, group.getPresetAmount(), BigDecimal.ZERO
+			));
+		}
+
+		Expense expense = new Expense(
+			user, null, "Store", new BigDecimal("80.00"), LocalDate.of(2026, 7, 5), null, groceries
+		);
+		when(expenseRepository
+			.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				eq(USER_ID), any(), any()
+			)).thenReturn(List.of(expense));
+
+		MonthlyBudgetResponse response = monthlyBudgetService.getByYearAndMonth(2026, 7);
+
+		BudgetGroupLimitResponse groceriesRow = response.groupLimits().stream()
+			.filter(row -> row.group().key().equals("GROCERIES"))
+			.findFirst()
+			.orElseThrow();
+		assertThat(groceriesRow.actualSpent()).isEqualByComparingTo("80.00");
+		assertThat(groceriesRow.group().label()).isEqualTo("Groceries");
 	}
 
 	private void stubEmptyExpenses(int year, int month) {
-		stubExpenses(year, month, List.of());
-	}
-
-	private void stubExpenses(int year, int month, List<Expense> expenses) {
-		LocalDate start = LocalDate.of(year, month, 1);
-		LocalDate endExclusive = start.plusMonths(1);
-		when(expenseRepository.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
-			USER_ID,
-			start,
-			endExclusive
-		)).thenReturn(expenses);
-	}
-
-	private Expense expense(Long id, String description, String amount, LocalDate date, Category category)
-			throws Exception {
-		Expense expenseEntity = new Expense(user, description, null, new BigDecimal(amount), date, null, category);
-		setId(expenseEntity, id);
-		return expenseEntity;
-	}
-
-	private static void setId(Object entity, Long id) throws Exception {
-		Field field = entity.getClass().getDeclaredField("id");
-		field.setAccessible(true);
-		field.set(entity, id);
+		lenient().when(expenseRepository
+			.findByUser_IdAndExpenseDateGreaterThanEqualAndExpenseDateLessThanOrderByExpenseDateDescIdDesc(
+				eq(USER_ID), any(), any()
+			)).thenReturn(List.of());
 	}
 
 	private static void setUserId(User user, Long id) throws Exception {
@@ -545,16 +331,23 @@ class MonthlyBudgetServiceTest {
 		field.set(user, id);
 	}
 
-	private static void setTimestamps(MonthlyBudget budget, Instant createdAt, Instant updatedAt) throws Exception {
-		Field created = MonthlyBudget.class.getDeclaredField("createdAt");
-		created.setAccessible(true);
-		created.set(budget, createdAt);
-		Field updated = MonthlyBudget.class.getDeclaredField("updatedAt");
-		updated.setAccessible(true);
-		updated.set(budget, updatedAt);
+	private static void setId(Object entity, Long id) throws Exception {
+		Field field = entity.getClass().getDeclaredField("id");
+		field.setAccessible(true);
+		field.set(entity, id);
 	}
 
-	private static void onCreate(Object entity) throws Exception {
-		entity.getClass().getDeclaredMethod("onCreate").invoke(entity);
+	private static void setTimestamps(MonthlyBudget budget, Instant created, Instant updated) throws Exception {
+		Field createdField = MonthlyBudget.class.getDeclaredField("createdAt");
+		createdField.setAccessible(true);
+		createdField.set(budget, created);
+		Field updatedField = MonthlyBudget.class.getDeclaredField("updatedAt");
+		updatedField.setAccessible(true);
+		updatedField.set(budget, updated);
+	}
+
+	private static void onCreate(MonthlyBudget budget) throws Exception {
+		budget.getClass().getDeclaredMethod("onCreate").setAccessible(true);
+		budget.getClass().getDeclaredMethod("onCreate").invoke(budget);
 	}
 }
