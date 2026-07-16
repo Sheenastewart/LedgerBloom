@@ -244,7 +244,7 @@ export function RecurringIncomeForm({
   }
 
   return (
-    <form className="entity-form" onSubmit={handleSubmit} noValidate>
+    <form className="entity-form" onSubmit={handleSubmit} noValidate autoComplete="off">
       {merged.form ? (
         <p className="form-error" role="alert">
           {merged.form}
@@ -257,6 +257,7 @@ export function RecurringIncomeForm({
           id="recurring-income-description"
           value={values.description}
           disabled={submitting}
+          autoComplete="off"
           aria-invalid={merged.description ? true : undefined}
           aria-describedby={merged.description ? 'recurring-income-description-error' : undefined}
           onChange={(event) =>
@@ -276,6 +277,7 @@ export function RecurringIncomeForm({
           id="recurring-income-source"
           value={values.source}
           disabled={submitting}
+          autoComplete="off"
           aria-invalid={merged.source ? true : undefined}
           aria-describedby={merged.source ? 'recurring-income-source-error' : undefined}
           onChange={(event) => setValues((current) => ({ ...current, source: event.target.value }))}
@@ -426,38 +428,40 @@ export function RecurringIncomeForm({
       </div>
 
       {pastDateChosen ? (
-        <fieldset className="field history-choice">
+        <fieldset className="history-choice">
           <legend>How should we handle past occurrences?</legend>
-          <label className="history-choice-option">
-            <input
-              type="radio"
-              name="recurring-income-history-mode"
-              value="TRACK_FROM_NOW"
-              checked={values.historyMode === 'TRACK_FROM_NOW'}
-              disabled={submitting}
-              onChange={() =>
-                setValues((current) => ({
-                  ...current,
-                  historyMode: 'TRACK_FROM_NOW',
-                  selectedOccurrenceDates: [],
-                }))
-              }
-            />
-            Track from now on
-          </label>
-          <label className="history-choice-option">
-            <input
-              type="radio"
-              name="recurring-income-history-mode"
-              value="RECORD_SELECTED"
-              checked={values.historyMode === 'RECORD_SELECTED'}
-              disabled={submitting}
-              onChange={() =>
-                setValues((current) => ({ ...current, historyMode: 'RECORD_SELECTED' }))
-              }
-            />
-            Review and record past occurrences
-          </label>
+          <div className="history-choice-options">
+            <label className="history-choice-option">
+              <input
+                type="radio"
+                name="recurring-income-history-mode"
+                value="TRACK_FROM_NOW"
+                checked={values.historyMode === 'TRACK_FROM_NOW'}
+                disabled={submitting}
+                onChange={() =>
+                  setValues((current) => ({
+                    ...current,
+                    historyMode: 'TRACK_FROM_NOW',
+                    selectedOccurrenceDates: [],
+                  }))
+                }
+              />
+              Track from now on
+            </label>
+            <label className="history-choice-option">
+              <input
+                type="radio"
+                name="recurring-income-history-mode"
+                value="RECORD_SELECTED"
+                checked={values.historyMode === 'RECORD_SELECTED'}
+                disabled={submitting}
+                onChange={() =>
+                  setValues((current) => ({ ...current, historyMode: 'RECORD_SELECTED' }))
+                }
+              />
+              Review and record past occurrences
+            </label>
+          </div>
           {merged.historyMode ? (
             <p className="field-error" role="alert">
               {merged.historyMode}
@@ -525,9 +529,11 @@ export function RecurringIncomeForm({
         <label htmlFor="recurring-income-notes">Notes</label>
         <textarea
           id="recurring-income-notes"
+          name="recurringIncomeNotes"
           value={values.notes}
           disabled={submitting}
           rows={3}
+          autoComplete="off"
           onChange={(event) => setValues((current) => ({ ...current, notes: event.target.value }))}
         />
       </div>

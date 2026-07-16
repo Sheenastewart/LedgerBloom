@@ -1,10 +1,17 @@
 package com.ledgerbloom.income;
 
 import com.ledgerbloom.auth.CurrentUser;
+import com.ledgerbloom.recurring.support.CadenceKind;
+import com.ledgerbloom.recurring.support.CadenceScheduleMath;
+import com.ledgerbloom.recurringincome.RecurringIncomeOccurrenceRecord;
+import com.ledgerbloom.recurringincome.RecurringIncomeOccurrenceRecordRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,10 +22,15 @@ public class IncomeEntryService {
 	private static final BigDecimal MAX_AMOUNT = new BigDecimal("9999999999.99");
 
 	private final IncomeEntryRepository incomeEntryRepository;
+	private final RecurringIncomeOccurrenceRecordRepository occurrenceRecordRepository;
 	private final CurrentUser currentUser;
 
-	public IncomeEntryService(IncomeEntryRepository incomeEntryRepository, CurrentUser currentUser) {
+	public IncomeEntryService(
+			IncomeEntryRepository incomeEntryRepository,
+			RecurringIncomeOccurrenceRecordRepository occurrenceRecordRepository,
+			CurrentUser currentUser) {
 		this.incomeEntryRepository = incomeEntryRepository;
+		this.occurrenceRecordRepository = occurrenceRecordRepository;
 		this.currentUser = currentUser;
 	}
 
@@ -61,12 +73,22 @@ public class IncomeEntryService {
 			entries = incomeEntryRepository.findByUser_IdOrderByIncomeDateDescIdDesc(userId);
 		}
 
-		return entries.stream().map(this::toResponse).toList();
+		Map<Long, RecurringIncomeOccurrenceRecord> occurrenceRecordsByEntryId =
+			loadOccurrenceRecordsByEntryId(userId, entries);
+
+		return entries.stream()
+			.map(entry -> toResponse(entry, occurrenceRecordsByEntryId.get(entry.getId())))
+			.toList();
 	}
 
 	@Transactional(readOnly = true)
 	public IncomeEntryResponse findById(Long id) {
-		return toResponse(getEntryOrThrow(id, currentUser.requireUserId()));
+		Long userId = currentUser.requireUserId();
+		IncomeEntry entry = getEntryOrThrow(id, userId);
+		RecurringIncomeOccurrenceRecord occurrenceRecord = occurrenceRecordRepository
+			.findByIncomeEntry_IdAndRecurringIncome_User_Id(id, userId)
+			.orElse(null);
+		return toResponse(entry, occurrenceRecord);
 	}
 
 	public IncomeEntryResponse create(IncomeEntryCreateRequest request) {
@@ -85,7 +107,7 @@ public class IncomeEntryService {
 			data.incomeDate(),
 			data.notes()
 		);
-		return toResponse(incomeEntryRepository.saveAndFlush(entry));
+		return toResponse(incomeEntryRepository.saveAndFlush(entry), null);
 	}
 
 	public IncomeEntryResponse update(Long id, IncomeEntryUpdateRequest request) {
@@ -102,7 +124,7 @@ public class IncomeEntryService {
 		entry.setAmount(data.amount());
 		entry.setIncomeDate(data.incomeDate());
 		entry.setNotes(data.notes());
-		return toResponse(incomeEntryRepository.saveAndFlush(entry));
+		return toResponse(incomeEntryRepository.saveAndFlush(entry), null);
 	}
 
 	public void delete(Long id) {
@@ -200,7 +222,33 @@ public class IncomeEntryService {
 		}
 	}
 
-	private IncomeEntryResponse toResponse(IncomeEntry entry) {
+	private Map<Long, RecurringIncomeOccurrenceRecord> loadOccurrenceRecordsByEntryId(
+			Long userId,
+			List<IncomeEntry> entries) {
+		if (entries.isEmpty()) {
+			return Map.of();
+		}
+		List<Long> entryIds = entries.stream().map(IncomeEntry::getId).toList();
+		return occurrenceRecordRepository.findByIncomeEntryIdsForUser(entryIds, userId).stream()
+			.collect(Collectors.toMap(record -> record.getIncomeEntry().getId(), Function.identity()));
+	}
+
+	private IncomeEntryResponse toResponse(IncomeEntry entry, RecurringIncomeOccurrenceRecord occurrenceRecord) {
+		Long recurringIncomeId = null;
+		Boolean canUndoReceived = null;
+		if (occurrenceRecord != null) {
+			var recurringIncome = occurrenceRecord.getRecurringIncome();
+			recurringIncomeId = recurringIncome.getId();
+			LocalDate occurrenceDate = occurrenceRecord.getOccurrenceDate();
+			CadenceKind cadenceKind = CadenceKind.fromIncome(recurringIncome.getCadence());
+			LocalDate expectedNext = CadenceScheduleMath.advance(
+				occurrenceDate,
+				cadenceKind,
+				recurringIncome.getFirstPaymentDay(),
+				recurringIncome.getSecondPaymentDay());
+			canUndoReceived = recurringIncome.getNextIncomeDate().equals(expectedNext);
+		}
+
 		return new IncomeEntryResponse(
 			entry.getId(),
 			entry.getDescription(),
@@ -209,7 +257,9 @@ public class IncomeEntryService {
 			entry.getIncomeDate(),
 			entry.getNotes(),
 			entry.getCreatedAt(),
-			entry.getUpdatedAt()
+			entry.getUpdatedAt(),
+			recurringIncomeId,
+			canUndoReceived
 		);
 	}
 

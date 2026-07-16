@@ -1,5 +1,5 @@
 import { ApiClientError, requestJson } from '../../../api/apiClient'
-import type { IncomeEntry, IncomeFilters, IncomeWriteRequest } from '../types'
+import type { IncomeEntry, IncomeFilters, IncomeWriteRequest, UndoReceivedResult } from '../types'
 
 function buildIncomeQuery(filters: IncomeFilters): string {
   const params = new URLSearchParams()
@@ -50,6 +50,12 @@ export async function updateIncomeEntry(
 
 export async function deleteIncomeEntry(id: number): Promise<void> {
   await requestJson<void>(`/api/income/${id}`, { method: 'DELETE' })
+}
+
+export async function undoReceivedIncomeEntry(id: number): Promise<UndoReceivedResult> {
+  return requestJson<UndoReceivedResult>(`/api/income/${id}/undo-received`, {
+    method: 'POST',
+  })
 }
 
 export { ApiClientError }

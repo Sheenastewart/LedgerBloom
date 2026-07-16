@@ -4,7 +4,7 @@ import { isAbortError } from '../../../api/ApiClientError'
 import { HowThisWorks } from '../../../components/HowThisWorks'
 import { HelpLink } from '../../guidance/HelpLink'
 import { RecurringIncomePanel } from '../../recurringIncome/components/RecurringIncomePanel'
-import { deleteIncomeEntry, getIncomeEntries } from '../api/incomeApi'
+import { deleteIncomeEntry, getIncomeEntries, undoReceivedIncomeEntry } from '../api/incomeApi'
 import { IncomeFilters } from '../components/IncomeFilters'
 import { IncomeList } from '../components/IncomeList'
 import type { IncomeEntry, IncomeFilters as IncomeFilterValues } from '../types'
@@ -33,6 +33,7 @@ export function IncomePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deletingIncomeId, setDeletingIncomeId] = useState<number | null>(null)
+  const [undoingIncomeId, setUndoingIncomeId] = useState<number | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -85,6 +86,35 @@ export function IncomePage() {
   function handleClearFilters() {
     setAppliedFilters({})
     void loadPage({})
+  }
+
+  async function handleUndoReceived(entry: IncomeEntry) {
+    const confirmed = window.confirm(
+      `Undo receiving "${entry.description}" on ${entry.incomeDate}? This removes the income entry and restores the recurring schedule when possible.`,
+    )
+    if (!confirmed) {
+      return
+    }
+
+    setDeleteError(null)
+    setUndoingIncomeId(entry.id)
+    try {
+      const result = await undoReceivedIncomeEntry(entry.id)
+      await loadPage(appliedFilters)
+      if (result.scheduleRestored) {
+        setSuccessMessage(
+          `Undid receive for "${entry.description}". Next scheduled date is ${result.nextIncomeDate}.`,
+        )
+      } else {
+        setSuccessMessage(
+          `Removed "${entry.description}" from received income. Review the recurring schedule if needed.`,
+        )
+      }
+    } catch {
+      setDeleteError(`Could not undo receive for "${entry.description}". Please try again.`)
+    } finally {
+      setUndoingIncomeId(null)
+    }
   }
 
   async function handleDelete(entry: IncomeEntry) {
@@ -230,7 +260,9 @@ export function IncomePage() {
             <IncomeList
               entries={entries}
               deletingIncomeId={deletingIncomeId}
+              undoingIncomeId={undoingIncomeId}
               onDelete={(item) => void handleDelete(item)}
+              onUndoReceived={(item) => void handleUndoReceived(item)}
             />
           ) : null}
         </div>

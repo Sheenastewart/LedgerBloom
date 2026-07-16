@@ -10,6 +10,7 @@ import { IncomePage } from './IncomePage'
 vi.mock('../api/incomeApi', () => ({
   getIncomeEntries: vi.fn(),
   deleteIncomeEntry: vi.fn(),
+  undoReceivedIncomeEntry: vi.fn(),
 }))
 
 vi.mock('../../recurringIncome/api/recurringIncomeApi', () => ({
@@ -31,6 +32,20 @@ const sampleEntries = [
     notes: 'july',
     createdAt: '2026-07-15T20:04:25.859404Z',
     updatedAt: '2026-07-15T20:04:25.859404Z',
+    recurringIncomeId: null,
+    canUndoReceived: null,
+  },
+  {
+    id: 2,
+    description: 'Salary',
+    source: 'Employer',
+    amount: 5000,
+    incomeDate: '2026-07-15',
+    notes: 'Received from recurring income #10',
+    createdAt: '2026-07-15T20:04:25.859404Z',
+    updatedAt: '2026-07-15T20:04:25.859404Z',
+    recurringIncomeId: 10,
+    canUndoReceived: true,
   },
 ]
 
@@ -68,6 +83,7 @@ describe('IncomePage', () => {
   beforeEach(() => {
     vi.mocked(incomeApi.getIncomeEntries).mockReset()
     vi.mocked(incomeApi.deleteIncomeEntry).mockReset()
+    vi.mocked(incomeApi.undoReceivedIncomeEntry).mockReset()
     vi.mocked(recurringIncomeApi.getRecurringIncome).mockResolvedValue([])
     vi.mocked(recurringIncomeApi.getUpcomingRecurringIncome).mockResolvedValue([])
   })
@@ -152,5 +168,36 @@ describe('IncomePage', () => {
     await waitFor(() => {
       expect(incomeApi.getIncomeEntries).toHaveBeenCalled()
     })
+  })
+
+  it('shows undo receive only for recurring-linked entries', async () => {
+    vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue(sampleEntries)
+    renderPage()
+
+    await screen.findByRole('heading', { name: 'Salary' })
+    expect(screen.getByRole('button', { name: 'Undo receive' })).toBeInTheDocument()
+    expect(screen.queryAllByRole('button', { name: 'Undo receive' })).toHaveLength(1)
+  })
+
+  it('undoes a recurring receive after confirmation', async () => {
+    const user = userEvent.setup()
+    vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue(sampleEntries)
+    vi.mocked(incomeApi.undoReceivedIncomeEntry).mockResolvedValue({
+      removedIncomeEntryId: 2,
+      occurrenceDate: '2026-07-15',
+      scheduleRestored: true,
+      nextIncomeDate: '2026-07-15',
+      recurringIncomeId: 10,
+    })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderPage()
+
+    await screen.findByRole('heading', { name: 'Salary' })
+    await user.click(screen.getByRole('button', { name: 'Undo receive' }))
+
+    await waitFor(() => {
+      expect(incomeApi.undoReceivedIncomeEntry).toHaveBeenCalledWith(2)
+    })
+    expect(await screen.findByRole('status')).toHaveTextContent(/Undid receive for "Salary"/i)
   })
 })

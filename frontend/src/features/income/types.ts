@@ -7,6 +7,16 @@ export type IncomeEntry = {
   notes: string | null
   createdAt: string
   updatedAt: string
+  recurringIncomeId: number | null
+  canUndoReceived: boolean | null
+}
+
+export type UndoReceivedResult = {
+  removedIncomeEntryId: number
+  occurrenceDate: string
+  scheduleRestored: boolean
+  nextIncomeDate: string
+  recurringIncomeId: number
 }
 
 export type IncomeWriteRequest = {

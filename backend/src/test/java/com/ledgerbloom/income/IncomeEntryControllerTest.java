@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ledgerbloom.error.GlobalExceptionHandler;
+import com.ledgerbloom.recurringincome.RecurringIncomeService;
 import com.ledgerbloom.support.SecurityTestConfig;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -43,6 +44,9 @@ class IncomeEntryControllerTest {
 	@MockitoBean
 	private IncomeEntryService incomeEntryService;
 
+	@MockitoBean
+	private RecurringIncomeService recurringIncomeService;
+
 	private IncomeEntryResponse sampleResponse() {
 		return new IncomeEntryResponse(
 			5L,
@@ -52,7 +56,9 @@ class IncomeEntryControllerTest {
 			LocalDate.of(2026, 7, 10),
 			null,
 			Instant.parse("2026-01-01T00:00:00Z"),
-			Instant.parse("2026-01-01T00:00:00Z")
+			Instant.parse("2026-01-01T00:00:00Z"),
+			null,
+			null
 		);
 	}
 
@@ -266,5 +272,19 @@ class IncomeEntryControllerTest {
 			.andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"))
 			.andExpect(jsonPath("$.message").value("An unexpected error occurred"))
 			.andExpect(jsonPath("$.path").value("/api/income"));
+	}
+
+	@Test
+	void undoReceivedReturnsSummary() throws Exception {
+		when(recurringIncomeService.undoReceivedForIncomeEntry(5L)).thenReturn(
+			new UndoReceivedResponse(5L, LocalDate.of(2026, 7, 15), true, LocalDate.of(2026, 7, 15), 10L)
+		);
+
+		mockMvc.perform(post("/api/income/5/undo-received").with(csrf()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.removedIncomeEntryId").value(5))
+			.andExpect(jsonPath("$.scheduleRestored").value(true))
+			.andExpect(jsonPath("$.nextIncomeDate").value("2026-07-15"))
+			.andExpect(jsonPath("$.recurringIncomeId").value(10));
 	}
 }

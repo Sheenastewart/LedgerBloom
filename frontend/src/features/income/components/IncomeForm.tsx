@@ -88,7 +88,7 @@ export function IncomeForm({
   }
 
   return (
-    <form className="income-form" onSubmit={(event) => void handleSubmit(event)} noValidate>
+    <form className="income-form" onSubmit={(event) => void handleSubmit(event)} noValidate autoComplete="off">
       <h1>{mode === 'create' ? 'Add income' : 'Edit income'}</h1>
 
       {formError ? (
@@ -200,9 +200,10 @@ export function IncomeForm({
         <label htmlFor="income-notes">Notes</label>
         <textarea
           id="income-notes"
-          name="notes"
+          name="incomeNotes"
           rows={4}
           value={values.notes}
+          autoComplete="off"
           onChange={(event) => setValues((current) => ({ ...current, notes: event.target.value }))}
           aria-invalid={notesError ? true : undefined}
           aria-describedby={notesError ? 'income-notes-error' : 'income-notes-hint'}

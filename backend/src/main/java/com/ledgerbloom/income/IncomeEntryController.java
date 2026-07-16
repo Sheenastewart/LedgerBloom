@@ -1,5 +1,6 @@
 package com.ledgerbloom.income;
 
+import com.ledgerbloom.recurringincome.RecurringIncomeService;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -22,9 +23,13 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 public class IncomeEntryController {
 
 	private final IncomeEntryService incomeEntryService;
+	private final RecurringIncomeService recurringIncomeService;
 
-	public IncomeEntryController(IncomeEntryService incomeEntryService) {
+	public IncomeEntryController(
+			IncomeEntryService incomeEntryService,
+			RecurringIncomeService recurringIncomeService) {
 		this.incomeEntryService = incomeEntryService;
+		this.recurringIncomeService = recurringIncomeService;
 	}
 
 	@GetMapping
@@ -61,5 +66,10 @@ public class IncomeEntryController {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void delete(@PathVariable Long id) {
 		incomeEntryService.delete(id);
+	}
+
+	@PostMapping("/{id}/undo-received")
+	public UndoReceivedResponse undoReceived(@PathVariable Long id) {
+		return recurringIncomeService.undoReceivedForIncomeEntry(id);
 	}
 }

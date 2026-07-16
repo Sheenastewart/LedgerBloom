@@ -14,10 +14,12 @@ import static org.mockito.Mockito.when;
 import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.income.IncomeEntry;
 import com.ledgerbloom.income.IncomeEntryCreateRequest;
+import com.ledgerbloom.income.IncomeEntryNotLinkedToRecurringIncomeException;
 import com.ledgerbloom.income.IncomeEntryRepository;
 import com.ledgerbloom.income.IncomeEntryResponse;
 import com.ledgerbloom.income.IncomeEntryService;
 import com.ledgerbloom.income.InvalidIncomeDataException;
+import com.ledgerbloom.income.UndoReceivedResponse;
 import com.ledgerbloom.recurring.support.CadenceKind;
 import com.ledgerbloom.recurring.support.CadenceScheduleMath;
 import com.ledgerbloom.recurring.support.CatchUpRequest;
@@ -425,7 +427,7 @@ class RecurringIncomeServiceTest {
 			IncomeEntryCreateRequest req = invocation.getArgument(0);
 			return new IncomeEntryResponse(
 				77L, req.description(), req.source(), req.amount(), req.incomeDate(), req.notes(),
-				Instant.now(), Instant.now()
+				Instant.now(), Instant.now(), null, null
 			);
 		});
 		when(incomeEntryRepository.getReferenceById(anyLong())).thenReturn(mock(IncomeEntry.class));
@@ -495,7 +497,7 @@ class RecurringIncomeServiceTest {
 			IncomeEntryCreateRequest req = invocation.getArgument(0);
 			return new IncomeEntryResponse(
 				99L, req.description(), req.source(), req.amount(), req.incomeDate(), req.notes(),
-				Instant.now(), Instant.now()
+				Instant.now(), Instant.now(), null, null
 			);
 		});
 		when(incomeEntryRepository.getReferenceById(anyLong())).thenReturn(mock(IncomeEntry.class));
@@ -565,6 +567,70 @@ class RecurringIncomeServiceTest {
 		assertThatThrownBy(() -> recurringIncomeService.catchUp(10L, new CatchUpRequest(List.of(today.plusDays(30)))))
 			.isInstanceOf(InvalidRecurringIncomeDataException.class);
 		verify(incomeEntryService, never()).create(any());
+	}
+
+	@Test
+	void undoReceivedForIncomeEntryRestoresScheduleWhenLatestMarkReceived() throws Exception {
+		LocalDate markedDate = LocalDate.of(2026, 7, 15);
+		LocalDate advancedNext = LocalDate.of(2026, 8, 15);
+		RecurringIncome entity = sampleEntity(10L, advancedNext, true);
+		IncomeEntry entry = new IncomeEntry(user, "Salary", "Acme Corp", new BigDecimal("5000.00"), markedDate, null);
+		setId(entry, 50L);
+		RecurringIncomeOccurrenceRecord record = new RecurringIncomeOccurrenceRecord(entity, markedDate, entry);
+
+		when(incomeEntryRepository.findByIdAndUser_Id(50L, USER_ID)).thenReturn(Optional.of(entry));
+		when(occurrenceRecordRepository.findByIncomeEntry_IdAndRecurringIncome_User_Id(50L, USER_ID))
+			.thenReturn(Optional.of(record));
+		when(recurringIncomeRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
+		when(recurringIncomeRepository.saveAndFlush(any(RecurringIncome.class)))
+			.thenAnswer(invocation -> invocation.getArgument(0));
+
+		UndoReceivedResponse response = recurringIncomeService.undoReceivedForIncomeEntry(50L);
+
+		assertThat(response.removedIncomeEntryId()).isEqualTo(50L);
+		assertThat(response.occurrenceDate()).isEqualTo(markedDate);
+		assertThat(response.scheduleRestored()).isTrue();
+		assertThat(response.nextIncomeDate()).isEqualTo(markedDate);
+		assertThat(response.recurringIncomeId()).isEqualTo(10L);
+		assertThat(entity.getNextIncomeDate()).isEqualTo(markedDate);
+		verify(occurrenceRecordRepository).delete(record);
+		verify(incomeEntryRepository).delete(entry);
+	}
+
+	@Test
+	void undoReceivedForIncomeEntryRemovesEntryWithoutRestoringScheduleWhenLaterOccurrencesExist() throws Exception {
+		LocalDate markedDate = LocalDate.of(2026, 7, 15);
+		LocalDate laterNext = LocalDate.of(2026, 9, 15);
+		RecurringIncome entity = sampleEntity(10L, laterNext, true);
+		IncomeEntry entry = new IncomeEntry(user, "Salary", "Acme Corp", new BigDecimal("5000.00"), markedDate, null);
+		setId(entry, 50L);
+		RecurringIncomeOccurrenceRecord record = new RecurringIncomeOccurrenceRecord(entity, markedDate, entry);
+
+		when(incomeEntryRepository.findByIdAndUser_Id(50L, USER_ID)).thenReturn(Optional.of(entry));
+		when(occurrenceRecordRepository.findByIncomeEntry_IdAndRecurringIncome_User_Id(50L, USER_ID))
+			.thenReturn(Optional.of(record));
+		when(recurringIncomeRepository.findByIdAndUser_IdForUpdate(10L, USER_ID)).thenReturn(Optional.of(entity));
+
+		UndoReceivedResponse response = recurringIncomeService.undoReceivedForIncomeEntry(50L);
+
+		assertThat(response.scheduleRestored()).isFalse();
+		assertThat(response.nextIncomeDate()).isEqualTo(laterNext);
+		assertThat(entity.getNextIncomeDate()).isEqualTo(laterNext);
+		verify(recurringIncomeRepository, never()).saveAndFlush(any());
+	}
+
+	@Test
+	void undoReceivedForIncomeEntryRejectsManualIncomeEntry() throws Exception {
+		IncomeEntry entry = new IncomeEntry(user, "Bonus", "Client", new BigDecimal("100.00"), LocalDate.now(), null);
+		setId(entry, 50L);
+		when(incomeEntryRepository.findByIdAndUser_Id(50L, USER_ID)).thenReturn(Optional.of(entry));
+		when(occurrenceRecordRepository.findByIncomeEntry_IdAndRecurringIncome_User_Id(50L, USER_ID))
+			.thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> recurringIncomeService.undoReceivedForIncomeEntry(50L))
+			.isInstanceOf(IncomeEntryNotLinkedToRecurringIncomeException.class);
+
+		verify(incomeEntryRepository, never()).delete(any());
 	}
 
 	@Test
@@ -684,7 +750,9 @@ class RecurringIncomeServiceTest {
 			LocalDate.of(2026, 7, 15),
 			"Received from recurring income #10",
 			Instant.parse("2026-07-15T00:00:00Z"),
-			Instant.parse("2026-07-15T00:00:00Z")
+			Instant.parse("2026-07-15T00:00:00Z"),
+			null,
+			null
 		);
 	}
 

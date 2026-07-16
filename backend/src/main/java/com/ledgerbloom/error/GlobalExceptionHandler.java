@@ -19,6 +19,7 @@ import com.ledgerbloom.expense.ExpenseNotFoundException;
 import com.ledgerbloom.expense.InvalidExpenseDataException;
 import com.ledgerbloom.expense.InvalidExpenseFilterException;
 import com.ledgerbloom.income.IncomeEntryNotFoundException;
+import com.ledgerbloom.income.IncomeEntryNotLinkedToRecurringIncomeException;
 import com.ledgerbloom.income.InvalidIncomeDataException;
 import com.ledgerbloom.income.InvalidIncomeFilterException;
 import com.ledgerbloom.recurring.InvalidRecurringExpenseDataException;
@@ -69,6 +70,19 @@ public class GlobalExceptionHandler {
 		return build(
 			HttpStatus.NOT_FOUND,
 			ErrorCode.INCOME_ENTRY_NOT_FOUND,
+			ex.getMessage(),
+			request.getRequestURI(),
+			null
+		);
+	}
+
+	@ExceptionHandler(IncomeEntryNotLinkedToRecurringIncomeException.class)
+	public ResponseEntity<ApiErrorResponse> handleIncomeEntryNotLinkedToRecurring(
+			IncomeEntryNotLinkedToRecurringIncomeException ex,
+			HttpServletRequest request) {
+		return build(
+			HttpStatus.NOT_FOUND,
+			ErrorCode.INCOME_ENTRY_NOT_LINKED_TO_RECURRING,
 			ex.getMessage(),
 			request.getRequestURI(),
 			null

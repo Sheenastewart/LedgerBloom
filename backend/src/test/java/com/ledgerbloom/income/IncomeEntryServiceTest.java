@@ -33,6 +33,9 @@ class IncomeEntryServiceTest {
 	private IncomeEntryRepository incomeEntryRepository;
 
 	@Mock
+	private com.ledgerbloom.recurringincome.RecurringIncomeOccurrenceRecordRepository occurrenceRecordRepository;
+
+	@Mock
 	private CurrentUser currentUser;
 
 	@InjectMocks
@@ -46,6 +49,9 @@ class IncomeEntryServiceTest {
 		setUserId(user, USER_ID);
 		lenient().when(currentUser.requireUserId()).thenReturn(USER_ID);
 		lenient().when(currentUser.requireUserReference()).thenReturn(user);
+		lenient().when(occurrenceRecordRepository.findByIncomeEntryIdsForUser(any(), any())).thenReturn(List.of());
+		lenient().when(occurrenceRecordRepository.findByIncomeEntry_IdAndRecurringIncome_User_Id(any(), any()))
+			.thenReturn(Optional.empty());
 	}
 
 	@Test

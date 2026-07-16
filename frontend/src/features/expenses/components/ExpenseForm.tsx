@@ -116,7 +116,7 @@ export function ExpenseForm({
   }
 
   return (
-    <form className="expense-form" onSubmit={(event) => void handleSubmit(event)} noValidate>
+    <form className="expense-form" onSubmit={(event) => void handleSubmit(event)} noValidate autoComplete="off">
       <h1>{mode === 'create' ? 'Add expense' : 'Edit expense'}</h1>
 
       {formError ? (
@@ -255,9 +255,10 @@ export function ExpenseForm({
         <label htmlFor="expense-notes">Notes</label>
         <textarea
           id="expense-notes"
-          name="notes"
+          name="expenseNotes"
           rows={4}
           value={values.notes}
+          autoComplete="off"
           onChange={(event) => setValues((current) => ({ ...current, notes: event.target.value }))}
           aria-invalid={notesError ? true : undefined}
           aria-describedby={notesError ? 'expense-notes-error' : 'expense-notes-hint'}

@@ -16,6 +16,7 @@ import {
 import { parseRecurringIncomeRouteId } from '../parseRecurringIncomeRouteId'
 import type { RecurringIncomeFormErrors, RecurringIncomeFormValues } from '../types'
 import '../recurringIncome.css'
+import '../../categories/categories.css'
 
 type RecurringIncomeFormPageProps = {
   mode: 'create' | 'edit'

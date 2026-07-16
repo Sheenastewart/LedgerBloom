@@ -101,7 +101,8 @@
   gap: 0.5rem;
 }
 
-.category-form {
+.category-form,
+.entity-form {
   display: grid;
   gap: 1rem;
   width: min(32rem, 100%);

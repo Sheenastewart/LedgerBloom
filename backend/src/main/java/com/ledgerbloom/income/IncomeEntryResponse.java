@@ -12,6 +12,8 @@ public record IncomeEntryResponse(
 		LocalDate incomeDate,
 		String notes,
 		Instant createdAt,
-		Instant updatedAt
+		Instant updatedAt,
+		Long recurringIncomeId,
+		Boolean canUndoReceived
 ) {
 }

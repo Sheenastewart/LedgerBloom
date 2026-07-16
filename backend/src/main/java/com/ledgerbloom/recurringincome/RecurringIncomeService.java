@@ -3,9 +3,12 @@ package com.ledgerbloom.recurringincome;
 import com.ledgerbloom.auth.CurrentUser;
 import com.ledgerbloom.income.IncomeEntry;
 import com.ledgerbloom.income.IncomeEntryCreateRequest;
+import com.ledgerbloom.income.IncomeEntryNotFoundException;
+import com.ledgerbloom.income.IncomeEntryNotLinkedToRecurringIncomeException;
 import com.ledgerbloom.income.IncomeEntryRepository;
 import com.ledgerbloom.income.IncomeEntryResponse;
 import com.ledgerbloom.income.IncomeEntryService;
+import com.ledgerbloom.income.UndoReceivedResponse;
 import com.ledgerbloom.recurring.support.CadenceKind;
 import com.ledgerbloom.recurring.support.CadenceScheduleMath;
 import com.ledgerbloom.recurring.support.CatchUpRequest;
@@ -251,6 +254,50 @@ public class RecurringIncomeService {
 			incomeDate, entity.getCadence(), entity.getFirstPaymentDay(), entity.getSecondPaymentDay()));
 		RecurringIncomeResponse updated = toResponse(recurringIncomeRepository.saveAndFlush(entity));
 		return new MarkReceivedResponse(createdIncomeEntry, updated);
+	}
+
+	/**
+	 * Removes an income entry created from a recurring schedule (mark-received, catch-up, or setup)
+	 * and restores nextIncomeDate to the occurrence date when that entry was the latest advance.
+	 */
+	public UndoReceivedResponse undoReceivedForIncomeEntry(Long incomeEntryId) {
+		Long userId = currentUser.requireUserId();
+		IncomeEntry entry = incomeEntryRepository.findByIdAndUser_Id(incomeEntryId, userId)
+			.orElseThrow(() -> new IncomeEntryNotFoundException(incomeEntryId));
+
+		RecurringIncomeOccurrenceRecord record = occurrenceRecordRepository
+			.findByIncomeEntry_IdAndRecurringIncome_User_Id(incomeEntryId, userId)
+			.orElseThrow(() -> new IncomeEntryNotLinkedToRecurringIncomeException(incomeEntryId));
+
+		RecurringIncome entity = recurringIncomeRepository.findByIdAndUser_IdForUpdate(
+				record.getRecurringIncome().getId(), userId)
+			.orElseThrow(() -> new RecurringIncomeNotFoundException(record.getRecurringIncome().getId()));
+
+		LocalDate occurrenceDate = record.getOccurrenceDate();
+		CadenceKind cadenceKind = CadenceKind.fromIncome(entity.getCadence());
+		LocalDate expectedNext = CadenceScheduleMath.advance(
+			occurrenceDate, cadenceKind, entity.getFirstPaymentDay(), entity.getSecondPaymentDay());
+		boolean restoreSchedule = entity.getNextIncomeDate().equals(expectedNext);
+
+		occurrenceRecordRepository.delete(record);
+		occurrenceRecordRepository.flush();
+		incomeEntryRepository.delete(entry);
+		incomeEntryRepository.flush();
+
+		LocalDate nextIncomeDate = entity.getNextIncomeDate();
+		if (restoreSchedule) {
+			entity.setNextIncomeDate(occurrenceDate);
+			nextIncomeDate = occurrenceDate;
+			recurringIncomeRepository.saveAndFlush(entity);
+		}
+
+		return new UndoReceivedResponse(
+			incomeEntryId,
+			occurrenceDate,
+			restoreSchedule,
+			nextIncomeDate,
+			entity.getId()
+		);
 	}
 
 	/**
