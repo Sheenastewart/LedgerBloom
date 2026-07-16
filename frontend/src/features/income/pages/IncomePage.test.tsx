@@ -76,6 +76,31 @@ describe('IncomePage', () => {
 
     expect(await screen.findByText('No income entries yet.')).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: 'Add income' }).length).toBeGreaterThan(0)
+    expect(screen.getByRole('link', { name: 'Add One-Time Income' })).toHaveAttribute(
+      'href',
+      '/income/new',
+    )
+    expect(screen.getByRole('link', { name: 'Add Recurring Income' })).toHaveAttribute(
+      'href',
+      '/recurring-income/new',
+    )
+  })
+
+  it('shows one-time and recurring add options with explanatory copy', async () => {
+    vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue(sampleEntries)
+    renderPage()
+
+    await screen.findByRole('heading', { name: 'Monthly paycheck' })
+    expect(
+      screen.getByText(
+        'Record money you received once, such as a refund, bonus, or one-time payment.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Set up income received on a repeating schedule, such as weekly, biweekly, or monthly pay.',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('shows filter empty copy when filters are active and nothing matches', async () => {

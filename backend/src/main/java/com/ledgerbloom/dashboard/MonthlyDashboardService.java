@@ -9,6 +9,7 @@ import com.ledgerbloom.income.IncomeEntry;
 import com.ledgerbloom.income.IncomeEntryRepository;
 import com.ledgerbloom.recurring.RecurringExpense;
 import com.ledgerbloom.recurring.RecurringExpenseRepository;
+import com.ledgerbloom.recurring.support.RecurringPeriodProjection;
 import com.ledgerbloom.recurringincome.RecurringIncome;
 import com.ledgerbloom.recurringincome.RecurringIncomeRepository;
 import java.math.BigDecimal;
@@ -106,11 +107,18 @@ public class MonthlyDashboardService {
 			BigDecimal actualExpenses,
 			LocalDate monthStart,
 			LocalDate monthEnd) {
-		List<RecurringIncome> upcomingIncome = recurringIncomeRepository.findActiveInMonth(userId, monthStart, monthEnd);
-		List<RecurringExpense> upcomingExpenses = recurringExpenseRepository.findActiveInMonth(userId, monthStart, monthEnd);
+		List<RecurringIncome> candidateIncome = recurringIncomeRepository.findActiveDueOnOrBefore(userId, monthEnd);
+		List<RecurringExpense> candidateExpenses = recurringExpenseRepository.findActiveDueOnOrBefore(userId, monthEnd);
 
-		BigDecimal expectedIncome = sumAmounts(upcomingIncome.stream().map(RecurringIncome::getAmount).toList());
-		BigDecimal expectedExpenses = sumAmounts(upcomingExpenses.stream().map(RecurringExpense::getAmount).toList());
+		List<RecurringIncome> upcomingIncome = candidateIncome.stream()
+			.filter(item -> RecurringPeriodProjection.incomeOccurrenceCount(item, monthStart, monthEnd) > 0)
+			.toList();
+		List<RecurringExpense> upcomingExpenses = candidateExpenses.stream()
+			.filter(item -> RecurringPeriodProjection.expenseOccurrenceCount(item, monthStart, monthEnd) > 0)
+			.toList();
+
+		BigDecimal expectedIncome = RecurringPeriodProjection.sumIncomeInPeriod(upcomingIncome, monthStart, monthEnd);
+		BigDecimal expectedExpenses = RecurringPeriodProjection.sumExpenseInPeriod(upcomingExpenses, monthStart, monthEnd);
 		BigDecimal projectedCashFlow = actualIncome
 			.add(expectedIncome)
 			.subtract(actualExpenses)

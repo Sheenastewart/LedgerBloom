@@ -208,9 +208,9 @@ class ReportServiceTest {
 				start,
 				endExclusive
 			)).thenReturn(List.of());
-		when(recurringIncomeRepository.findActiveInMonth(USER_ID, start, YearMonth.of(2026, 1).atEndOfMonth()))
+		when(recurringIncomeRepository.findActiveDueOnOrBefore(USER_ID, YearMonth.of(2026, 1).atEndOfMonth()))
 			.thenReturn(List.of());
-		when(recurringExpenseRepository.findActiveInMonth(USER_ID, start, YearMonth.of(2026, 1).atEndOfMonth()))
+		when(recurringExpenseRepository.findActiveDueOnOrBefore(USER_ID, YearMonth.of(2026, 1).atEndOfMonth()))
 			.thenReturn(List.of());
 		when(monthlyBudgetService.findOptionalByYearAndMonth(2026, 1)).thenReturn(Optional.of(
 			new MonthlyBudgetResponse(
@@ -278,9 +278,9 @@ class ReportServiceTest {
 		);
 		setId(scheduledExpense, 60L);
 
-		when(recurringIncomeRepository.findActiveInMonth(USER_ID, monthStart, monthEnd))
+		when(recurringIncomeRepository.findActiveDueOnOrBefore(USER_ID, monthEnd))
 			.thenReturn(List.of(scheduledIncome));
-		when(recurringExpenseRepository.findActiveInMonth(USER_ID, monthStart, monthEnd))
+		when(recurringExpenseRepository.findActiveDueOnOrBefore(USER_ID, monthEnd))
 			.thenReturn(List.of(scheduledExpense));
 
 		MonthlyComparisonResponse response = reportService.getMonthlyComparison(2026, 7, 2026, 7);
@@ -476,8 +476,8 @@ class ReportServiceTest {
 				endExclusive
 			)).thenReturn(expenses);
 		when(monthlyBudgetService.findOptionalByYearAndMonth(year, month)).thenReturn(Optional.empty());
-		when(recurringIncomeRepository.findActiveInMonth(USER_ID, start, monthEnd)).thenReturn(List.of());
-		when(recurringExpenseRepository.findActiveInMonth(USER_ID, start, monthEnd)).thenReturn(List.of());
+		when(recurringIncomeRepository.findActiveDueOnOrBefore(USER_ID, monthEnd)).thenReturn(List.of());
+		when(recurringExpenseRepository.findActiveDueOnOrBefore(USER_ID, monthEnd)).thenReturn(List.of());
 	}
 
 	private void overrideMonth(int year, int month, List<IncomeEntry> incomeEntries, List<Expense> expenses) {

@@ -11,6 +11,7 @@ import com.ledgerbloom.income.IncomeEntry;
 import com.ledgerbloom.income.IncomeEntryRepository;
 import com.ledgerbloom.recurring.RecurringExpense;
 import com.ledgerbloom.recurring.RecurringExpenseRepository;
+import com.ledgerbloom.recurring.support.RecurringPeriodProjection;
 import com.ledgerbloom.recurringincome.RecurringIncome;
 import com.ledgerbloom.recurringincome.RecurringIncomeRepository;
 import java.math.BigDecimal;
@@ -209,13 +210,23 @@ public class ReportService {
 		BigDecimal budgetPercentUsed = budget.map(MonthlyBudgetResponse::percentUsed).orElse(null);
 		Boolean overBudget = budget.map(MonthlyBudgetResponse::overBudget).orElse(null);
 
-		List<RecurringIncome> upcomingIncome = recurringIncomeRepository.findActiveInMonth(userId, monthStart, monthEnd);
-		List<RecurringExpense> upcomingExpenses = recurringExpenseRepository.findActiveInMonth(userId, monthStart, monthEnd);
-		BigDecimal expectedRecurringIncome = sumAmounts(
-			upcomingIncome.stream().map(RecurringIncome::getAmount).toList()
+		List<RecurringIncome> candidateIncome = recurringIncomeRepository.findActiveDueOnOrBefore(userId, monthEnd);
+		List<RecurringExpense> candidateExpenses = recurringExpenseRepository.findActiveDueOnOrBefore(userId, monthEnd);
+		List<RecurringIncome> upcomingIncome = candidateIncome.stream()
+			.filter(item -> RecurringPeriodProjection.incomeOccurrenceCount(item, monthStart, monthEnd) > 0)
+			.toList();
+		List<RecurringExpense> upcomingExpenses = candidateExpenses.stream()
+			.filter(item -> RecurringPeriodProjection.expenseOccurrenceCount(item, monthStart, monthEnd) > 0)
+			.toList();
+		BigDecimal expectedRecurringIncome = RecurringPeriodProjection.sumIncomeInPeriod(
+			upcomingIncome,
+			monthStart,
+			monthEnd
 		);
-		BigDecimal expectedRecurringExpenses = sumAmounts(
-			upcomingExpenses.stream().map(RecurringExpense::getAmount).toList()
+		BigDecimal expectedRecurringExpenses = RecurringPeriodProjection.sumExpenseInPeriod(
+			upcomingExpenses,
+			monthStart,
+			monthEnd
 		);
 
 		BigDecimal projectedCashFlow = totalIncome

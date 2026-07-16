@@ -157,7 +157,7 @@ public class RecurringExpenseService {
 		return new MarkPaidResponse(createdExpense, updated);
 	}
 
-	static LocalDate advanceNextPaymentDate(LocalDate from, RecurringExpenseCadence cadence) {
+	public static LocalDate advanceNextPaymentDate(LocalDate from, RecurringExpenseCadence cadence) {
 		return switch (cadence) {
 			case WEEKLY -> from.plusWeeks(1);
 			case BIWEEKLY -> from.plusWeeks(2);

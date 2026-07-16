@@ -14,6 +14,7 @@ import { DashboardPage } from './features/dashboard/pages/DashboardPage'
 import { ExpenseFormPage } from './features/expenses/pages/ExpenseFormPage'
 import { ExpensesPage } from './features/expenses/pages/ExpensesPage'
 import { IncomeFormPage } from './features/income/pages/IncomeFormPage'
+import { IncomeAddChoicePage } from './features/income/pages/IncomeAddChoicePage'
 import { IncomePage } from './features/income/pages/IncomePage'
 import { RecurringFormPage } from './features/recurring/pages/RecurringFormPage'
 import { RecurringPage } from './features/recurring/pages/RecurringPage'
@@ -171,6 +172,14 @@ export function AppRoutes() {
             element={
               <ProtectedRoute>
                 <IncomePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/income/add"
+            element={
+              <ProtectedRoute>
+                <IncomeAddChoicePage />
               </ProtectedRoute>
             }
           />

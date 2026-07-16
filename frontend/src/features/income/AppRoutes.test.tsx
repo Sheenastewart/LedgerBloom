@@ -160,7 +160,7 @@ describe('Income routes', () => {
     expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
   })
 
-  it('renders Add income from the Income page', async () => {
+  it('renders Add income choice, then one-time and recurring forms', async () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/income']}>
@@ -169,8 +169,35 @@ describe('Income routes', () => {
     )
 
     expect(await screen.findByRole('heading', { name: 'Income' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Add One-Time Income' })).toHaveAttribute(
+      'href',
+      '/income/new',
+    )
+    expect(screen.getByRole('link', { name: 'Add Recurring Income' })).toHaveAttribute(
+      'href',
+      '/recurring-income/new',
+    )
+
     await user.click(screen.getAllByRole('link', { name: 'Add income' })[0])
+    expect(await screen.findByText('What kind of income are you adding?')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'One-time income' }))
     expect(await screen.findByRole('heading', { name: 'Add income' })).toBeInTheDocument()
+  })
+
+  it('navigates from Income to the recurring income form', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/income']}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Income' })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Add Recurring Income' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Add recurring income' }),
+    ).toBeInTheDocument()
   })
 
   it('shows not found for an invalid edit id', async () => {

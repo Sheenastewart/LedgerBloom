@@ -104,10 +104,35 @@ export function IncomePage() {
           <h1>Income</h1>
           <p className="page-subtitle">Track income by source and month.</p>
         </div>
-        <Link to="/income/new" className="button button-primary">
+        <Link to="/income/add" className="button button-primary">
           Add income
         </Link>
       </div>
+
+      <section className="income-entry-options" aria-label="Ways to add income">
+        <Link
+          to="/income/new"
+          className="income-entry-option"
+          aria-label="Add One-Time Income"
+        >
+          <h2>Add One-Time Income</h2>
+          <p>
+            Record money you received once, such as a refund, bonus, or one-time
+            payment.
+          </p>
+        </Link>
+        <Link
+          to="/recurring-income/new"
+          className="income-entry-option"
+          aria-label="Add Recurring Income"
+        >
+          <h2>Add Recurring Income</h2>
+          <p>
+            Set up income received on a repeating schedule, such as weekly,
+            biweekly, or monthly pay.
+          </p>
+        </Link>
+      </section>
 
       {successMessage ? (
         <p className="status-banner success" role="status" aria-live="polite">
@@ -153,7 +178,7 @@ export function IncomePage() {
               ? 'No income entries match the current filters.'
               : 'No income entries yet.'}
           </p>
-          <Link to="/income/new" className="button button-primary">
+          <Link to="/income/add" className="button button-primary">
             Add income
           </Link>
         </div>

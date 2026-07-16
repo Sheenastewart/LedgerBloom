@@ -142,7 +142,7 @@ public class RecurringIncomeService {
 		return new MarkReceivedResponse(createdIncomeEntry, updated);
 	}
 
-	static LocalDate advanceNextIncomeDate(LocalDate from, RecurringIncomeCadence cadence) {
+	public static LocalDate advanceNextIncomeDate(LocalDate from, RecurringIncomeCadence cadence) {
 		return switch (cadence) {
 			case WEEKLY -> from.plusWeeks(1);
 			case BIWEEKLY -> from.plusWeeks(2);

@@ -190,7 +190,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     keywords: ['income', 'pay', 'add', 'source', 'salary'],
     body: [
       'Income entries are actual money already received.',
-      'Open Income, choose Add income, enter description, source, amount, and date, then save.',
+      'Open Income, choose Add One-Time Income (or Add income → One-time), enter description, source, amount, and date, then save. Use Add Recurring Income for pay on a repeating schedule.',
       'Saved income feeds dashboard totals, reports, and net cash flow.',
     ],
     relatedPath: '/income',

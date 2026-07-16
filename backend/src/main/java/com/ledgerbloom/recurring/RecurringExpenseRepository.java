@@ -46,16 +46,18 @@ public interface RecurringExpenseRepository extends JpaRepository<RecurringExpen
 			@Param("fromInclusive") LocalDate fromInclusive,
 			@Param("toInclusive") LocalDate toInclusive);
 
+	/**
+	 * Active schedules whose next due date is on or before the period end.
+	 * Callers project all cadence occurrences inside the month from that next due date.
+	 */
 	@Query("""
 			SELECT r FROM RecurringExpense r
 			WHERE r.user.id = :userId
 			AND r.active = true
-			AND r.nextPaymentDate >= :monthStart
 			AND r.nextPaymentDate <= :monthEnd
 			ORDER BY r.nextPaymentDate ASC, r.id ASC
 			""")
-	List<RecurringExpense> findActiveInMonth(
+	List<RecurringExpense> findActiveDueOnOrBefore(
 			@Param("userId") Long userId,
-			@Param("monthStart") LocalDate monthStart,
 			@Param("monthEnd") LocalDate monthEnd);
 }

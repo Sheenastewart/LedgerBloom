@@ -87,10 +87,10 @@ export type RecurringFormErrors = {
 
 export const CADENCE_OPTIONS: { value: RecurringCadence; label: string }[] = [
   { value: 'WEEKLY', label: 'Weekly' },
-  { value: 'BIWEEKLY', label: 'Every 2 weeks' },
+  { value: 'BIWEEKLY', label: 'Biweekly' },
   { value: 'MONTHLY', label: 'Monthly' },
   { value: 'QUARTERLY', label: 'Quarterly' },
-  { value: 'SEMIANNUAL', label: 'Every 6 months' },
+  { value: 'SEMIANNUAL', label: 'Semiannual' },
   { value: 'ANNUAL', label: 'Annual' },
 ]
 

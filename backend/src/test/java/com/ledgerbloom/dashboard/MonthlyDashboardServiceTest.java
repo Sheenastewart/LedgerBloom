@@ -277,9 +277,9 @@ class MonthlyDashboardServiceTest {
 		);
 		setId(scheduledExpense, 60L);
 
-		when(recurringIncomeRepository.findActiveInMonth(USER_ID, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31)))
+		when(recurringIncomeRepository.findActiveDueOnOrBefore(USER_ID, LocalDate.of(2026, 7, 31)))
 			.thenReturn(List.of(scheduledIncome));
-		when(recurringExpenseRepository.findActiveInMonth(USER_ID, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31)))
+		when(recurringExpenseRepository.findActiveDueOnOrBefore(USER_ID, LocalDate.of(2026, 7, 31)))
 			.thenReturn(List.of(scheduledExpense));
 
 		MonthlyDashboardResponse response = monthlyDashboardService.getMonthlyDashboard(2026, 7);
@@ -292,6 +292,80 @@ class MonthlyDashboardServiceTest {
 		assertThat(response.planning().upcomingExpenseCount()).isEqualTo(1);
 		assertThat(response.planning().upcomingIncomeItems().get(0).description()).isEqualTo("Bonus");
 		assertThat(response.planning().upcomingExpenseItems().get(0).categoryName()).isEqualTo("Entertainment");
+	}
+
+	@Test
+	void planningCountsEveryWeeklyOccurrenceInSelectedMonth() throws Exception {
+		IncomeEntry actual = income(1L, "Already received", "Employer", "2000.00", LocalDate.of(2026, 7, 3));
+		stubMonth(2026, 7, List.of(actual), List.of());
+
+		RecurringIncome weekly = new RecurringIncome(
+			user,
+			"Weekly stipend",
+			"Side gig",
+			new BigDecimal("100.00"),
+			RecurringIncomeCadence.WEEKLY,
+			LocalDate.of(2026, 7, 1),
+			true,
+			null
+		);
+		setId(weekly, 70L);
+
+		RecurringExpense biweekly = new RecurringExpense(
+			user,
+			"Biweekly utility",
+			null,
+			new BigDecimal("50.00"),
+			new Category(user, "Utilities", null),
+			RecurringExpenseCadence.BIWEEKLY,
+			LocalDate.of(2026, 7, 1),
+			true,
+			null
+		);
+		setId(biweekly.getCategory(), 4L);
+		setId(biweekly, 71L);
+
+		when(recurringIncomeRepository.findActiveDueOnOrBefore(USER_ID, LocalDate.of(2026, 7, 31)))
+			.thenReturn(List.of(weekly));
+		when(recurringExpenseRepository.findActiveDueOnOrBefore(USER_ID, LocalDate.of(2026, 7, 31)))
+			.thenReturn(List.of(biweekly));
+
+		MonthlyDashboardResponse response = monthlyDashboardService.getMonthlyDashboard(2026, 7);
+
+		// Weekly Jul 1,8,15,22,29 = 5 × 100
+		assertThat(response.planning().expectedIncome()).isEqualByComparingTo("500.00");
+		// Biweekly Jul 1,15,29 = 3 × 50
+		assertThat(response.planning().expectedExpenses()).isEqualByComparingTo("150.00");
+		// Actual income unchanged at 2000; projected = 2000 + 500 - 0 - 150
+		assertThat(response.totalIncome()).isEqualByComparingTo("2000.00");
+		assertThat(response.planning().projectedCashFlow()).isEqualByComparingTo("2350.00");
+	}
+
+	@Test
+	void planningDoesNotIncludeSchedulesWithNoOccurrenceInMonth() throws Exception {
+		stubMonth(2026, 7, List.of(), List.of());
+
+		RecurringIncome nextMonthOnly = new RecurringIncome(
+			user,
+			"August pay",
+			"Employer",
+			new BigDecimal("3000.00"),
+			RecurringIncomeCadence.MONTHLY,
+			LocalDate.of(2026, 8, 1),
+			true,
+			null
+		);
+		setId(nextMonthOnly, 80L);
+
+		when(recurringIncomeRepository.findActiveDueOnOrBefore(USER_ID, LocalDate.of(2026, 7, 31)))
+			.thenReturn(List.of());
+		when(recurringExpenseRepository.findActiveDueOnOrBefore(USER_ID, LocalDate.of(2026, 7, 31)))
+			.thenReturn(List.of());
+
+		MonthlyDashboardResponse response = monthlyDashboardService.getMonthlyDashboard(2026, 7);
+
+		assertThat(response.planning().expectedIncome()).isEqualByComparingTo("0.00");
+		assertThat(response.planning().upcomingIncomeItems()).isEmpty();
 	}
 
 	@Test
@@ -357,8 +431,8 @@ class MonthlyDashboardServiceTest {
 				endExclusive
 			)).thenReturn(expenses);
 		when(monthlyBudgetService.findOptionalByYearAndMonth(year, month)).thenReturn(Optional.empty());
-		when(recurringIncomeRepository.findActiveInMonth(USER_ID, start, monthEnd)).thenReturn(List.of());
-		when(recurringExpenseRepository.findActiveInMonth(USER_ID, start, monthEnd)).thenReturn(List.of());
+		when(recurringIncomeRepository.findActiveDueOnOrBefore(USER_ID, monthEnd)).thenReturn(List.of());
+		when(recurringExpenseRepository.findActiveDueOnOrBefore(USER_ID, monthEnd)).thenReturn(List.of());
 	}
 
 	private IncomeEntry income(Long id, String description, String source, String amount, LocalDate date)

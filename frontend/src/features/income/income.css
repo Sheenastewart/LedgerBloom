@@ -1,3 +1,55 @@
+.income-entry-options,
+.income-add-choices {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  margin: 0 0 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.income-entry-option,
+.income-add-choice {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1.1rem 1.2rem;
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid #c7d5cb;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.income-entry-option:hover,
+.income-add-choice:hover,
+.income-entry-option:focus-visible,
+.income-add-choice:focus-visible {
+  border-color: #6f9b7c;
+  background: rgba(255, 255, 255, 0.88);
+  outline: none;
+}
+
+.income-entry-option h2,
+.income-add-choice h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.income-entry-option p,
+.income-add-choice p {
+  margin: 0;
+  color: #4c6356;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.income-add-choice-cta {
+  margin-top: 0.35rem;
+  font-weight: 600;
+  color: #2f5d45;
+}
+
 .income-list {
   list-style: none;
   margin: 0;
