@@ -124,12 +124,6 @@ export function RecurringPage() {
   }
 
   async function handleDelete(item: RecurringExpense) {
-    const confirmed = window.confirm(
-      `Delete recurring expense "${item.description}"? This cannot be undone.`,
-    )
-    if (!confirmed) {
-      return
-    }
     setActionError(null)
     setDeletingId(item.id)
     try {

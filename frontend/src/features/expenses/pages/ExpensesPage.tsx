@@ -108,13 +108,6 @@ export function ExpensesPage() {
   }
 
   async function handleDelete(expense: Expense) {
-    const confirmed = window.confirm(
-      `Delete expense "${expense.description}"? This cannot be undone.`,
-    )
-    if (!confirmed) {
-      return
-    }
-
     setDeleteError(null)
     setDeletingExpenseId(expense.id)
     try {

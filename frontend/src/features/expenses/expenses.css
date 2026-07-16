@@ -14,8 +14,8 @@
   gap: 1rem;
   padding: 1rem 1.1rem;
   border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
 }
 
 .expense-main {
@@ -31,7 +31,7 @@
 
 .expense-meta {
   margin: 0;
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
   font-size: 0.95rem;
 }
 
@@ -39,7 +39,7 @@
   margin: 0;
   font-size: 1.125rem;
   font-weight: 700;
-  color: #1d2a24;
+  color: var(--lb-color-text);
 }
 
 .expense-actions {
@@ -54,8 +54,8 @@
   margin-bottom: 1.5rem;
   padding: 1rem 1.1rem;
   border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
 }
 
 .expense-filters legend {
@@ -84,21 +84,21 @@
 .field-hint {
   margin: 0;
   font-size: 0.875rem;
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
 }
 
 .field select {
   width: 100%;
   padding: 0.7rem 0.8rem;
-  border: 1px solid #9fb3a5;
+  border: 1px solid var(--lb-color-border-strong);
   border-radius: 0.45rem;
-  background: #fff;
+  background: var(--lb-color-surface-solid);
   font: inherit;
   color: inherit;
 }
 
 .field select:focus {
-  outline: 3px solid #6f9b7c;
+  outline: var(--lb-focus-ring);
   outline-offset: 2px;
 }
 

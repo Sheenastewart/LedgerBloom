@@ -171,7 +171,7 @@ describe('Dashboard routes', () => {
     })
   })
 
-  it('navigates from Home to Dashboard via nav and CTA', async () => {
+  it('redirects authenticated Home to Dashboard and supports hub navigation', async () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/']}>
@@ -179,12 +179,17 @@ describe('Dashboard routes', () => {
       </MemoryRouter>,
     )
 
-    expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
-    await user.click(screen.getByRole('link', { name: 'Dashboard' }))
-    expect(await screen.findByRole('heading', { name: 'Monthly dashboard' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Test User/ })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'What would you like to do?' }),
+    ).toBeInTheDocument()
 
-    await user.click(screen.getByRole('link', { name: 'Home' }))
-    await user.click(screen.getByRole('link', { name: 'View dashboard' }))
-    expect(await screen.findByRole('heading', { name: 'Monthly dashboard' })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Budgets' }))
+    expect(await screen.findByRole('heading', { name: 'Budgets' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'Dashboard' }))
+    expect(
+      await screen.findByRole('heading', { name: 'What would you like to do?' }),
+    ).toBeInTheDocument()
   })
 })

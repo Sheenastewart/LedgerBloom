@@ -6,9 +6,9 @@
 }
 
 .recurring-status.due-today {
-  color: #7a5a10;
+  color: var(--lb-color-warning);
 }
 
 .recurring-status.upcoming {
-  color: #2f6b45;
+  color: var(--lb-color-success);
 }

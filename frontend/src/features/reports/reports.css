@@ -9,7 +9,7 @@
   gap: 0.75rem;
   margin-bottom: 1.5rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid #c7d5cb;
+  border-bottom: 1px solid var(--lb-color-border);
 }
 
 .reports-overview-grid {
@@ -22,8 +22,8 @@
 .reports-overview-card {
   padding: 1.25rem 1.35rem;
   border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
   display: grid;
   gap: 0.65rem;
   align-content: start;
@@ -36,7 +36,7 @@
 
 .reports-overview-card p {
   margin: 0;
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
 }
 
 .reports-section {
@@ -58,8 +58,8 @@
 .reports-card {
   padding: 1rem 1.1rem;
   border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
   display: grid;
   gap: 0.35rem;
 }
@@ -68,19 +68,19 @@
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
 }
 
 .reports-card-value {
   margin: 0;
   font-size: 1.35rem;
   font-weight: 700;
-  color: #1d2a24;
+  color: var(--lb-color-text);
   word-break: break-word;
 }
 
 .reports-card-value.negative {
-  color: #8a2f2f;
+  color: var(--lb-color-danger);
 }
 
 .reports-highlights {
@@ -92,8 +92,8 @@
 .reports-highlight {
   padding: 1rem 1.1rem;
   border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
   display: grid;
   gap: 0.35rem;
 }
@@ -103,7 +103,7 @@
 }
 
 .reports-highlight .label {
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
   font-size: 0.95rem;
   margin: 0;
 }
@@ -111,8 +111,8 @@
 .reports-table-wrap {
   overflow-x: auto;
   border-radius: 0.65rem;
-  border: 1px solid #c7d5cb;
-  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid var(--lb-color-border);
+  background: var(--lb-color-surface);
 }
 
 .reports-table {
@@ -125,12 +125,12 @@
 .reports-table td {
   padding: 0.7rem 0.9rem;
   text-align: left;
-  border-bottom: 1px solid #d5e0d8;
+  border-bottom: 1px solid var(--lb-color-border);
 }
 
 .reports-table th {
   font-size: 0.9rem;
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
   font-weight: 600;
 }
 
@@ -145,15 +145,15 @@
 }
 
 .reports-table .negative {
-  color: #8a2f2f;
+  color: var(--lb-color-danger);
 }
 
 .month-range-form {
   margin-bottom: 1.5rem;
   padding: 1rem 1.1rem;
   border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
 }
 
 .month-range-form fieldset {
@@ -188,8 +188,8 @@
   gap: 1rem;
   padding: 1rem 1.1rem;
   border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
 }
 
 .exports-panel-actions {
@@ -200,7 +200,7 @@
 
 .dashboard-empty {
   margin: 0;
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
 }
 
 .dashboard-highlights {
@@ -212,8 +212,8 @@
 .dashboard-highlight {
   padding: 1rem 1.1rem;
   border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
   display: grid;
   gap: 0.35rem;
 }
@@ -223,7 +223,7 @@
 }
 
 .dashboard-highlight .label {
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
   font-size: 0.95rem;
 }
 
@@ -256,8 +256,8 @@
   margin: 0;
   padding: 0.65rem 0.75rem;
   border-radius: 0.55rem;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
   font-size: 0.95rem;
 }
 
@@ -267,15 +267,15 @@
 }
 
 .budget-status.on-track {
-  color: #2f6b45;
+  color: var(--lb-color-success);
 }
 
 .budget-status.near-budget {
-  color: #8a6a12;
+  color: var(--lb-color-warning);
 }
 
 .budget-status.over-budget {
-  color: #8b2e2e;
+  color: var(--lb-color-danger);
 }
 
 .sr-only {
@@ -304,10 +304,13 @@
   .no-print,
   .topbar,
   .site-nav,
+  .section-tabs,
+  .hub-header,
   .reports-subnav,
   .info-tooltip,
   .help-link,
-  .how-this-works {
+  .how-this-works,
+  .user-menu {
     display: none !important;
   }
 

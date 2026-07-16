@@ -152,20 +152,16 @@ describe('Budget routes', () => {
     )
   })
 
-  it('navigates from Home to Budgets via nav and CTA', async () => {
+  it('navigates from Dashboard to Budgets via primary nav', async () => {
     const user = userEvent.setup()
     render(
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter initialEntries={['/dashboard']}>
         <AppRoutes />
       </MemoryRouter>,
     )
 
-    expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Test User/ })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Budgets' }))
-    expect(await screen.findByRole('heading', { name: 'Monthly budget' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('link', { name: 'Home' }))
-    await user.click(screen.getByRole('link', { name: 'Manage budgets' }))
     expect(await screen.findByRole('heading', { name: 'Monthly budget' })).toBeInTheDocument()
   })
 })

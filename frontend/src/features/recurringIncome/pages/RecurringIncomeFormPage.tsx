@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
 import { formatAmountForInput } from '../../../utils/moneyUtils'
 import {
@@ -36,6 +36,10 @@ const emptyValues: RecurringIncomeFormValues = {
   selectedOccurrenceDates: [],
 }
 
+type PrefillState = {
+  prefill?: Partial<RecurringIncomeFormValues>
+}
+
 function mapServerErrors(error: ApiClientError): RecurringIncomeFormErrors {
   const next: RecurringIncomeFormErrors = {}
   for (const fieldError of error.fieldErrors) {
@@ -61,15 +65,19 @@ function mapServerErrors(error: ApiClientError): RecurringIncomeFormErrors {
 
 export function RecurringIncomeFormPage({ mode }: RecurringIncomeFormPageProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const params = useParams()
   const routeId = mode === 'edit' ? parseRecurringIncomeRouteId(params.id) : null
+  const prefill = (location.state as PrefillState | null)?.prefill
 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [notFound, setNotFound] = useState(mode === 'edit' && routeId === null)
   const [submitting, setSubmitting] = useState(false)
   const [serverErrors, setServerErrors] = useState<RecurringIncomeFormErrors>({})
-  const [initialValues, setInitialValues] = useState<RecurringIncomeFormValues>(emptyValues)
+  const [initialValues, setInitialValues] = useState<RecurringIncomeFormValues>(() =>
+    mode === 'create' && prefill ? { ...emptyValues, ...prefill } : emptyValues,
+  )
   const [formKey, setFormKey] = useState(0)
 
   useEffect(() => {
@@ -89,7 +97,8 @@ export function RecurringIncomeFormPage({ mode }: RecurringIncomeFormPageProps) 
 
       try {
         if (mode === 'create') {
-          setInitialValues(emptyValues)
+          setInitialValues(prefill ? { ...emptyValues, ...prefill } : emptyValues)
+          setFormKey((value) => value + 1)
           setLoading(false)
           return
         }
@@ -130,7 +139,7 @@ export function RecurringIncomeFormPage({ mode }: RecurringIncomeFormPageProps) 
 
     void load()
     return () => controller.abort()
-  }, [mode, routeId])
+  }, [mode, routeId, prefill])
 
   async function handleSubmit(values: RecurringIncomeFormValues) {
     setSubmitting(true)

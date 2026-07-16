@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
 import { formatAmountForInput } from '../../../utils/moneyUtils'
 import { createIncomeEntry, getIncomeEntry, updateIncomeEntry } from '../api/incomeApi'
@@ -47,17 +47,25 @@ const emptyValues: IncomeFormValues = {
   notes: '',
 }
 
+type PrefillState = {
+  prefill?: Partial<IncomeFormValues>
+}
+
 export function IncomeFormPage({ mode }: IncomeFormPageProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const params = useParams()
   const routeId = mode === 'edit' ? parseIncomeRouteId(params.id) : null
+  const prefill = (location.state as PrefillState | null)?.prefill
 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [notFound, setNotFound] = useState(mode === 'edit' && routeId === null)
   const [submitting, setSubmitting] = useState(false)
   const [serverErrors, setServerErrors] = useState<IncomeFormErrors>({})
-  const [initialValues, setInitialValues] = useState<IncomeFormValues>(emptyValues)
+  const [initialValues, setInitialValues] = useState<IncomeFormValues>(() =>
+    mode === 'create' && prefill ? { ...emptyValues, ...prefill } : emptyValues,
+  )
   const [formKey, setFormKey] = useState(0)
 
   useEffect(() => {
@@ -76,6 +84,10 @@ export function IncomeFormPage({ mode }: IncomeFormPageProps) {
       setNotFound(false)
 
       if (mode === 'create') {
+        if (prefill) {
+          setInitialValues({ ...emptyValues, ...prefill })
+          setFormKey((value) => value + 1)
+        }
         setLoading(false)
         return
       }
@@ -113,7 +125,7 @@ export function IncomeFormPage({ mode }: IncomeFormPageProps) {
 
     void load()
     return () => controller.abort()
-  }, [mode, routeId])
+  }, [mode, routeId, prefill])
 
   async function handleSubmit(values: IncomeFormValues) {
     setSubmitting(true)

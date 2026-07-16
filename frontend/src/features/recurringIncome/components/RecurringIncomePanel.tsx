@@ -117,12 +117,6 @@ export function RecurringIncomePanel({
   }
 
   async function handleDelete(item: RecurringIncome) {
-    const confirmed = window.confirm(
-      `Delete recurring income "${item.description}"? This cannot be undone.`,
-    )
-    if (!confirmed) {
-      return
-    }
     setActionError(null)
     setDeletingId(item.id)
     try {

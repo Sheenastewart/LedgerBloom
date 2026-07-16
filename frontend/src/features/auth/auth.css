@@ -10,8 +10,8 @@
   gap: 1rem;
   padding: 1.75rem 1.85rem;
   border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
 }
 
 .auth-form h1 {
@@ -32,11 +32,11 @@
 .auth-switch {
   margin: 0.25rem 0 0;
   font-size: 0.9375rem;
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
 }
 
 .auth-switch a {
-  color: #2f5d45;
+  color: var(--lb-color-primary);
   font-weight: 600;
 }
 
@@ -48,7 +48,7 @@
 
 .user-menu-name {
   font-weight: 600;
-  color: #1d2a24;
+  color: var(--lb-color-text);
 }
 
 .user-menu .button {

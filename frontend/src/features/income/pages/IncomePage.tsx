@@ -104,13 +104,6 @@ export function IncomePage() {
   }
 
   async function handleDelete(entry: IncomeEntry) {
-    const confirmed = window.confirm(
-      `Delete income "${entry.description}"? This cannot be undone.`,
-    )
-    if (!confirmed) {
-      return
-    }
-
     setDeleteError(null)
     setDeletingIncomeId(entry.id)
     try {

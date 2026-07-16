@@ -149,21 +149,16 @@ describe('Recurring routes', () => {
     vi.mocked(recurringApi.getUpcomingRecurringExpenses).mockResolvedValue([])
   })
 
-  it('navigates from Home to recurring expenses via Transactions', async () => {
+  it('navigates from Dashboard to recurring expenses via Transactions', async () => {
     const user = userEvent.setup()
     render(
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter initialEntries={['/dashboard']}>
         <AppRoutes />
       </MemoryRouter>,
     )
 
-    expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Test User/ })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Transactions' }))
-    await user.click(screen.getByRole('link', { name: 'Recurring Expenses' }))
-    expect(await screen.findByRole('heading', { name: 'Recurring' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('link', { name: 'Home' }))
-    await user.click(screen.getByRole('link', { name: 'Manage transactions' }))
     await user.click(screen.getByRole('link', { name: 'Recurring Expenses' }))
     expect(await screen.findByRole('heading', { name: 'Recurring' })).toBeInTheDocument()
   })

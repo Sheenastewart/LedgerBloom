@@ -1,0 +1,95 @@
+/* LedgerBloom design tokens — calm modern finance product */
+
+:root {
+  /* Brand */
+  --lb-color-primary: #1f5c4d;
+  --lb-color-primary-hover: #17483c;
+  --lb-color-primary-soft: #e4f0eb;
+  --lb-color-secondary: #3d6b5c;
+  --lb-color-accent: #c47a2c;
+
+  /* Status */
+  --lb-color-success: #1f6b45;
+  --lb-color-success-bg: #e3f4ea;
+  --lb-color-success-border: #8fbf9a;
+  --lb-color-warning: #8a5a12;
+  --lb-color-warning-bg: #f8efd9;
+  --lb-color-warning-border: #d4b36a;
+  --lb-color-danger: #8b2e2e;
+  --lb-color-danger-bg: #f7ecec;
+  --lb-color-danger-border: #d7a0a0;
+  --lb-color-info: #245a78;
+  --lb-color-info-bg: #e7f1f7;
+  --lb-color-info-border: #8fb4c9;
+
+  /* Surfaces */
+  --lb-color-bg: #eef2ef;
+  --lb-color-bg-accent: #dce8e1;
+  --lb-color-surface: rgba(255, 255, 255, 0.78);
+  --lb-color-surface-solid: #fbfcfb;
+  --lb-color-border: #c5d3cb;
+  --lb-color-border-strong: #9fb3a5;
+
+  /* Text */
+  --lb-color-text: #1a2b24;
+  --lb-color-text-muted: #4d6358;
+  --lb-color-text-inverse: #f7fbf8;
+  --lb-color-link: #1f5c4d;
+
+  /* Spacing scale */
+  --lb-space-1: 0.25rem;
+  --lb-space-2: 0.5rem;
+  --lb-space-3: 0.75rem;
+  --lb-space-4: 1rem;
+  --lb-space-5: 1.25rem;
+  --lb-space-6: 1.5rem;
+  --lb-space-8: 2rem;
+  --lb-space-10: 2.5rem;
+
+  /* Radii */
+  --lb-radius-sm: 0.35rem;
+  --lb-radius-md: 0.55rem;
+  --lb-radius-lg: 0.75rem;
+  --lb-radius-xl: 1rem;
+
+  /* Shadows */
+  --lb-shadow-sm: 0 1px 2px rgba(26, 43, 36, 0.06);
+  --lb-shadow-md: 0 4px 14px rgba(26, 43, 36, 0.08);
+
+  /* Typography */
+  --lb-font-sans: "Segoe UI", "Helvetica Neue", "Avenir Next", sans-serif;
+  --lb-font-size-xs: 0.8125rem;
+  --lb-font-size-sm: 0.875rem;
+  --lb-font-size-md: 1rem;
+  --lb-font-size-lg: 1.125rem;
+  --lb-font-size-xl: 1.35rem;
+  --lb-font-size-2xl: clamp(1.75rem, 4vw, 2.25rem);
+  --lb-font-size-3xl: clamp(2.25rem, 5vw, 3rem);
+  --lb-line-height-tight: 1.25;
+  --lb-line-height-body: 1.5;
+
+  /* Focus */
+  --lb-focus-ring: 3px solid #6f9b7c;
+  --lb-focus-offset: 2px;
+
+  /* Layout */
+  --lb-content-width: 56rem;
+  --lb-content-narrow: 36rem;
+  --lb-topbar-width: min(var(--lb-content-width), 100%);
+
+  /* Breakpoints (documentation; used in media queries) */
+  --lb-bp-sm: 40rem;
+  --lb-bp-md: 48rem;
+  --lb-bp-lg: 64rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

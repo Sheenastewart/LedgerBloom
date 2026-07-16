@@ -170,21 +170,20 @@ describe('Reports routes', () => {
     })
   })
 
-  it('navigates from Home to Reports via nav and CTA', async () => {
+  it('navigates from Dashboard to Reports via primary nav', async () => {
     const user = userEvent.setup()
     render(
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter initialEntries={['/dashboard']}>
         <AppRoutes />
       </MemoryRouter>,
     )
 
-    expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Test User/ })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Reports' }))
     expect(await screen.findByRole('heading', { name: 'Monthly report' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('link', { name: 'Home' }))
-    await user.click(screen.getByRole('link', { name: 'View reports' }))
-    expect(await screen.findByRole('heading', { name: 'Monthly report' })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Dashboard' }))
+    expect(await screen.findByRole('heading', { name: /Test User/ })).toBeInTheDocument()
   })
 
   it('navigates between report tabs from the monthly default', async () => {

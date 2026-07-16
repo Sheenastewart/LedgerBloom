@@ -13,15 +13,15 @@
 
 .dashboard-header p {
   margin: 0;
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
 }
 
 .dashboard-period {
   margin-bottom: 1.5rem;
   padding: 1rem 1.1rem;
   border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
 }
 
 .dashboard-period fieldset {
@@ -59,8 +59,8 @@
 .dashboard-card {
   padding: 1rem 1.1rem;
   border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
   display: grid;
   gap: 0.35rem;
 }
@@ -69,19 +69,19 @@
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
 }
 
 .dashboard-card-value {
   margin: 0;
   font-size: 1.35rem;
   font-weight: 700;
-  color: #1d2a24;
+  color: var(--lb-color-text);
   word-break: break-word;
 }
 
 .dashboard-card-value.negative {
-  color: #8a2f2f;
+  color: var(--lb-color-danger);
 }
 
 .dashboard-section {
@@ -96,8 +96,8 @@
 .dashboard-table-wrap {
   overflow-x: auto;
   border-radius: 0.65rem;
-  border: 1px solid #c7d5cb;
-  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid var(--lb-color-border);
+  background: var(--lb-color-surface);
 }
 
 .dashboard-table {
@@ -110,12 +110,12 @@
 .dashboard-table td {
   padding: 0.75rem 1rem;
   text-align: left;
-  border-bottom: 1px solid #d5e0d8;
+  border-bottom: 1px solid var(--lb-color-border);
 }
 
 .dashboard-table th {
   font-size: 0.9rem;
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
   font-weight: 600;
 }
 
@@ -132,8 +132,8 @@
 .dashboard-highlight {
   padding: 1rem 1.1rem;
   border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
   display: grid;
   gap: 0.35rem;
 }
@@ -143,7 +143,7 @@
 }
 
 .dashboard-highlight .label {
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
   font-size: 0.95rem;
 }
 
@@ -160,7 +160,7 @@
 
 .dashboard-empty {
   margin: 0;
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
 }
 
 .dashboard-planning-lists {
@@ -187,8 +187,8 @@
   margin: 0;
   padding: 0.65rem 0.75rem;
   border-radius: 0.55rem;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
   font-size: 0.95rem;
 }
 

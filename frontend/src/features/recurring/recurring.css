@@ -23,8 +23,8 @@
 .recurring-item {
   padding: 1rem 1.1rem;
   border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
   display: grid;
   gap: 0.45rem;
 }
@@ -44,7 +44,7 @@
 
 .recurring-meta {
   margin: 0;
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
   font-size: 0.95rem;
 }
 
@@ -67,23 +67,23 @@
 
 .recurring-status.active,
 .recurring-status.upcoming {
-  color: #2f6b45;
+  color: var(--lb-color-success);
 }
 
 .recurring-status.due-today {
-  color: #7a5a10;
+  color: var(--lb-color-warning);
 }
 
 .recurring-status.inactive {
-  color: #6b6b6b;
+  color: var(--lb-color-text-muted);
 }
 
 .recurring-status.due-soon {
-  color: #8a6a12;
+  color: var(--lb-color-warning);
 }
 
 .recurring-status.overdue {
-  color: #8b2e2e;
+  color: var(--lb-color-danger);
 }
 
 .upcoming-list {
@@ -97,14 +97,14 @@
 .upcoming-item {
   padding: 0.85rem 1rem;
   border-radius: 0.55rem;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
 }
 
 .field-hint {
   margin: 0;
   font-size: 0.875rem;
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
 }
 
 .field .field-hint + .field-hint {
@@ -121,7 +121,7 @@
 }
 
 .history-choice {
-  border: 1px solid #c7d5cb;
+  border: 1px solid var(--lb-color-border);
   border-radius: 0.55rem;
   padding: 1rem 1.1rem 1.1rem;
   display: grid;
@@ -163,7 +163,7 @@
   display: grid;
   gap: 0.65rem;
   padding-top: 0.85rem;
-  border-top: 1px solid #c7d5cb;
+  border-top: 1px solid var(--lb-color-border);
 }
 
 .occurrence-checklist {
@@ -182,8 +182,8 @@
   gap: 0.6rem;
   padding: 0.55rem 0.7rem;
   border-radius: 0.4rem;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
   font-weight: 500;
 }
 
@@ -211,8 +211,8 @@
 .catch-up-panel {
   padding: 0.9rem 1rem;
   border-radius: 0.55rem;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
   display: grid;
   gap: 0.65rem;
 }
@@ -223,7 +223,7 @@
 
 .catch-up-summary p:first-child {
   font-weight: 600;
-  color: #2f6b45;
+  color: var(--lb-color-success);
 }
 
 @media (max-width: 40rem) {

@@ -113,7 +113,8 @@ describe('RecurringPage', () => {
 
     renderPage()
     await screen.findAllByText('Netflix')
-    await user.click(screen.getByRole('button', { name: 'Mark Paid' }))
+    await user.click(screen.getByRole('button', { name: 'Actions for Netflix' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Mark Paid' }))
 
     await waitFor(() => {
       expect(recurringApi.markRecurringExpensePaid).toHaveBeenCalledWith(10, {
@@ -177,7 +178,8 @@ describe('RecurringPage', () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
     renderPage()
     await screen.findAllByText('Netflix')
-    await user.click(screen.getByRole('button', { name: 'Delete' }))
+    await user.click(screen.getByRole('button', { name: 'Actions for Netflix' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
     expect(recurringApi.deleteRecurringExpense).not.toHaveBeenCalled()
     confirmSpy.mockRestore()
   })
@@ -196,7 +198,8 @@ describe('RecurringPage', () => {
     renderPage()
     await screen.findAllByText('Netflix')
     const callsBefore = vi.mocked(recurringApi.getRecurringExpenses).mock.calls.length
-    await user.click(screen.getByRole('button', { name: 'Mark Paid' }))
+    await user.click(screen.getByRole('button', { name: 'Actions for Netflix' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Mark Paid' }))
 
     expect(
       await screen.findByText('Recurring expense was already updated; refresh and try again'),

@@ -7,9 +7,9 @@
 
 .income-tab {
   appearance: none;
-  border: 1px solid #c7d5cb;
+  border: 1px solid var(--lb-color-border);
   background: rgba(255, 255, 255, 0.45);
-  color: #1d2a24;
+  color: var(--lb-color-text);
   font: inherit;
   font-weight: 600;
   padding: 0.55rem 0.95rem;
@@ -19,13 +19,13 @@
 
 .income-tab.active,
 .income-tab[aria-selected='true'] {
-  background: #2f5d45;
-  border-color: #2f5d45;
-  color: #fff;
+  background: var(--lb-color-primary);
+  border-color: var(--lb-color-primary);
+  color: var(--lb-color-text-inverse);
 }
 
 .income-tab:focus-visible {
-  outline: 3px solid #6f9b7c;
+  outline: var(--lb-focus-ring);
   outline-offset: 2px;
 }
 
@@ -58,8 +58,8 @@
   gap: 0.5rem;
   padding: 1.1rem 1.2rem;
   border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
   text-decoration: none;
   color: inherit;
   transition: border-color 0.15s ease, background-color 0.15s ease;
@@ -69,7 +69,7 @@
 .income-add-choice:hover,
 .income-entry-option:focus-visible,
 .income-add-choice:focus-visible {
-  border-color: #6f9b7c;
+  border-color: var(--lb-color-border-strong);
   background: rgba(255, 255, 255, 0.88);
   outline: none;
 }
@@ -83,7 +83,7 @@
 .income-entry-option p,
 .income-add-choice p {
   margin: 0;
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
   font-size: 0.95rem;
   line-height: 1.45;
 }
@@ -91,7 +91,7 @@
 .income-add-choice-cta {
   margin-top: 0.35rem;
   font-weight: 600;
-  color: #2f5d45;
+  color: var(--lb-color-primary);
 }
 
 .income-list {
@@ -110,8 +110,8 @@
   gap: 1rem;
   padding: 1rem 1.1rem;
   border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
 }
 
 .income-main {
@@ -127,7 +127,7 @@
 
 .income-meta {
   margin: 0;
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
   font-size: 0.95rem;
 }
 
@@ -135,7 +135,7 @@
   margin: 0;
   font-size: 1.125rem;
   font-weight: 700;
-  color: #1d2a24;
+  color: var(--lb-color-text);
 }
 
 .income-actions {
@@ -150,8 +150,8 @@
   margin-bottom: 1.5rem;
   padding: 1rem 1.1rem;
   border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid #c7d5cb;
+  background: var(--lb-color-surface);
+  border: 1px solid var(--lb-color-border);
 }
 
 .income-filters legend {
@@ -180,21 +180,21 @@
 .field-hint {
   margin: 0;
   font-size: 0.875rem;
-  color: #4c6356;
+  color: var(--lb-color-text-muted);
 }
 
 .field select {
   width: 100%;
   padding: 0.7rem 0.8rem;
-  border: 1px solid #9fb3a5;
+  border: 1px solid var(--lb-color-border-strong);
   border-radius: 0.45rem;
-  background: #fff;
+  background: var(--lb-color-surface-solid);
   font: inherit;
   color: inherit;
 }
 
 .field select:focus {
-  outline: 3px solid #6f9b7c;
+  outline: var(--lb-focus-ring);
   outline-offset: 2px;
 }
 

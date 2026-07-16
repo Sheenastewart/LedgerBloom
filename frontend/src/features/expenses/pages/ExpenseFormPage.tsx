@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
 import { getCategories } from '../../categories/api/categoryApi'
 import type { Category } from '../../categories/types'
@@ -66,10 +66,16 @@ const emptyValues: ExpenseFormValues = {
   notes: '',
 }
 
+type PrefillState = {
+  prefill?: Partial<ExpenseFormValues>
+}
+
 export function ExpenseFormPage({ mode }: ExpenseFormPageProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const params = useParams()
   const routeId = mode === 'edit' ? parseExpenseRouteId(params.id) : null
+  const prefill = (location.state as PrefillState | null)?.prefill
 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -77,7 +83,9 @@ export function ExpenseFormPage({ mode }: ExpenseFormPageProps) {
   const [submitting, setSubmitting] = useState(false)
   const [serverErrors, setServerErrors] = useState<ExpenseFormErrors>({})
   const [categories, setCategories] = useState<Category[]>([])
-  const [initialValues, setInitialValues] = useState<ExpenseFormValues>(emptyValues)
+  const [initialValues, setInitialValues] = useState<ExpenseFormValues>(() =>
+    mode === 'create' && prefill ? { ...emptyValues, ...prefill } : emptyValues,
+  )
   const [formKey, setFormKey] = useState(0)
 
   useEffect(() => {
@@ -119,6 +127,9 @@ export function ExpenseFormPage({ mode }: ExpenseFormPageProps) {
             categoryId: String(expenseData.category.id),
             notes: expenseData.notes ?? '',
           })
+          setFormKey((value) => value + 1)
+        } else if (mode === 'create' && prefill) {
+          setInitialValues({ ...emptyValues, ...prefill })
           setFormKey((value) => value + 1)
         }
       } catch (error) {

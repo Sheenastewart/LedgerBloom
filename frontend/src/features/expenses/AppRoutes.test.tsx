@@ -143,19 +143,17 @@ describe('Expense routes', () => {
     vi.mocked(expenseApi.getExpenses).mockResolvedValue([])
   })
 
-  it('navigates between Home and Expenses via Transactions', async () => {
+  it('navigates from Dashboard to Expenses via Transactions', async () => {
     const user = userEvent.setup()
     render(
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter initialEntries={['/dashboard']}>
         <AppRoutes />
       </MemoryRouter>,
     )
 
-    expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Test User/ })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Transactions' }))
     expect(await screen.findByRole('heading', { name: 'Expenses' })).toBeInTheDocument()
-    await user.click(screen.getByRole('link', { name: 'Home' }))
-    expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
   })
 
   it('renders Add expense from the Expenses page', async () => {

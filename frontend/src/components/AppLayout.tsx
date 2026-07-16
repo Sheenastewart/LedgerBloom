@@ -1,10 +1,11 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../features/auth/AuthContext'
 import { paths } from '../routes/paths'
+import { Button } from './ui/Button'
 import '../features/auth/auth.css'
 
 export function AppLayout() {
-  const { user, logout } = useAuth()
+  const { user, logout, loading } = useAuth()
   const navigate = useNavigate()
 
   async function handleLogout() {
@@ -15,17 +16,19 @@ export function AppLayout() {
   return (
     <div className="shell">
       <header className="topbar">
-        <NavLink to={paths.home} className="brand-link">
+        <NavLink to={user ? paths.dashboard : paths.home} className="brand-link">
           LedgerBloom
         </NavLink>
         <nav className="site-nav" aria-label="Primary">
-          <NavLink
-            to={paths.home}
-            className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
-            end
-          >
-            Home
-          </NavLink>
+          {!loading && !user ? (
+            <NavLink
+              to={paths.home}
+              className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+              end
+            >
+              Home
+            </NavLink>
+          ) : null}
           {user ? (
             <>
               <NavLink
@@ -52,30 +55,30 @@ export function AppLayout() {
               >
                 Reports
               </NavLink>
+              <NavLink
+                to={paths.settings}
+                className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+              >
+                Settings
+              </NavLink>
             </>
           ) : null}
-          <NavLink
-            to={paths.settings}
-            className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
-          >
-            Settings
-          </NavLink>
         </nav>
         {user ? (
           <div className="user-menu">
             <span className="user-menu-name">{user.displayName}</span>
-            <button type="button" className="button button-secondary" onClick={() => void handleLogout()}>
+            <Button variant="secondary" type="button" onClick={() => void handleLogout()}>
               Log out
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="user-menu">
-            <NavLink to={paths.login} className="button button-secondary">
+            <Button variant="secondary" to={paths.login}>
               Log in
-            </NavLink>
-            <NavLink to={paths.register} className="button button-primary">
+            </Button>
+            <Button variant="primary" to={paths.register}>
               Sign up
-            </NavLink>
+            </Button>
           </div>
         )}
       </header>

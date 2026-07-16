@@ -3,11 +3,30 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiClientError } from '../../../api/ApiClientError'
+import { AuthProvider } from '../../auth/AuthContext'
+import * as authApi from '../../auth/api/authApi'
+import * as expenseApi from '../../expenses/api/expenseApi'
+import * as incomeApi from '../../income/api/incomeApi'
 import * as dashboardApi from '../api/dashboardApi'
 import { DashboardPage } from './DashboardPage'
 
 vi.mock('../api/dashboardApi', () => ({
   getMonthlyDashboard: vi.fn(),
+}))
+
+vi.mock('../../expenses/api/expenseApi', () => ({
+  getExpenses: vi.fn(),
+}))
+
+vi.mock('../../income/api/incomeApi', () => ({
+  getIncomeEntries: vi.fn(),
+}))
+
+vi.mock('../../auth/api/authApi', () => ({
+  getMe: vi.fn(),
+  login: vi.fn(),
+  register: vi.fn(),
+  logout: vi.fn(),
 }))
 
 const sampleDashboard = {
@@ -41,23 +60,43 @@ const sampleDashboard = {
     source: 'Salary',
   },
   budget: null,
-    planning: {
-      expectedIncome: 0,
-      expectedExpenses: 0,
-      projectedCashFlow: 0,
-      upcomingIncomeCount: 0,
-      upcomingExpenseCount: 0,
-      upcomingIncomeItems: [],
-      upcomingExpenseItems: [],
-    },
+  planning: {
+    expectedIncome: 1000,
+    expectedExpenses: 250,
+    projectedCashFlow: 750,
+    upcomingIncomeCount: 1,
+    upcomingExpenseCount: 1,
+    upcomingIncomeItems: [
+      {
+        id: 1,
+        description: 'Paycheck',
+        source: 'Salary',
+        amount: 1000,
+        nextIncomeDate: '2099-01-01',
+        cadence: 'MONTHLY',
+      },
+    ],
+    upcomingExpenseItems: [
+      {
+        id: 2,
+        description: 'Rent',
+        categoryName: 'Housing',
+        amount: 250,
+        nextPaymentDate: '2099-01-02',
+        cadence: 'MONTHLY',
+      },
+    ],
+  },
 }
 
 function renderPage() {
   return render(
     <MemoryRouter initialEntries={['/dashboard']}>
-      <Routes>
-        <Route path="/dashboard" element={<DashboardPage />} />
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          <Route path="/dashboard" element={<DashboardPage />} />
+        </Routes>
+      </AuthProvider>
     </MemoryRouter>,
   )
 }
@@ -70,132 +109,107 @@ describe('DashboardPage', () => {
 
   beforeEach(() => {
     vi.mocked(dashboardApi.getMonthlyDashboard).mockReset()
+    vi.mocked(expenseApi.getExpenses).mockResolvedValue([])
+    vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue([])
+    vi.mocked(authApi.getMe).mockResolvedValue({
+      id: 1,
+      email: 'user@example.com',
+      displayName: 'Sheena',
+      createdAt: '2026-01-01T00:00:00Z',
+      lastLoginAt: null,
+    })
   })
 
-  it('shows loading then dashboard totals', async () => {
+  it('shows personalized greeting, action hub, and overview totals', async () => {
     vi.mocked(dashboardApi.getMonthlyDashboard).mockResolvedValue(sampleDashboard)
 
     renderPage()
 
     expect(screen.getByText('Loading dashboard…')).toBeInTheDocument()
-    expect(await screen.findByText('Total income')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Sheena/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'What would you like to do?' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Add Expense/i })).toHaveAttribute(
+      'href',
+      '/transactions/expenses/add',
+    )
+    expect(screen.getByRole('heading', { name: 'Activity' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Upcoming' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Monthly overview' })).toBeInTheDocument()
     expect(screen.getByText('$3,250.50')).toBeInTheDocument()
     expect(screen.getByText('$200.25')).toBeInTheDocument()
-    expect(screen.getByText('$3,050.25')).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Category' })).toBeInTheDocument()
-    expect(screen.getByRole('row', { name: /Utilities/ })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Source' })).toBeInTheDocument()
-    expect(screen.getByText('Paycheck · Salary')).toBeInTheDocument()
-    expect(screen.getByText('Power · Utilities')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Cash Flow Planning' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /Expected income/ })).toBeInTheDocument()
-    expect(screen.getByText('No scheduled recurring income in this month.')).toBeInTheDocument()
   })
 
-  it('shows empty-state messages for a quiet month', async () => {
-    vi.mocked(dashboardApi.getMonthlyDashboard).mockResolvedValue({
-      ...sampleDashboard,
-      totalIncome: 0,
-      totalExpenses: 0,
-      netCashFlow: 0,
-      incomeEntryCount: 0,
-      expenseEntryCount: 0,
-      spendingByCategory: [],
-      incomeBySource: [],
-      largestExpense: null,
-      largestIncome: null,
-      budget: null,
-    planning: {
-      expectedIncome: 0,
-      expectedExpenses: 0,
-      projectedCashFlow: 0,
-      upcomingIncomeCount: 0,
-      upcomingExpenseCount: 0,
-      upcomingIncomeItems: [],
-      upcomingExpenseItems: [],
-    },
-    })
+  it('shows activity items from expenses and income', async () => {
+    vi.mocked(dashboardApi.getMonthlyDashboard).mockResolvedValue(sampleDashboard)
+    vi.mocked(expenseApi.getExpenses).mockResolvedValue([
+      {
+        id: 5,
+        description: 'Coffee',
+        merchant: null,
+        amount: 4.5,
+        expenseDate: '2026-07-10',
+        category: { id: 1, name: 'Dining' },
+        notes: null,
+        createdAt: '2026-07-10T00:00:00Z',
+        updatedAt: '2026-07-10T00:00:00Z',
+      },
+    ] as never)
+    vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue([
+      {
+        id: 9,
+        description: 'Bonus',
+        source: 'Work',
+        amount: 100,
+        incomeDate: '2026-07-11',
+        notes: null,
+        recurringIncomeId: null,
+        createdAt: '2026-07-11T00:00:00Z',
+        updatedAt: '2026-07-11T00:00:00Z',
+      },
+    ] as never)
 
     renderPage()
 
-    expect(
-      await screen.findByText('No income or expense entries for this month.'),
-    ).toBeInTheDocument()
-    expect(screen.getByText('No budget set for this month.')).toBeInTheDocument()
-    expect(screen.getByText('No expenses in this month.')).toBeInTheDocument()
-    expect(screen.getByText('No income entries in this month.')).toBeInTheDocument()
+    expect(await screen.findByText(/Coffee/)).toBeInTheDocument()
+    expect(screen.getByText(/Bonus/)).toBeInTheDocument()
   })
 
-  it('shows Retry when the API is unavailable', async () => {
+  it('shows API validation errors and allows retry', async () => {
     const user = userEvent.setup()
     vi.mocked(dashboardApi.getMonthlyDashboard)
-      .mockRejectedValueOnce(new ApiClientError({ message: 'down', code: 'NETWORK_ERROR' }))
+      .mockRejectedValueOnce(
+        new ApiClientError({
+          message: 'Invalid month',
+          code: 'INVALID_REQUEST',
+          status: 400,
+        }),
+      )
       .mockResolvedValueOnce(sampleDashboard)
 
     renderPage()
 
-    expect(
-      await screen.findByText('Unable to load the monthly dashboard. Please try again.'),
-    ).toBeInTheDocument()
-
+    expect(await screen.findByText('Invalid month')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Retry' }))
-    expect(await screen.findByText('$3,250.50')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Monthly overview' })).toBeInTheDocument()
   })
 
-  it('reloads when the report period is updated', async () => {
+  it('applies a new period from the form', async () => {
     const user = userEvent.setup()
-    vi.mocked(dashboardApi.getMonthlyDashboard)
-      .mockResolvedValueOnce({ ...sampleDashboard, month: 7 })
-      .mockResolvedValueOnce({ ...sampleDashboard, month: 6, year: 2026 })
+    vi.mocked(dashboardApi.getMonthlyDashboard).mockResolvedValue(sampleDashboard)
 
     renderPage()
-    await screen.findByText('$3,250.50')
+    await screen.findByRole('heading', { name: /Sheena/ })
 
-    await user.selectOptions(screen.getByLabelText('Month'), '6')
+    await user.selectOptions(screen.getByLabelText('Month'), '8')
     await user.clear(screen.getByLabelText('Year'))
-    await user.type(screen.getByLabelText('Year'), '2026')
+    await user.type(screen.getByLabelText('Year'), '2025')
     await user.click(screen.getByRole('button', { name: 'Update report' }))
 
     await waitFor(() => {
-      expect(dashboardApi.getMonthlyDashboard).toHaveBeenLastCalledWith(
-        { year: 2026, month: 6 },
+      expect(dashboardApi.getMonthlyDashboard).toHaveBeenCalledWith(
+        { year: 2025, month: 8 },
         expect.any(AbortSignal),
       )
     })
-  })
-
-  it('shows API validation message for invalid period responses', async () => {
-    vi.mocked(dashboardApi.getMonthlyDashboard).mockRejectedValue(
-      new ApiClientError({
-        message: 'month must be between 1 and 12',
-        code: 'INVALID_REQUEST',
-        status: 400,
-      }),
-    )
-
-    renderPage()
-
-    expect(await screen.findByText('month must be between 1 and 12')).toBeInTheDocument()
-  })
-
-  it('shows budget overview when a budget exists', async () => {
-    vi.mocked(dashboardApi.getMonthlyDashboard).mockResolvedValue({
-      ...sampleDashboard,
-      budget: {
-        id: 10,
-        totalLimit: 1000,
-        actualExpenses: 200.25,
-        remaining: 799.75,
-        percentUsed: 20.03,
-        overBudget: false,
-      },
-    })
-
-    renderPage()
-
-    expect(await screen.findByText('Budget overview')).toBeInTheDocument()
-    expect(screen.getByText('Total budget')).toBeInTheDocument()
-    expect(screen.getByText('$1,000.00')).toBeInTheDocument()
-    expect(screen.getByText('On track')).toBeInTheDocument()
   })
 })

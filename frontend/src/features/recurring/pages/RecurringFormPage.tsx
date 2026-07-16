@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
 import { formatAmountForInput } from '../../../utils/moneyUtils'
 import { getCategories } from '../../categories/api/categoryApi'
@@ -39,6 +39,10 @@ const emptyValues: RecurringFormValues = {
   selectedOccurrenceDates: [],
 }
 
+type PrefillState = {
+  prefill?: Partial<RecurringFormValues>
+}
+
 function mapServerErrors(error: ApiClientError): RecurringFormErrors {
   const next: RecurringFormErrors = {}
   for (const fieldError of error.fieldErrors) {
@@ -65,15 +69,19 @@ function mapServerErrors(error: ApiClientError): RecurringFormErrors {
 
 export function RecurringFormPage({ mode }: RecurringFormPageProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const params = useParams()
   const routeId = mode === 'edit' ? parseRecurringRouteId(params.id) : null
+  const prefill = (location.state as PrefillState | null)?.prefill
 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [notFound, setNotFound] = useState(mode === 'edit' && routeId === null)
   const [submitting, setSubmitting] = useState(false)
   const [serverErrors, setServerErrors] = useState<RecurringFormErrors>({})
-  const [initialValues, setInitialValues] = useState<RecurringFormValues>(emptyValues)
+  const [initialValues, setInitialValues] = useState<RecurringFormValues>(() =>
+    mode === 'create' && prefill ? { ...emptyValues, ...prefill } : emptyValues,
+  )
   const [categories, setCategories] = useState<Category[]>([])
   const [formKey, setFormKey] = useState(0)
 
@@ -100,7 +108,8 @@ export function RecurringFormPage({ mode }: RecurringFormPageProps) {
         setCategories(categoryData)
 
         if (mode === 'create') {
-          setInitialValues(emptyValues)
+          setInitialValues(prefill ? { ...emptyValues, ...prefill } : emptyValues)
+          setFormKey((value) => value + 1)
           setLoading(false)
           return
         }
@@ -142,7 +151,7 @@ export function RecurringFormPage({ mode }: RecurringFormPageProps) {
 
     void load()
     return () => controller.abort()
-  }, [mode, routeId])
+  }, [mode, routeId, prefill])
 
   async function handleSubmit(values: RecurringFormValues) {
     setSubmitting(true)

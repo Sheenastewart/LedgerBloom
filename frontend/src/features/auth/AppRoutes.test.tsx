@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -170,6 +170,21 @@ describe('Auth routes', () => {
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
   })
 
+  it('shows authenticated navigation without Home', async () => {
+    vi.mocked(authApi.getMe).mockResolvedValue(sampleUser)
+
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    const navigation = await screen.findByRole('navigation', { name: 'Primary' })
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
+    expect(within(navigation).queryByRole('link', { name: 'Home' })).not.toBeInTheDocument()
+  })
+
   it('logs in successfully and redirects back to the originally requested page', async () => {
     const user = userEvent.setup()
     vi.mocked(authApi.getMe).mockRejectedValue(
@@ -264,7 +279,7 @@ describe('Auth routes', () => {
     await user.type(screen.getByLabelText('Confirm password'), 'supersecret12')
     await user.click(screen.getByRole('button', { name: 'Create account' }))
 
-    expect(await screen.findByRole('heading', { name: 'Monthly dashboard' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Good (morning|afternoon|evening), Jane Doe/ })).toBeInTheDocument()
     expect(authApi.register).toHaveBeenCalledWith({
       email: 'user@example.com',
       password: 'supersecret12',

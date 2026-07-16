@@ -280,7 +280,8 @@ describe('ExpensesPage', () => {
     renderPage()
 
     await screen.findByRole('heading', { name: 'Weekly shopping' })
-    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0])
+    await user.click(screen.getByRole('button', { name: 'Actions for Weekly shopping' }))
+    await user.click(screen.getAllByRole('menuitem', { name: 'Delete' })[0])
     expect(expenseApi.deleteExpense).not.toHaveBeenCalled()
   })
 
@@ -294,7 +295,8 @@ describe('ExpensesPage', () => {
     renderPage()
 
     await screen.findByRole('heading', { name: 'Weekly shopping' })
-    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0])
+    await user.click(screen.getByRole('button', { name: 'Actions for Weekly shopping' }))
+    await user.click(screen.getAllByRole('menuitem', { name: 'Delete' })[0])
 
     await waitFor(() => {
       expect(expenseApi.deleteExpense).toHaveBeenCalledWith(1)
@@ -313,7 +315,8 @@ describe('ExpensesPage', () => {
     renderPage()
 
     await screen.findByRole('heading', { name: 'Weekly shopping' })
-    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0])
+    await user.click(screen.getByRole('button', { name: 'Actions for Weekly shopping' }))
+    await user.click(screen.getAllByRole('menuitem', { name: 'Delete' })[0])
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/Could not delete "Weekly shopping"/i)
     expect(screen.getByRole('heading', { name: 'Weekly shopping' })).toBeInTheDocument()
@@ -332,7 +335,8 @@ describe('ExpensesPage', () => {
     await screen.findByRole('heading', { name: 'Weekly shopping' })
     await user.selectOptions(screen.getByLabelText('Category'), '1')
     await user.click(screen.getByRole('button', { name: 'Apply' }))
-    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0])
+    await user.click(screen.getByRole('button', { name: 'Actions for Weekly shopping' }))
+    await user.click(screen.getAllByRole('menuitem', { name: 'Delete' })[0])
 
     await waitFor(() => {
       expect(expenseApi.getExpenses).toHaveBeenLastCalledWith({ categoryId: 1 }, undefined)

@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { ActionMenu, confirmDestructive } from '../../../components/ui/ActionMenu'
+import { paths } from '../../../routes/paths'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
 import type { IncomeEntry } from '../types'
 
@@ -24,40 +25,84 @@ export function IncomeList({
         const isUndoing = undoingIncomeId === entry.id
         const fromRecurring = entry.recurringIncomeId != null
         return (
-          <li key={entry.id} className="income-row">
-            <div className="income-main">
-              <h2 className="income-description">{entry.description}</h2>
-              <p className="income-amount">{formatCurrency(entry.amount)}</p>
-              <p className="income-meta">
+          <li key={entry.id} className="income-row list-row">
+            <div className="income-main list-row__main">
+              <h2 className="income-description list-row__title">{entry.description}</h2>
+              <p className="income-amount list-row__amount">{formatCurrency(entry.amount)}</p>
+              <p className="income-meta list-row__meta">
                 {formatIsoDate(entry.incomeDate)} · {entry.source}
               </p>
-              {entry.notes ? <p className="income-meta">Notes: {entry.notes}</p> : null}
+              {entry.notes ? <p className="income-meta list-row__meta">Notes: {entry.notes}</p> : null}
               {fromRecurring ? (
-                <p className="income-meta">Recorded from a recurring schedule.</p>
+                <p className="income-meta list-row__meta">Recorded from a recurring schedule.</p>
               ) : null}
             </div>
-            <div className="income-actions">
-              <Link className="button button-secondary" to={`/transactions/income/${entry.id}/edit`}>
-                Edit
-              </Link>
-              {fromRecurring ? (
-                <button
-                  type="button"
-                  className="button button-secondary"
-                  onClick={() => onUndoReceived(entry)}
-                  disabled={isUndoing || isDeleting}
-                >
-                  {isUndoing ? 'Undoing…' : 'Undo receive'}
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="button button-danger"
-                onClick={() => onDelete(entry)}
-                disabled={isDeleting || isUndoing}
-              >
-                {isDeleting ? 'Deleting…' : 'Delete'}
-              </button>
+            <div className="income-actions list-row__actions">
+              <ActionMenu
+                label={`Actions for ${entry.description}`}
+                items={[
+                  {
+                    id: 'edit',
+                    label: 'Edit',
+                    to: paths.transactionsIncomeEdit(entry.id),
+                  },
+                  {
+                    id: 'duplicate',
+                    label: 'Duplicate',
+                    to: paths.transactionsIncomeNew,
+                    state: {
+                      prefill: {
+                        description: entry.description,
+                        source: entry.source,
+                        amount: String(entry.amount),
+                        incomeDate: entry.incomeDate,
+                        notes: entry.notes ?? '',
+                      },
+                    },
+                  },
+                  {
+                    id: 'convert',
+                    label: 'Convert to recurring',
+                    to: paths.transactionsRecurringIncomeNew,
+                    state: {
+                      prefill: {
+                        description: entry.description,
+                        source: entry.source,
+                        amount: String(entry.amount),
+                        cadence: 'MONTHLY',
+                        nextIncomeDate: entry.incomeDate,
+                        active: true,
+                        notes: entry.notes ?? '',
+                      },
+                    },
+                  },
+                  ...(fromRecurring
+                    ? [
+                        {
+                          id: 'undo',
+                          label: isUndoing ? 'Undoing…' : 'Undo receive',
+                          disabled: isUndoing || isDeleting,
+                          onSelect: () => onUndoReceived(entry),
+                        },
+                      ]
+                    : []),
+                  {
+                    id: 'delete',
+                    label: isDeleting ? 'Deleting…' : 'Delete',
+                    kind: 'danger' as const,
+                    disabled: isDeleting || isUndoing,
+                    onSelect: () => {
+                      if (
+                        confirmDestructive(
+                          `Delete income “${entry.description}”? This cannot be undone.`,
+                        )
+                      ) {
+                        onDelete(entry)
+                      }
+                    },
+                  },
+                ]}
+              />
             </div>
           </li>
         )

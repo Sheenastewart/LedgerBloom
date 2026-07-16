@@ -163,12 +163,14 @@ describe('IncomePage', () => {
   })
 
   it('shows undo receive only for recurring-linked entries', async () => {
+    const user = userEvent.setup()
     vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue(sampleEntries)
     renderPage()
 
     await screen.findByRole('heading', { name: 'Salary' })
-    expect(screen.getByRole('button', { name: 'Undo receive' })).toBeInTheDocument()
-    expect(screen.queryAllByRole('button', { name: 'Undo receive' })).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: 'Actions for Salary' }))
+    expect(screen.getByRole('menuitem', { name: 'Undo receive' })).toBeInTheDocument()
+    expect(screen.queryAllByRole('menuitem', { name: 'Undo receive' })).toHaveLength(1)
   })
 
   it('undoes a recurring receive after confirmation', async () => {
@@ -185,7 +187,8 @@ describe('IncomePage', () => {
     renderPage()
 
     await screen.findByRole('heading', { name: 'Salary' })
-    await user.click(screen.getByRole('button', { name: 'Undo receive' }))
+    await user.click(screen.getByRole('button', { name: 'Actions for Salary' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Undo receive' }))
 
     await waitFor(() => {
       expect(incomeApi.undoReceivedIncomeEntry).toHaveBeenCalledWith(2)

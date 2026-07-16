@@ -4,9 +4,9 @@
 
 .how-this-works-toggle {
   appearance: none;
-  border: 1px solid #9fb3a5;
-  background: rgba(255, 255, 255, 0.55);
-  color: #2f5d45;
+  border: 1px solid var(--lb-color-border-strong);
+  background: var(--lb-color-surface);
+  color: var(--lb-color-primary);
   font: inherit;
   font-weight: 600;
   font-size: 0.9375rem;
@@ -20,7 +20,7 @@
 }
 
 .how-this-works-toggle:focus-visible {
-  outline: 2px solid #6f9b7c;
+  outline: var(--lb-focus-ring);
   outline-offset: 2px;
 }
 
@@ -28,9 +28,9 @@
   margin-top: 0.65rem;
   padding: 0.9rem 1rem;
   border-radius: 0.65rem;
-  border: 1px solid #c7d5cb;
-  background: rgba(255, 255, 255, 0.62);
-  color: #4c6356;
+  border: 1px solid var(--lb-color-border);
+  background: var(--lb-color-surface);
+  color: var(--lb-color-text-muted);
   max-width: 42rem;
 }
 
@@ -43,7 +43,7 @@
 }
 
 .how-this-works-panel a {
-  color: #2f5d45;
+  color: var(--lb-color-link);
   font-weight: 600;
 }
 

@@ -150,20 +150,18 @@ describe('Category routes', () => {
     vi.mocked(categoryApi.getCategories).mockResolvedValue([])
   })
 
-  it('navigates between Home and Categories without a full page reload', async () => {
+  it('navigates from Dashboard to Categories via Transactions', async () => {
     const user = userEvent.setup()
     render(
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter initialEntries={['/dashboard']}>
         <AppRoutes />
       </MemoryRouter>,
     )
 
-    expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Test User/ })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Transactions' }))
     await user.click(screen.getByRole('link', { name: 'Categories' }))
     expect(await screen.findByRole('heading', { name: 'Categories' })).toBeInTheDocument()
-    await user.click(screen.getByRole('link', { name: 'Home' }))
-    expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
   })
 
   it('renders Add category from the Categories page', async () => {

@@ -1,8 +1,9 @@
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { fetchHealth } from '../api/health'
 import { useAuth } from '../features/auth/AuthContext'
 import { paths } from '../routes/paths'
+import { Button } from '../components/ui/Button'
 
 type HealthStatus = 'loading' | 'connected' | 'unavailable'
 
@@ -35,6 +36,10 @@ export function HomePage() {
     }
   }, [])
 
+  if (!loading && user) {
+    return <Navigate to={paths.dashboard} replace />
+  }
+
   return (
     <main className="home-page">
       <h1>LedgerBloom</h1>
@@ -49,34 +54,14 @@ export function HomePage() {
         <>
           <p className="home-welcome">Sign in to manage your budgets, expenses, and income.</p>
           <div className="home-actions">
-            <Link to={paths.login} className="button button-primary">
+            <Button variant="primary" to={paths.login}>
               Log in
-            </Link>
-            <Link to={paths.register} className="button button-secondary">
+            </Button>
+            <Button variant="secondary" to={paths.register}>
               Create an account
-            </Link>
+            </Button>
           </div>
         </>
-      ) : null}
-
-      {!loading && user ? (
-        <div className="home-actions">
-          <Link to={paths.dashboard} className="button button-primary">
-            View dashboard
-          </Link>
-          <Link to={paths.transactions} className="button button-secondary">
-            Manage transactions
-          </Link>
-          <Link to={paths.budgets} className="button button-secondary">
-            Manage budgets
-          </Link>
-          <Link to={paths.reports} className="button button-secondary">
-            View reports
-          </Link>
-          <Link to={paths.settings} className="button button-secondary">
-            Open settings
-          </Link>
-        </div>
       ) : null}
 
       <p className="home-help-link">

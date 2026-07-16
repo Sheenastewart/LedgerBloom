@@ -1,5 +1,5 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiClientError } from '../api/ApiClientError'
 import { AuthProvider } from '../features/auth/AuthContext'
@@ -13,11 +13,14 @@ vi.mock('../features/auth/api/authApi', () => ({
   logout: vi.fn(),
 }))
 
-function renderHome() {
+function renderHomeWithAuth(initialPath = '/') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialPath]}>
       <AuthProvider>
-        <HomePage />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/dashboard" element={<main>Dashboard destination</main>} />
+        </Routes>
       </AuthProvider>
     </MemoryRouter>,
   )
@@ -30,7 +33,7 @@ describe('HomePage', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows API connected and financial links when the health request succeeds and the user is authenticated', async () => {
+  it('redirects authenticated users to the dashboard', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -46,37 +49,10 @@ describe('HomePage', () => {
       lastLoginAt: '2026-07-15T00:00:00Z',
     })
 
-    renderHome()
+    renderHomeWithAuth()
 
-    expect(screen.getByTestId('health-status')).toHaveTextContent(
-      'Checking API connection...',
-    )
-
-    await waitFor(() => {
-      expect(screen.getByTestId('health-status')).toHaveTextContent('API connected')
-    })
-    expect(await screen.findByRole('link', { name: 'View dashboard' })).toHaveAttribute(
-      'href',
-      '/dashboard',
-    )
-    expect(screen.getByRole('link', { name: 'Manage transactions' })).toHaveAttribute(
-      'href',
-      '/transactions',
-    )
-    expect(screen.getByRole('link', { name: 'Manage budgets' })).toHaveAttribute(
-      'href',
-      '/budgets',
-    )
-    expect(screen.getByRole('link', { name: 'View reports' })).toHaveAttribute(
-      'href',
-      '/reports',
-    )
-    expect(screen.getByRole('link', { name: 'Open settings' })).toHaveAttribute(
-      'href',
-      '/settings',
-    )
-    expect(screen.getByRole('link', { name: 'View help' })).toHaveAttribute('href', '/settings/help')
-    expect(screen.queryByRole('link', { name: 'Log in' })).not.toBeInTheDocument()
+    expect(await screen.findByText('Dashboard destination')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'LedgerBloom' })).not.toBeInTheDocument()
   })
 
   it('shows login and register CTAs when logged out', async () => {
@@ -91,14 +67,13 @@ describe('HomePage', () => {
       new ApiClientError({ message: 'Authentication required', code: 'UNAUTHORIZED', status: 401 }),
     )
 
-    renderHome()
+    renderHomeWithAuth()
 
     expect(await screen.findByRole('link', { name: 'Log in' })).toHaveAttribute('href', '/login')
     expect(screen.getByRole('link', { name: 'Create an account' })).toHaveAttribute(
       'href',
       '/register',
     )
-    expect(screen.queryByRole('link', { name: 'View dashboard' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'View help' })).toHaveAttribute('href', '/settings/help')
   })
 
@@ -108,7 +83,7 @@ describe('HomePage', () => {
       new ApiClientError({ message: 'Authentication required', code: 'UNAUTHORIZED', status: 401 }),
     )
 
-    renderHome()
+    renderHomeWithAuth()
 
     await waitFor(() => {
       expect(screen.getByTestId('health-status')).toHaveTextContent('API unavailable')
