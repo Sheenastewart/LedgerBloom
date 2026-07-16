@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -92,6 +93,13 @@ class MonthlyBudgetControllerTest {
 	}
 
 	@Test
+	@WithAnonymousUser
+	void getUnauthorizedReturns401() throws Exception {
+		mockMvc.perform(get("/api/budgets/monthly").param("year", "2026").param("month", "7"))
+			.andExpect(status().isUnauthorized());
+	}
+
+	@Test
 	void generateCreatesBudget() throws Exception {
 		when(monthlyBudgetService.generateFromSchedules(any(MonthlyBudgetGenerateRequest.class)))
 			.thenReturn(sampleResponse());
@@ -120,6 +128,41 @@ class MonthlyBudgetControllerTest {
 	}
 
 	@Test
+	void createGroupLimitInvalidAmountReturns400() throws Exception {
+		mockMvc.perform(post("/api/budgets/monthly/10/groups").with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"budgetGroup":"GROCERIES","limitAmount":0,"assistanceAmount":0}
+					"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+	}
+
+	@Test
+	void createGroupLimitInvalidGroupReturns400() throws Exception {
+		when(monthlyBudgetService.createGroupLimit(eq(10L), any(BudgetGroupLimitCreateRequest.class)))
+			.thenThrow(new InvalidBudgetDataException("Budget group must be one of: BILLS, SUBSCRIPTIONS"));
+
+		mockMvc.perform(post("/api/budgets/monthly/10/groups").with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"budgetGroup":"NOT_A_GROUP","limitAmount":250.00,"assistanceAmount":0}
+					"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("INVALID_BUDGET_DATA"));
+	}
+
+	@Test
+	void createGroupLimitMalformedRequestReturns400() throws Exception {
+		mockMvc.perform(post("/api/budgets/monthly/10/groups").with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"budgetGroup":"GROCERIES","limitAmount":"not-a-number"}
+					"""))
+			.andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void updateGroupLimit() throws Exception {
 		when(monthlyBudgetService.updateGroupLimit(eq(10L), eq(50L), any(BudgetGroupLimitUpdateRequest.class)))
 			.thenReturn(sampleResponse());
@@ -133,11 +176,82 @@ class MonthlyBudgetControllerTest {
 	}
 
 	@Test
-	void deleteGroupLimit() throws Exception {
+	void deleteGroupLimitSuccess() throws Exception {
 		when(monthlyBudgetService.deleteGroupLimit(10L, 50L)).thenReturn(sampleResponse());
 
 		mockMvc.perform(delete("/api/budgets/monthly/10/groups/50").with(csrf()))
-			.andExpect(status().isOk());
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.id").value(10));
+	}
+
+	@Test
+	void deleteMissingGroupLimitReturns404() throws Exception {
+		when(monthlyBudgetService.deleteGroupLimit(10L, 99L))
+			.thenThrow(new BudgetGroupLimitNotFoundException(10L, 99L));
+
+		mockMvc.perform(delete("/api/budgets/monthly/10/groups/99").with(csrf()))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("CATEGORY_BUDGET_LIMIT_NOT_FOUND"));
+	}
+
+	@Test
+	void deleteGroupLimitCrossUserReturns404() throws Exception {
+		when(monthlyBudgetService.deleteGroupLimit(10L, 50L))
+			.thenThrow(new MonthlyBudgetNotFoundException(10L));
+
+		mockMvc.perform(delete("/api/budgets/monthly/10/groups/50").with(csrf()))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("BUDGET_NOT_FOUND"));
+	}
+
+	@Test
+	@WithAnonymousUser
+	void deleteGroupLimitUnauthorizedReturns401() throws Exception {
+		mockMvc.perform(delete("/api/budgets/monthly/10/groups/50").with(csrf()))
+			.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void restoreDefaultsSuccess() throws Exception {
+		when(monthlyBudgetService.restoreDefaultGroupLimits(10L)).thenReturn(
+			new BudgetGroupRestoreDefaultsResponse(
+				sampleResponse(),
+				List.of(BudgetGroupSummary.from(BudgetGroup.BILLS)),
+				List.of(BudgetGroupSummary.from(BudgetGroup.GROCERIES))
+			)
+		);
+
+		mockMvc.perform(post("/api/budgets/monthly/10/groups/restore-defaults").with(csrf()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.restored[0].key").value("BILLS"))
+			.andExpect(jsonPath("$.skipped[0].key").value("GROCERIES"))
+			.andExpect(jsonPath("$.budget.id").value(10));
+	}
+
+	@Test
+	void restoreDefaultsIdempotent() throws Exception {
+		when(monthlyBudgetService.restoreDefaultGroupLimits(10L)).thenReturn(
+			new BudgetGroupRestoreDefaultsResponse(
+				sampleResponse(),
+				List.of(),
+				List.of(BudgetGroupSummary.from(BudgetGroup.GROCERIES))
+			)
+		);
+
+		mockMvc.perform(post("/api/budgets/monthly/10/groups/restore-defaults").with(csrf()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.restored").isEmpty())
+			.andExpect(jsonPath("$.skipped[0].key").value("GROCERIES"));
+	}
+
+	@Test
+	void restoreDefaultsMissingBudgetReturns404() throws Exception {
+		when(monthlyBudgetService.restoreDefaultGroupLimits(99L))
+			.thenThrow(new MonthlyBudgetNotFoundException(99L));
+
+		mockMvc.perform(post("/api/budgets/monthly/99/groups/restore-defaults").with(csrf()))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("BUDGET_NOT_FOUND"));
 	}
 
 	@Test

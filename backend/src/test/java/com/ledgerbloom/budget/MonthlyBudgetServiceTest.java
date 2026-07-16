@@ -83,6 +83,12 @@ class MonthlyBudgetServiceTest {
 		lenient().when(budgetGroupLimitRepository.findByMonthlyBudget_IdOrderByIdAsc(any())).thenAnswer(invocation ->
 			List.copyOf(savedLimits)
 		);
+		lenient().doAnswer(invocation -> {
+			BudgetGroupLimit limit = invocation.getArgument(0);
+			savedLimits.removeIf(existing -> existing.getId() != null && existing.getId().equals(limit.getId()));
+			return null;
+		}).when(budgetGroupLimitRepository).delete(any(BudgetGroupLimit.class));
+		lenient().doNothing().when(budgetGroupLimitRepository).flush();
 		lenient().when(recurringExpenseRepository.findActiveDueOnOrBefore(eq(USER_ID), any())).thenReturn(List.of());
 		stubEmptyExpenses(2026, 7);
 	}
@@ -125,11 +131,11 @@ class MonthlyBudgetServiceTest {
 
 		assertThat(response.userModified()).isFalse();
 		assertThat(response.groupLimits()).hasSize(BudgetGroup.values().length);
-		BudgetGroupLimitResponse groceries = response.groupLimits().stream()
+		BudgetGroupLimitResponse groceriesRow = response.groupLimits().stream()
 			.filter(row -> row.group().key().equals("GROCERIES"))
 			.findFirst()
 			.orElseThrow();
-		assertThat(groceries.limitAmount()).isEqualByComparingTo("250.00");
+		assertThat(groceriesRow.limitAmount()).isEqualByComparingTo("250.00");
 	}
 
 	@Test
@@ -137,26 +143,20 @@ class MonthlyBudgetServiceTest {
 		julyBudget.setUserModified(true);
 		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
 			.thenReturn(Optional.of(julyBudget));
-		for (BudgetGroup group : BudgetGroup.values()) {
-			BigDecimal amount = group == BudgetGroup.GROCERIES
-				? new BigDecimal("999.00")
-				: group.getPresetAmount();
-			savedLimits.add(new BudgetGroupLimit(user, julyBudget, group, amount, BigDecimal.ZERO));
-		}
+		savedLimits.add(new BudgetGroupLimit(
+			user, julyBudget, BudgetGroup.GROCERIES, new BigDecimal("999.00"), BigDecimal.ZERO
+		));
 
 		MonthlyBudgetResponse response = monthlyBudgetService.ensureAutoBudget(2026, 7);
 
 		assertThat(response.userModified()).isTrue();
-		BudgetGroupLimitResponse groceries = response.groupLimits().stream()
-			.filter(row -> row.group().key().equals("GROCERIES"))
-			.findFirst()
-			.orElseThrow();
-		assertThat(groceries.limitAmount()).isEqualByComparingTo("999.00");
+		assertThat(response.groupLimits()).hasSize(1);
+		assertThat(response.groupLimits().getFirst().limitAmount()).isEqualByComparingTo("999.00");
 		verify(budgetGroupLimitRepository, never()).saveAndFlush(any());
 	}
 
 	@Test
-	void ensureAutoBudgetRaisesGroupToCoverActualSpend() throws Exception {
+	void ensureAutoBudgetRaisesExistingGroupToCoverActualSpendWithoutRecreatingDeleted() throws Exception {
 		julyBudget.setUserModified(false);
 		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
 			.thenReturn(Optional.of(julyBudget));
@@ -170,20 +170,16 @@ class MonthlyBudgetServiceTest {
 				eq(USER_ID), any(), any()
 			)).thenReturn(List.of(bigGrocery));
 
-		for (BudgetGroup group : BudgetGroup.values()) {
-			savedLimits.add(new BudgetGroupLimit(
-				user, julyBudget, group, group.getPresetAmount(), BigDecimal.ZERO
-			));
-		}
+		savedLimits.add(new BudgetGroupLimit(
+			user, julyBudget, BudgetGroup.GROCERIES, BudgetGroup.GROCERIES.getPresetAmount(), BigDecimal.ZERO
+		));
 
 		MonthlyBudgetResponse response = monthlyBudgetService.ensureAutoBudget(2026, 7);
 
-		BudgetGroupLimitResponse groceries = response.groupLimits().stream()
-			.filter(row -> row.group().key().equals("GROCERIES"))
-			.findFirst()
-			.orElseThrow();
-		assertThat(groceries.limitAmount()).isEqualByComparingTo("400.00");
-		assertThat(groceries.actualSpent()).isEqualByComparingTo("400.00");
+		assertThat(response.groupLimits()).hasSize(1);
+		BudgetGroupLimitResponse groceriesRow = response.groupLimits().getFirst();
+		assertThat(groceriesRow.limitAmount()).isEqualByComparingTo("400.00");
+		assertThat(groceriesRow.actualSpent()).isEqualByComparingTo("400.00");
 	}
 
 	@Test
@@ -226,74 +222,159 @@ class MonthlyBudgetServiceTest {
 	}
 
 	@Test
-	void getByYearAndMonthResetsPartialLockedBudgetToPresetGroupLimits() throws Exception {
-		MonthlyBudget lockedBudget = new MonthlyBudget(user, 2026, 7, new BigDecimal("1500.00"), true);
-		setId(lockedBudget, 10L);
-		setTimestamps(lockedBudget, Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z"));
-		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
-			.thenReturn(Optional.of(lockedBudget));
-		savedLimits.clear();
-		savedLimits.add(new BudgetGroupLimit(
-			user, lockedBudget, BudgetGroup.SUBSCRIPTIONS, new BigDecimal("30.89"), BigDecimal.ZERO
-		));
+	void createGroupLimitRejectsInvalidAmount() {
+		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
 
-		MonthlyBudgetResponse response = monthlyBudgetService.getByYearAndMonth(2026, 7);
-
-		assertThat(response.groupLimits()).hasSize(BudgetGroup.values().length);
-		BudgetGroupLimitResponse subscriptions = response.groupLimits().stream()
-			.filter(row -> row.group().key().equals("SUBSCRIPTIONS"))
-			.findFirst()
-			.orElseThrow();
-		assertThat(subscriptions.limitAmount()).isEqualByComparingTo("200.00");
-		assertThat(response.userModified()).isTrue();
-		assertThat(response.totalLimit()).isEqualByComparingTo("4300.00");
-		verify(monthlyBudgetRepository).saveAndFlush(lockedBudget);
+		assertThatThrownBy(() -> monthlyBudgetService.createGroupLimit(
+			10L,
+			new BudgetGroupLimitCreateRequest("GROCERIES", new BigDecimal("0.00"), null)
+		)).isInstanceOf(InvalidBudgetDataException.class)
+			.hasMessageContaining("greater than zero");
 	}
 
 	@Test
-	void getByYearAndMonthRaisesExistingLockedGroupLimitsBelowPresets() throws Exception {
-		MonthlyBudget lockedBudget = new MonthlyBudget(user, 2026, 7, new BigDecimal("1500.00"), true);
-		setId(lockedBudget, 10L);
-		setTimestamps(lockedBudget, Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z"));
+	void getByYearAndMonthDoesNotReseedDeletedGroups() throws Exception {
+		julyBudget.setUserModified(true);
 		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
-			.thenReturn(Optional.of(lockedBudget));
-		savedLimits.clear();
-		for (BudgetGroup group : BudgetGroup.values()) {
-			BigDecimal amount = group == BudgetGroup.SUBSCRIPTIONS
-				? new BigDecimal("30.89")
-				: group.getPresetAmount();
-			savedLimits.add(new BudgetGroupLimit(user, lockedBudget, group, amount, BigDecimal.ZERO));
-		}
+			.thenReturn(Optional.of(julyBudget));
+		BudgetGroupLimit subscriptions = new BudgetGroupLimit(
+			user, julyBudget, BudgetGroup.SUBSCRIPTIONS, new BigDecimal("30.89"), BigDecimal.ZERO
+		);
+		setId(subscriptions, 1L);
+		savedLimits.add(subscriptions);
 
 		MonthlyBudgetResponse response = monthlyBudgetService.getByYearAndMonth(2026, 7);
 
-		BudgetGroupLimitResponse subscriptions = response.groupLimits().stream()
-			.filter(row -> row.group().key().equals("SUBSCRIPTIONS"))
-			.findFirst()
-			.orElseThrow();
-		assertThat(subscriptions.limitAmount()).isEqualByComparingTo("200.00");
-		assertThat(response.totalLimit()).isEqualByComparingTo("4300.00");
+		assertThat(response.groupLimits()).hasSize(1);
+		assertThat(response.groupLimits().getFirst().group().key()).isEqualTo("SUBSCRIPTIONS");
+		assertThat(response.groupLimits().getFirst().limitAmount()).isEqualByComparingTo("30.89");
+		verify(budgetGroupLimitRepository, never()).saveAndFlush(any());
+		verify(monthlyBudgetRepository, never()).saveAndFlush(any());
 	}
 
 	@Test
-	void getByYearAndMonthSeedsMissingGroupLimits() throws Exception {
+	void getByYearAndMonthReturnsEmptyGroupsWithoutSeeding() {
+		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
+			.thenReturn(Optional.of(julyBudget));
+		savedLimits.clear();
+
+		MonthlyBudgetResponse response = monthlyBudgetService.getByYearAndMonth(2026, 7);
+
+		assertThat(response.groupLimits()).isEmpty();
+		verify(budgetGroupLimitRepository, never()).saveAndFlush(any());
+	}
+
+	@Test
+	void getMissingBudgetThrows() {
+		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 8))
+			.thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> monthlyBudgetService.getByYearAndMonth(2026, 8))
+			.isInstanceOf(MonthlyBudgetNotFoundException.class);
+	}
+
+	@Test
+	void deleteGroupLimitKeepsGroupDeletedAfterReload() throws Exception {
+		julyBudget.setUserModified(false);
+		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
 		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
 			.thenReturn(Optional.of(julyBudget));
 		when(monthlyBudgetRepository.saveAndFlush(any(MonthlyBudget.class))).thenAnswer(invocation -> invocation.getArgument(0));
-		savedLimits.clear();
 
-		MonthlyBudgetResponse response = monthlyBudgetService.getByYearAndMonth(2026, 7);
+		BudgetGroupLimit groceriesLimit = new BudgetGroupLimit(
+			user, julyBudget, BudgetGroup.GROCERIES, new BigDecimal("250.00"), BigDecimal.ZERO
+		);
+		setId(groceriesLimit, 50L);
+		BudgetGroupLimit billsLimit = new BudgetGroupLimit(
+			user, julyBudget, BudgetGroup.BILLS, new BigDecimal("2000.00"), BigDecimal.ZERO
+		);
+		setId(billsLimit, 51L);
+		savedLimits.add(groceriesLimit);
+		savedLimits.add(billsLimit);
+		when(budgetGroupLimitRepository.findByIdAndMonthlyBudget_IdAndUser_Id(50L, 10L, USER_ID))
+			.thenReturn(Optional.of(groceriesLimit));
 
-		assertThat(response.groupLimits()).hasSize(BudgetGroup.values().length);
-		assertThat(response.groupLimits().stream().map(row -> row.group().key()))
-			.contains("BILLS", "GROCERIES", "CHILD_CARE", "PERSONAL_HOUSEHOLD");
+		MonthlyBudgetResponse afterDelete = monthlyBudgetService.deleteGroupLimit(10L, 50L);
+		assertThat(afterDelete.groupLimits()).hasSize(1);
+		assertThat(afterDelete.groupLimits().getFirst().group().key()).isEqualTo("BILLS");
+		assertThat(afterDelete.userModified()).isTrue();
+
+		MonthlyBudgetResponse afterReload = monthlyBudgetService.getByYearAndMonth(2026, 7);
+		assertThat(afterReload.groupLimits()).hasSize(1);
+		assertThat(afterReload.groupLimits().getFirst().group().key()).isEqualTo("BILLS");
+	}
+
+	@Test
+	void deleteMissingGroupLimitThrows() {
+		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
+		when(budgetGroupLimitRepository.findByIdAndMonthlyBudget_IdAndUser_Id(99L, 10L, USER_ID))
+			.thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> monthlyBudgetService.deleteGroupLimit(10L, 99L))
+			.isInstanceOf(BudgetGroupLimitNotFoundException.class);
+	}
+
+	@Test
+	void restoreDefaultsAddsOnlyMissingPresetsAndPreservesEditedLimits() throws Exception {
+		julyBudget.setUserModified(true);
+		julyBudget.setTotalLimit(new BigDecimal("999.00"));
+		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
+		when(monthlyBudgetRepository.saveAndFlush(any(MonthlyBudget.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		BudgetGroupLimit groceriesLimit = new BudgetGroupLimit(
+			user, julyBudget, BudgetGroup.GROCERIES, new BigDecimal("333.00"), BigDecimal.ZERO
+		);
+		setId(groceriesLimit, 50L);
+		savedLimits.add(groceriesLimit);
+
+		BudgetGroupRestoreDefaultsResponse result = monthlyBudgetService.restoreDefaultGroupLimits(10L);
+
+		assertThat(result.restored()).hasSize(BudgetGroup.values().length - 1);
+		assertThat(result.skipped()).extracting(BudgetGroupSummary::key).containsExactly("GROCERIES");
+		assertThat(result.budget().groupLimits()).hasSize(BudgetGroup.values().length);
+		BudgetGroupLimitResponse groceriesRow = result.budget().groupLimits().stream()
+			.filter(row -> row.group().key().equals("GROCERIES"))
+			.findFirst()
+			.orElseThrow();
+		assertThat(groceriesRow.limitAmount()).isEqualByComparingTo("333.00");
+		assertThat(result.budget().userModified()).isTrue();
+	}
+
+	@Test
+	void restoreDefaultsIsIdempotentWhenAllPresetsExist() {
+		julyBudget.setUserModified(true);
+		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.of(julyBudget));
+		for (BudgetGroup group : BudgetGroup.values()) {
+			savedLimits.add(new BudgetGroupLimit(user, julyBudget, group, group.getPresetAmount(), BigDecimal.ZERO));
+		}
+
+		BudgetGroupRestoreDefaultsResponse result = monthlyBudgetService.restoreDefaultGroupLimits(10L);
+
+		assertThat(result.restored()).isEmpty();
+		assertThat(result.skipped()).hasSize(BudgetGroup.values().length);
+		verify(budgetGroupLimitRepository, never()).saveAndFlush(any());
+		verify(monthlyBudgetRepository, never()).saveAndFlush(any());
+	}
+
+	@Test
+	void restoreDefaultsMissingBudgetThrows() {
+		when(monthlyBudgetRepository.findByIdAndUser_Id(99L, USER_ID)).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> monthlyBudgetService.restoreDefaultGroupLimits(99L))
+			.isInstanceOf(MonthlyBudgetNotFoundException.class);
+	}
+
+	@Test
+	void crossUserBudgetAccessThrowsNotFound() {
+		when(monthlyBudgetRepository.findByIdAndUser_Id(10L, USER_ID)).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> monthlyBudgetService.deleteGroupLimit(10L, 50L))
+			.isInstanceOf(MonthlyBudgetNotFoundException.class);
 	}
 
 	@Test
 	void getByYearAndMonthAggregatesSpendByGroup() throws Exception {
 		when(monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(USER_ID, 2026, 7))
 			.thenReturn(Optional.of(julyBudget));
-		when(monthlyBudgetRepository.saveAndFlush(any(MonthlyBudget.class))).thenAnswer(invocation -> invocation.getArgument(0));
 		for (BudgetGroup group : BudgetGroup.values()) {
 			savedLimits.add(new BudgetGroupLimit(
 				user, julyBudget, group, group.getPresetAmount(), BigDecimal.ZERO

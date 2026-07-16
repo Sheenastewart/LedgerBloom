@@ -65,6 +65,7 @@ vi.mock('../budgets/api/budgetApi', () => ({
   createGroupLimit: vi.fn(),
   updateGroupLimit: vi.fn(),
   deleteGroupLimit: vi.fn(),
+  restoreDefaultGroupLimits: vi.fn(),
   generateMonthlyBudget: vi.fn(),
 }))
 

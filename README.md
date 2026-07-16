@@ -188,9 +188,9 @@ Budget planning moved from per-category limits to nine preset **budget groups**,
 
 **Current limitations**
 
-- Deleting a group limit locks the month; if fewer than nine groups remain, the next load may rebuild all groups from presets (migration-safe backfill, not a permanent “delete and keep deleted” policy)
+- Deleting a group limit locks the month and stays deleted across reloads. Use **Restore default budget groups** to recreate only missing presets without overwriting edited amounts or removing existing groups
 - No savings goals, budget rollovers, charts, or email delivery for password reset
-- Auto-budget refresh does not run for user-locked months
+- Auto-budget refresh does not run for user-locked months, and never recreates deleted groups on ordinary page loads
 
 Stage 12 does **not** include bank sync, OCR/receipts, push notifications, or production hosting.
 

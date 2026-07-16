@@ -1,5 +1,6 @@
 import { ApiClientError, requestJson } from '../../../api/apiClient'
 import type {
+  BudgetGroupRestoreDefaultsResult,
   GroupLimitCreateRequest,
   GroupLimitUpdateRequest,
   MonthlyBudget,
@@ -77,6 +78,15 @@ export async function deleteGroupLimit(budgetId: number, limitId: number): Promi
   return requestJson<MonthlyBudget>(`/api/budgets/monthly/${budgetId}/groups/${limitId}`, {
     method: 'DELETE',
   })
+}
+
+export async function restoreDefaultGroupLimits(
+  budgetId: number,
+): Promise<BudgetGroupRestoreDefaultsResult> {
+  return requestJson<BudgetGroupRestoreDefaultsResult>(
+    `/api/budgets/monthly/${budgetId}/groups/restore-defaults`,
+    { method: 'POST' },
+  )
 }
 
 export { ApiClientError }

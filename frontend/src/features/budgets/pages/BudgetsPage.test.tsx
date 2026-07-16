@@ -16,6 +16,7 @@ vi.mock('../api/budgetApi', () => ({
   createGroupLimit: vi.fn(),
   updateGroupLimit: vi.fn(),
   deleteGroupLimit: vi.fn(),
+  restoreDefaultGroupLimits: vi.fn(),
 }))
 
 vi.mock('../../categories/api/categoryApi', () => ({
@@ -80,6 +81,7 @@ describe('BudgetsPage', () => {
     vi.mocked(budgetApi.createGroupLimit).mockReset()
     vi.mocked(budgetApi.updateGroupLimit).mockReset()
     vi.mocked(budgetApi.deleteGroupLimit).mockReset()
+    vi.mocked(budgetApi.restoreDefaultGroupLimits).mockReset()
     vi.mocked(categoryApi.getCategories).mockResolvedValue([
       { id: 1, name: 'Groceries', description: null, color: null, createdAt: '', updatedAt: '' },
       { id: 2, name: 'Utilities', description: null, color: null, createdAt: '', updatedAt: '' },
@@ -203,6 +205,44 @@ describe('BudgetsPage', () => {
         assistanceAmount: 150,
       })
     })
+  })
+
+  it('restores missing default budget groups after confirmation', async () => {
+    const user = userEvent.setup()
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.mocked(budgetApi.getMonthlyBudget).mockResolvedValue(sampleBudget)
+    vi.mocked(budgetApi.restoreDefaultGroupLimits).mockResolvedValue({
+      budget: {
+        ...sampleBudget,
+        groupLimits: [
+          ...sampleBudget.groupLimits,
+          {
+            id: 51,
+            group: { key: 'BILLS', label: 'Bills' },
+            limitAmount: 2000,
+            assistanceAmount: 0,
+            actualSpent: 0,
+            budgetableSpent: 0,
+            remaining: 2000,
+            percentUsed: 0,
+            overBudget: false,
+          },
+        ],
+      },
+      restored: [{ key: 'BILLS', label: 'Bills' }],
+      skipped: [{ key: 'GROCERIES', label: 'Groceries' }],
+    })
+
+    renderPage()
+    await screen.findByText('$1,000.00')
+    await user.click(screen.getByRole('button', { name: 'Restore default budget groups' }))
+
+    await waitFor(() => {
+      expect(budgetApi.restoreDefaultGroupLimits).toHaveBeenCalledWith(10)
+    })
+    expect(await screen.findByText(/Restored 1 group: Bills/)).toBeInTheDocument()
+    expect(screen.getByText(/Left 1 existing group unchanged/)).toBeInTheDocument()
+    confirmSpy.mockRestore()
   })
 
   it('shows food assistance coverage on the monthly budget summary', async () => {

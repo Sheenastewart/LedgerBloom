@@ -14,6 +14,7 @@ vi.mock('../api/budgetApi', () => ({
   createGroupLimit: vi.fn(),
   updateGroupLimit: vi.fn(),
   deleteGroupLimit: vi.fn(),
+  restoreDefaultGroupLimits: vi.fn(),
 }))
 
 function renderCreate(entry = '/budgets/new?year=2026&month=7') {

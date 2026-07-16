@@ -49,17 +49,15 @@ public class MonthlyBudgetService {
 	}
 
 	/**
-	 * Returns the monthly budget. Seeds preset group limits when none exist yet, and
-	 * refreshes unlocked (auto-managed) budgets so totals stay in sync with schedules/spend.
+	 * Returns the monthly budget as stored. Does not create or repair group limits —
+	 * deleted groups stay deleted until the user restores defaults or creates a new budget.
 	 */
+	@Transactional(readOnly = true)
 	public MonthlyBudgetResponse getByYearAndMonth(Integer year, Integer month) {
 		validatePeriod(year, month);
 		Long userId = currentUser.requireUserId();
 		MonthlyBudget budget = monthlyBudgetRepository.findByUser_IdAndBudgetYearAndBudgetMonth(userId, year, month)
 			.orElseThrow(() -> new MonthlyBudgetNotFoundException(year, month));
-
-		ensureGroupLimitsPresent(budget, userId);
-
 		return toResponse(budget);
 	}
 
@@ -136,7 +134,10 @@ public class MonthlyBudgetService {
 			.findByUser_IdAndBudgetYearAndBudgetMonth(userId, year, month);
 		if (existing.isPresent()) {
 			MonthlyBudget budget = existing.get();
-			ensureGroupLimitsPresent(budget, userId);
+			if (budget.isUserModified()) {
+				return toResponse(budget);
+			}
+			refreshExistingAutoLimits(budget, userId);
 			return toResponse(budget);
 		}
 
@@ -248,52 +249,12 @@ public class MonthlyBudgetService {
 	}
 
 	/**
-	 * Ensures all nine budget groups exist. Unlocked budgets refresh every group from
-	 * schedules and spend; partial locked budgets are migration artifacts, so reset
-	 * them to the default presets instead of preserving old category-limit rollups.
+	 * Recreates only missing preset groups. Existing group limits keep their amounts;
+	 * nothing is deleted or overwritten. Idempotent when every preset already exists.
 	 */
-	private void ensureGroupLimitsPresent(MonthlyBudget budget, Long userId) {
-		List<BudgetGroupLimit> existingLimits = budgetGroupLimitRepository
-			.findByMonthlyBudget_IdOrderByIdAsc(budget.getId());
-		int expectedGroupCount = BudgetGroup.values().length;
-
-		if (existingLimits.isEmpty()) {
-			YearMonth yearMonth = YearMonth.of(budget.getBudgetYear(), budget.getBudgetMonth());
-			Map<BudgetGroup, BigDecimal> computed = computeGroupTargets(userId, yearMonth);
-			seedPresetGroupLimits(budget, userId, computed);
-			if (!budget.isUserModified()) {
-				budget.setTotalLimit(sumGroupLimits(budget.getId()));
-				monthlyBudgetRepository.saveAndFlush(budget);
-			}
-			return;
-		}
-
-		if (existingLimits.size() < expectedGroupCount
-				|| (budget.isUserModified() && hasLimitBelowPreset(existingLimits))) {
-			if (budget.isUserModified()) {
-				resetGroupLimitsToPresets(budget);
-			}
-			else {
-				refreshAutoLimits(budget, userId);
-			}
-			return;
-		}
-
-		if (!budget.isUserModified()) {
-			refreshAutoLimits(budget, userId);
-		}
-	}
-
-	private boolean hasLimitBelowPreset(List<BudgetGroupLimit> limits) {
-		for (BudgetGroupLimit limit : limits) {
-			if (limit.getLimitAmount().compareTo(limit.getBudgetGroup().getPresetAmount()) < 0) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private void resetGroupLimitsToPresets(MonthlyBudget budget) {
+	public BudgetGroupRestoreDefaultsResponse restoreDefaultGroupLimits(Long budgetId) {
+		Long userId = currentUser.requireUserId();
+		MonthlyBudget budget = getBudgetOrThrow(budgetId, userId);
 		List<BudgetGroupLimit> existing = budgetGroupLimitRepository
 			.findByMonthlyBudget_IdOrderByIdAsc(budget.getId());
 		Map<BudgetGroup, BudgetGroupLimit> byGroup = new EnumMap<>(BudgetGroup.class);
@@ -301,55 +262,56 @@ public class MonthlyBudgetService {
 			byGroup.put(limit.getBudgetGroup(), limit);
 		}
 
+		List<BudgetGroupSummary> restored = new ArrayList<>();
+		List<BudgetGroupSummary> skipped = new ArrayList<>();
 		for (BudgetGroup group : BudgetGroup.values()) {
+			if (byGroup.containsKey(group)) {
+				skipped.add(BudgetGroupSummary.from(group));
+				continue;
+			}
 			BigDecimal amount = group.getPresetAmount().setScale(2, RoundingMode.HALF_UP);
-			BudgetGroupLimit limit = byGroup.get(group);
-			if (limit == null) {
-				budgetGroupLimitRepository.saveAndFlush(new BudgetGroupLimit(
-					currentUser.requireUserReference(),
-					budget,
-					group,
-					amount,
-					BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
-				));
-			}
-			else {
-				limit.setLimitAmount(amount);
-				limit.setAssistanceAmount(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
-				budgetGroupLimitRepository.saveAndFlush(limit);
-			}
+			budgetGroupLimitRepository.saveAndFlush(new BudgetGroupLimit(
+				currentUser.requireUserReference(),
+				budget,
+				group,
+				amount,
+				BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
+			));
+			restored.add(BudgetGroupSummary.from(group));
 		}
-		budget.setTotalLimit(sumGroupLimits(budget.getId()));
-		monthlyBudgetRepository.saveAndFlush(budget);
+
+		if (!restored.isEmpty()) {
+			budget.setUserModified(true);
+			budget.setTotalLimit(sumGroupLimits(budgetId).max(budget.getTotalLimit()));
+			monthlyBudgetRepository.saveAndFlush(budget);
+		}
+
+		return new BudgetGroupRestoreDefaultsResponse(
+			toResponse(budget),
+			List.copyOf(restored),
+			List.copyOf(skipped)
+		);
 	}
 
-	private void refreshAutoLimits(MonthlyBudget budget, Long userId) {
+	/**
+	 * Updates amounts for groups that already exist on an unlocked auto budget.
+	 * Does not recreate deleted groups.
+	 */
+	private void refreshExistingAutoLimits(MonthlyBudget budget, Long userId) {
 		YearMonth yearMonth = YearMonth.of(budget.getBudgetYear(), budget.getBudgetMonth());
 		Map<BudgetGroup, BigDecimal> computed = computeGroupTargets(userId, yearMonth);
 		List<BudgetGroupLimit> existing = budgetGroupLimitRepository
 			.findByMonthlyBudget_IdOrderByIdAsc(budget.getId());
-		Map<BudgetGroup, BudgetGroupLimit> byGroup = new EnumMap<>(BudgetGroup.class);
-		for (BudgetGroupLimit limit : existing) {
-			byGroup.put(limit.getBudgetGroup(), limit);
+		if (existing.isEmpty()) {
+			return;
 		}
 
-		for (BudgetGroup group : BudgetGroup.values()) {
-			BigDecimal target = computed.getOrDefault(group, group.getPresetAmount())
+		for (BudgetGroupLimit limit : existing) {
+			BigDecimal target = computed
+				.getOrDefault(limit.getBudgetGroup(), limit.getBudgetGroup().getPresetAmount())
 				.setScale(2, RoundingMode.HALF_UP);
-			BudgetGroupLimit limit = byGroup.get(group);
-			if (limit == null) {
-				budgetGroupLimitRepository.saveAndFlush(new BudgetGroupLimit(
-					currentUser.requireUserReference(),
-					budget,
-					group,
-					target,
-					BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
-				));
-			}
-			else {
-				limit.setLimitAmount(target);
-				budgetGroupLimitRepository.saveAndFlush(limit);
-			}
+			limit.setLimitAmount(target);
+			budgetGroupLimitRepository.saveAndFlush(limit);
 		}
 
 		budget.setTotalLimit(sumGroupLimits(budget.getId()));

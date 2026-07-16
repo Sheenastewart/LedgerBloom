@@ -14,6 +14,7 @@ import {
   deleteMonthlyBudget,
   generateMonthlyBudget,
   getMonthlyBudget,
+  restoreDefaultGroupLimits,
   updateGroupLimit,
 } from '../api/budgetApi'
 import { budgetStatus, budgetStatusLabel } from '../budgetStatus'
@@ -114,6 +115,7 @@ export function BudgetsPage() {
   const [deletingLimitId, setDeletingLimitId] = useState<number | null>(null)
   const [deletingBudget, setDeletingBudget] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [restoringDefaults, setRestoringDefaults] = useState(false)
   const autoGenerateAttemptedRef = useRef<string | null>(null)
 
   const periodKey = `${period.year}-${period.month}`
@@ -280,6 +282,41 @@ export function BudgetsPage() {
     }
   }
 
+  async function handleRestoreDefaults() {
+    if (!budget) {
+      return
+    }
+    const confirmed = window.confirm(
+      'Restore default budget groups?\n\n'
+        + 'Missing preset groups will be recreated with default amounts. '
+        + 'Existing groups and any amounts you already edited will stay as they are. '
+        + 'No groups will be deleted.',
+    )
+    if (!confirmed) {
+      return
+    }
+    setRestoringDefaults(true)
+    setError(null)
+    try {
+      const result = await restoreDefaultGroupLimits(budget.id)
+      setBudget(result.budget)
+      if (result.restored.length === 0) {
+        setSuccessMessage('All default budget groups are already present. Nothing changed.')
+      } else {
+        const restoredLabels = result.restored.map((group) => group.label).join(', ')
+        const skippedCount = result.skipped.length
+        setSuccessMessage(
+          `Restored ${result.restored.length} group${result.restored.length === 1 ? '' : 's'}: ${restoredLabels}. `
+            + `Left ${skippedCount} existing group${skippedCount === 1 ? '' : 's'} unchanged.`,
+        )
+      }
+    } catch {
+      setError('Could not restore default budget groups. Please try again.')
+    } finally {
+      setRestoringDefaults(false)
+    }
+  }
+
   async function handleLimitSubmit(values: GroupLimitFormValues) {
     if (!budget || !limitEditor) {
       return
@@ -362,7 +399,8 @@ export function BudgetsPage() {
           Budgets use broad groups (not every expense category): Bills, Subscriptions, Groceries,
           Eating Out, Transportation, Medical, Child Care, Debt Payments, and Personal &amp;
           Household. Preset amounts start automatically and rise with recurring bills or actual
-          spending. Once you edit a group limit, that month locks and stops auto-changing.
+          spending while the month is unlocked. Editing or deleting a group locks that month.
+          Deleted groups stay deleted until you choose Restore default budget groups.
         </p>
         <HelpLink to="/settings/help?topic=set-monthly-budget">Learn more</HelpLink>
       </HowThisWorks>
@@ -502,6 +540,14 @@ export function BudgetsPage() {
               }}
             >
               Add group limit
+            </button>
+            <button
+              type="button"
+              className="button button-secondary"
+              disabled={restoringDefaults}
+              onClick={() => void handleRestoreDefaults()}
+            >
+              {restoringDefaults ? 'Restoring…' : 'Restore default budget groups'}
             </button>
             <Link
               to={`${paths.budgetsCategories}${periodToSearch(period)}`}

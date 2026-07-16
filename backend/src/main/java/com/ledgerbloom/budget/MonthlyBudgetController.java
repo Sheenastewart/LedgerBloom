@@ -97,6 +97,11 @@ public class MonthlyBudgetController {
 		return monthlyBudgetService.deleteGroupLimit(budgetId, limitId);
 	}
 
+	@PostMapping("/{budgetId}/groups/restore-defaults")
+	public BudgetGroupRestoreDefaultsResponse restoreDefaultGroupLimits(@PathVariable Long budgetId) {
+		return monthlyBudgetService.restoreDefaultGroupLimits(budgetId);
+	}
+
 	private Long findCreatedLimitId(MonthlyBudgetResponse response, String budgetGroup) {
 		BudgetGroup group = BudgetGroup.requireParse(budgetGroup);
 		return response.groupLimits().stream()

@@ -104,4 +104,10 @@ export type GroupLimitUpdateRequest = {
   assistanceAmount: number
 }
 
+export type BudgetGroupRestoreDefaultsResult = {
+  budget: MonthlyBudget
+  restored: BudgetGroupSummary[]
+  skipped: BudgetGroupSummary[]
+}
+
 export type BudgetStatus = 'on-track' | 'near-budget' | 'over-budget'
