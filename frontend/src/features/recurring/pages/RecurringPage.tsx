@@ -5,6 +5,7 @@ import { HowThisWorks } from '../../../components/HowThisWorks'
 import { getCategories } from '../../categories/api/categoryApi'
 import type { Category } from '../../categories/types'
 import { HelpLink } from '../../guidance/HelpLink'
+import { expenseDisplayTitle } from '../../../utils/expenseDisplay'
 import {
   catchUpRecurringExpense,
   deleteRecurringExpense,
@@ -97,8 +98,9 @@ export function RecurringPage() {
   }, [loadPage])
 
   async function handleMarkPaid(item: RecurringExpense) {
+    const title = expenseDisplayTitle(item.description, item.category.name)
     const confirmed = window.confirm(
-      `Mark "${item.description}" as paid for ${item.nextPaymentDate}? This creates a real expense and advances the next payment date.`,
+      `Mark "${title}" as paid for ${item.nextPaymentDate}? This creates a real expense and advances the next payment date.`,
     )
     if (!confirmed) {
       return
@@ -109,14 +111,14 @@ export function RecurringPage() {
       await markRecurringExpensePaid(item.id, {
         expectedNextPaymentDate: item.nextPaymentDate,
       })
-      setSuccessMessage(`Paid "${item.description}" and advanced the next payment date.`)
+      setSuccessMessage(`Paid "${title}" and advanced the next payment date.`)
       await loadPage(appliedFilters)
     } catch (err) {
       if (err instanceof ApiClientError && err.code === 'RECURRING_EXPENSE_PAYMENT_CONFLICT') {
         setActionError(err.message)
         await loadPage(appliedFilters)
       } else {
-        setActionError(`Could not mark "${item.description}" as paid. Please try again.`)
+        setActionError(`Could not mark "${title}" as paid. Please try again.`)
       }
     } finally {
       setMarkingPaidId(null)
@@ -124,14 +126,15 @@ export function RecurringPage() {
   }
 
   async function handleDelete(item: RecurringExpense) {
+    const title = expenseDisplayTitle(item.description, item.category.name)
     setActionError(null)
     setDeletingId(item.id)
     try {
       await deleteRecurringExpense(item.id)
-      setSuccessMessage(`Deleted recurring expense "${item.description}".`)
+      setSuccessMessage(`Deleted recurring expense "${title}".`)
       await loadPage(appliedFilters)
     } catch {
-      setActionError(`Could not delete "${item.description}". Please try again.`)
+      setActionError(`Could not delete "${title}". Please try again.`)
     } finally {
       setDeletingId(null)
     }
@@ -155,9 +158,10 @@ export function RecurringPage() {
   }
 
   function handleCatchUpRecorded(item: RecurringExpense, result: RecurringExpenseCatchUpResult) {
+    const title = expenseDisplayTitle(item.description, item.category.name)
     setActionError(null)
     setSuccessMessage(
-      `Recorded ${result.createdCount} past occurrence${result.createdCount === 1 ? '' : 's'} for "${item.description}".`,
+      `Recorded ${result.createdCount} past occurrence${result.createdCount === 1 ? '' : 's'} for "${title}".`,
     )
     void loadPage(appliedFilters)
   }

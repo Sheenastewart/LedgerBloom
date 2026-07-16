@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { expenseDisplayTitle, isOtherCategoryName } from '../../../utils/expenseDisplay'
 import type { Category } from '../../categories/types'
 import {
   amountToRequestValue,
@@ -18,13 +19,27 @@ type ExpenseFormProps = {
   serverErrors?: ExpenseFormErrors
 }
 
-function validate(values: ExpenseFormValues): ExpenseFormErrors {
+function selectedCategoryName(values: ExpenseFormValues, categories: Category[]): string {
+  return categories.find((category) => String(category.id) === values.categoryId)?.name ?? ''
+}
+
+function validate(values: ExpenseFormValues, categories: Category[]): ExpenseFormErrors {
   const errors: ExpenseFormErrors = {}
   const trimmedDescription = values.description.trim()
   const trimmedMerchant = values.merchant.trim()
+  const categoryName = selectedCategoryName(values, categories)
 
-  if (!trimmedDescription) {
-    errors.description = 'Description is required'
+  if (!values.categoryId.trim()) {
+    errors.categoryId = 'Category is required'
+  } else {
+    const categoryId = Number(values.categoryId)
+    if (!Number.isInteger(categoryId) || categoryId <= 0) {
+      errors.categoryId = 'Category is required'
+    }
+  }
+
+  if (isOtherCategoryName(categoryName) && !trimmedDescription) {
+    errors.description = 'Description is required when category is Other'
   } else if (trimmedDescription.length > 160) {
     errors.description = 'Description must be at most 160 characters'
   }
@@ -42,15 +57,6 @@ function validate(values: ExpenseFormValues): ExpenseFormErrors {
     errors.expenseDate = 'Expense date is required'
   }
 
-  if (!values.categoryId.trim()) {
-    errors.categoryId = 'Category is required'
-  } else {
-    const categoryId = Number(values.categoryId)
-    if (!Number.isInteger(categoryId) || categoryId <= 0) {
-      errors.categoryId = 'Category is required'
-    }
-  }
-
   return errors
 }
 
@@ -61,7 +67,7 @@ export function toExpenseWriteRequest(values: ExpenseFormValues) {
   const normalizedAmount = normalizeAmountInput(values.amount)
 
   return {
-    description,
+    description: description.length === 0 ? null : description,
     merchant: merchant.length === 0 ? null : merchant,
     amount: amountToRequestValue(normalizedAmount),
     expenseDate: values.expenseDate,
@@ -69,6 +75,8 @@ export function toExpenseWriteRequest(values: ExpenseFormValues) {
     notes: notes.length === 0 ? null : notes,
   }
 }
+
+export { expenseDisplayTitle }
 
 export function ExpenseForm({
   mode,
@@ -89,10 +97,12 @@ export function ExpenseForm({
   const categoryIdError = clientErrors.categoryId ?? serverErrors?.categoryId
   const notesError = clientErrors.notes ?? serverErrors?.notes
   const formError = serverErrors?.form
+  const categoryName = selectedCategoryName(values, categories)
+  const otherSelected = isOtherCategoryName(categoryName)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const nextErrors = validate(values)
+    const nextErrors = validate(values, categories)
     setClientErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) {
       return
@@ -126,6 +136,33 @@ export function ExpenseForm({
       ) : null}
 
       <div className="field">
+        <label htmlFor="expense-category">Category</label>
+        <select
+          id="expense-category"
+          name="categoryId"
+          value={values.categoryId}
+          onChange={(event) =>
+            setValues((current) => ({ ...current, categoryId: event.target.value }))
+          }
+          aria-invalid={categoryIdError ? true : undefined}
+          aria-describedby={categoryIdError ? 'expense-category-error' : undefined}
+          disabled={submitting}
+        >
+          <option value="">Select a category</option>
+          {categories.map((category) => (
+            <option key={category.id} value={String(category.id)}>
+              {category.name}
+            </option>
+          ))}
+        </select>
+        {categoryIdError ? (
+          <p id="expense-category-error" className="field-error" role="alert">
+            {categoryIdError}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="field">
         <label htmlFor="expense-description">Description</label>
         <input
           id="expense-description"
@@ -143,7 +180,9 @@ export function ExpenseForm({
           autoComplete="off"
         />
         <p id="expense-description-hint" className="field-hint">
-          Up to 160 characters
+          {otherSelected
+            ? 'Required when category is Other'
+            : 'Optional — leave blank to use the category name'}
         </p>
         {descriptionError ? (
           <p id="expense-description-error" className="field-error" role="alert">
@@ -220,33 +259,6 @@ export function ExpenseForm({
         {expenseDateError ? (
           <p id="expense-date-error" className="field-error" role="alert">
             {expenseDateError}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="field">
-        <label htmlFor="expense-category">Category</label>
-        <select
-          id="expense-category"
-          name="categoryId"
-          value={values.categoryId}
-          onChange={(event) =>
-            setValues((current) => ({ ...current, categoryId: event.target.value }))
-          }
-          aria-invalid={categoryIdError ? true : undefined}
-          aria-describedby={categoryIdError ? 'expense-category-error' : undefined}
-          disabled={submitting}
-        >
-          <option value="">Select a category</option>
-          {categories.map((category) => (
-            <option key={category.id} value={String(category.id)}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-        {categoryIdError ? (
-          <p id="expense-category-error" className="field-error" role="alert">
-            {categoryIdError}
           </p>
         ) : null}
       </div>

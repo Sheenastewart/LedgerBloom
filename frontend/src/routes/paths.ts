@@ -4,6 +4,7 @@ export const paths = {
   dashboard: '/dashboard',
 
   transactions: '/transactions',
+  transactionsAll: '/transactions/all',
   transactionsExpenses: '/transactions/expenses',
   transactionsExpensesAdd: '/transactions/expenses/add',
   transactionsExpensesNew: '/transactions/expenses/new',
@@ -39,6 +40,8 @@ export const paths = {
   reportsTrends: '/reports/trends',
   reportsYtd: '/reports/year-to-date',
   reportsCashFlow: '/reports/cash-flow',
+  reportsReview: '/reports/monthly-review',
+  reportsInsights: '/reports/insights',
   reportsExports: '/reports/exports',
 
   settings: '/settings',

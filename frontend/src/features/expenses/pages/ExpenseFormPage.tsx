@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
+import { expenseDisplayTitle } from '../../../utils/expenseDisplay'
 import { getCategories } from '../../categories/api/categoryApi'
 import type { Category } from '../../categories/types'
 import { createExpense, getExpense, updateExpense } from '../api/expenseApi'
 import { formatAmountForInput } from '../amountUtils'
+import { userFacingNotes } from '../../../utils/notesUtils'
 import { ExpenseForm, toExpenseWriteRequest } from '../components/ExpenseForm'
 import { parseExpenseRouteId } from '../parseExpenseRouteId'
 import type { ExpenseFormErrors, ExpenseFormValues } from '../types'
@@ -120,12 +122,12 @@ export function ExpenseFormPage({ mode }: ExpenseFormPageProps) {
 
         if (expenseData) {
           setInitialValues({
-            description: expenseData.description,
+            description: expenseData.description ?? '',
             merchant: expenseData.merchant ?? '',
             amount: formatAmountForInput(expenseData.amount),
             expenseDate: expenseData.expenseDate,
             categoryId: String(expenseData.category.id),
-            notes: expenseData.notes ?? '',
+            notes: userFacingNotes(expenseData.notes) ?? '',
           })
           setFormKey((value) => value + 1)
         } else if (mode === 'create' && prefill) {
@@ -157,10 +159,13 @@ export function ExpenseFormPage({ mode }: ExpenseFormPageProps) {
     setServerErrors({})
     try {
       const body = toExpenseWriteRequest(values)
+      const categoryName =
+        categories.find((category) => category.id === body.categoryId)?.name ?? 'expense'
+      const title = expenseDisplayTitle(body.description, categoryName)
       if (mode === 'create') {
         await createExpense(body)
         navigate('/transactions/expenses', {
-          state: { successMessage: `Created expense "${body.description}".` },
+          state: { successMessage: `Created expense "${title}".` },
         })
         return
       }
@@ -172,7 +177,7 @@ export function ExpenseFormPage({ mode }: ExpenseFormPageProps) {
 
       await updateExpense(routeId, body)
       navigate('/transactions/expenses', {
-        state: { successMessage: `Updated expense "${body.description}".` },
+        state: { successMessage: `Updated expense "${title}".` },
       })
     } catch (error) {
       if (error instanceof ApiClientError) {

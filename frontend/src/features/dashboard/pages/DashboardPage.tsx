@@ -1,34 +1,36 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
+import { ActivityRowList } from '../../../components/ActivityRowList'
 import { HowThisWorks } from '../../../components/HowThisWorks'
 import { InfoTooltip } from '../../../components/InfoTooltip'
 import { Button } from '../../../components/ui/Button'
 import { ErrorPanel, LoadingState } from '../../../components/ui/Feedback'
-import { SectionHeader } from '../../../components/ui/PageSection'
-import { StatCard } from '../../../components/ui/Card'
-import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
-import { budgetStatus, budgetStatusLabel } from '../../budgets/budgetStatus'
 import { getExpenses } from '../../expenses/api/expenseApi'
 import { CALCULATION_DEFS } from '../../guidance/calculationDefs'
 import { HelpLink } from '../../guidance/HelpLink'
 import { getIncomeEntries } from '../../income/api/incomeApi'
 import { useAuth } from '../../auth/AuthContext'
 import { paths } from '../../../routes/paths'
+import { markRecurringExpensePaid } from '../../recurring/api/recurringApi'
+import { markRecurringIncomeReceived } from '../../recurringIncome/api/recurringIncomeApi'
 import { getMonthlyDashboard } from '../api/dashboardApi'
 import { DashboardPeriodForm } from '../components/DashboardPeriodForm'
 import {
+  activityItemsToRows,
+  buildAgenda,
   greetingForNow,
   isWithinNextDays,
   mergeRecentActivity,
+  safeToSpend,
   startOfTodayIso,
+  type AgendaItem,
 } from '../dashboardPresentation'
 import type { DashboardPeriod, MonthlyDashboard } from '../types'
 import '../dashboard.css'
-import '../../categories/categories.css'
-import '../../budgets/budgets.css'
 import '../../guidance/help.css'
+import './dashboardPolish.css'
 
 const MONTH_NAMES = [
   'January',
@@ -47,23 +49,19 @@ const MONTH_NAMES = [
 
 function currentPeriod(): DashboardPeriod {
   const now = new Date()
-  return {
-    year: now.getFullYear(),
-    month: now.getMonth() + 1,
-  }
+  return { year: now.getFullYear(), month: now.getMonth() + 1 }
 }
 
 function periodLabel(period: DashboardPeriod): string {
   return `${MONTH_NAMES[period.month - 1]} ${period.year}`
 }
 
-function budgetTone(overBudget: boolean, percentUsed: number): 'success' | 'warning' | 'danger' | 'neutral' {
-  const status = budgetStatus(overBudget, percentUsed)
-  if (status === 'over-budget') return 'danger'
-  if (status === 'near-budget') return 'warning'
-  if (status === 'on-track') return 'success'
-  return 'neutral'
-}
+const AGENDA_SECTIONS: Array<{ key: AgendaItem['group']; title: string }> = [
+  { key: 'overdue', title: 'Overdue' },
+  { key: 'today', title: 'Today' },
+  { key: 'tomorrow', title: 'Tomorrow' },
+  { key: 'week', title: 'This week' },
+]
 
 export function DashboardPage() {
   const { user } = useAuth()
@@ -72,6 +70,10 @@ export function DashboardPage() {
   const [activity, setActivity] = useState<ReturnType<typeof mergeRecentActivity>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [actionBusyId, setActionBusyId] = useState<string | null>(null)
+  const [projectedIncomeOpen, setProjectedIncomeOpen] = useState(false)
+  const projectedIncomePanelId = useId()
 
   const loadDashboard = useCallback(async (nextPeriod: DashboardPeriod, signal?: AbortSignal) => {
     setLoading(true)
@@ -82,15 +84,11 @@ export function DashboardPage() {
         getExpenses({ year: nextPeriod.year, month: nextPeriod.month }, signal),
         getIncomeEntries({ year: nextPeriod.year, month: nextPeriod.month }, signal),
       ])
-      if (signal?.aborted) {
-        return
-      }
+      if (signal?.aborted) return
       setDashboard(data)
       setActivity(mergeRecentActivity(expenses, incomes))
     } catch (err) {
-      if (isAbortError(err) || signal?.aborted) {
-        return
-      }
+      if (isAbortError(err) || signal?.aborted) return
       if (err instanceof ApiClientError && err.code === 'INVALID_REQUEST') {
         setError(err.message)
       } else {
@@ -99,9 +97,7 @@ export function DashboardPage() {
       setDashboard(null)
       setActivity([])
     } finally {
-      if (!signal?.aborted) {
-        setLoading(false)
-      }
+      if (!signal?.aborted) setLoading(false)
     }
   }, [])
 
@@ -112,6 +108,7 @@ export function DashboardPage() {
   }, [loadDashboard, period])
 
   function handleApplyPeriod(nextPeriod: DashboardPeriod) {
+    setProjectedIncomeOpen(false)
     if (nextPeriod.year === period.year && nextPeriod.month === period.month) {
       void loadDashboard(nextPeriod)
       return
@@ -129,436 +126,253 @@ export function DashboardPage() {
       .reduce((sum, item) => sum + item.amount, 0)
   }, [dashboard, today])
 
-  const upcomingThisWeek = useMemo(() => {
+  const projectedIncome = useMemo(() => {
+    if (!dashboard) return 0
+    return dashboard.totalIncome + dashboard.planning.expectedIncome
+  }, [dashboard])
+
+  const remainingBudget = dashboard?.budget?.remaining ?? null
+  const safeSpend = safeToSpend(remainingBudget, billsDueThisWeek)
+
+  const agenda = useMemo(() => {
     if (!dashboard) return []
-    const expenses = dashboard.planning.upcomingExpenseItems
-      .filter((item) => isWithinNextDays(item.nextPaymentDate, today, 7))
-      .map((item) => ({
-        id: `exp-${item.id}-${item.nextPaymentDate}`,
-        label: item.description,
-        amount: item.amount,
-        date: item.nextPaymentDate,
-        detail: item.categoryName,
-        kind: 'payment' as const,
-      }))
-    const incomes = dashboard.planning.upcomingIncomeItems
-      .filter((item) => isWithinNextDays(item.nextIncomeDate, today, 7))
-      .map((item) => ({
-        id: `inc-${item.id}-${item.nextIncomeDate}`,
-        label: item.description,
-        amount: item.amount,
-        date: item.nextIncomeDate,
-        detail: item.source,
-        kind: 'income' as const,
-      }))
-    return [...expenses, ...incomes].sort((a, b) => a.date.localeCompare(b.date))
+    return buildAgenda({
+      expenseItems: dashboard.planning.upcomingExpenseItems,
+      incomeItems: dashboard.planning.upcomingIncomeItems,
+      todayIso: today,
+    })
   }, [dashboard, today])
 
-  const isEmptyMonth =
-    dashboard !== null &&
-    dashboard.incomeEntryCount === 0 &&
-    dashboard.expenseEntryCount === 0
+  const activityRows = useMemo(() => activityItemsToRows(activity), [activity])
+
+  async function handleAgendaAction(item: AgendaItem) {
+    setActionError(null)
+    setActionBusyId(item.id)
+    try {
+      if (item.kind === 'payment') {
+        await markRecurringExpensePaid(item.scheduleId, {
+          expectedNextPaymentDate: item.date,
+        })
+      } else {
+        await markRecurringIncomeReceived(item.scheduleId, {
+          expectedNextIncomeDate: item.date,
+        })
+      }
+      await loadDashboard(period)
+    } catch (err) {
+      if (err instanceof ApiClientError) {
+        setActionError(err.message)
+      } else {
+        setActionError('Unable to update that schedule. Please try again.')
+      }
+    } finally {
+      setActionBusyId(null)
+    }
+  }
 
   return (
-    <main className="dashboard-page page">
+    <main className="dashboard-page page dashboard-page--decision">
       <header className="greeting-block">
         <h1>
           {greeting}
           {user?.displayName ? `, ${user.displayName}` : ''}.
         </h1>
-        <p>Your financial snapshot for the selected month, based on saved ledger and recurring schedules.</p>
+        <p className="greeting-block__sub">Am I financially okay this month?</p>
       </header>
 
-      <HowThisWorks>
-        <p>Actual totals come from saved Income and Expense entries.</p>
-        <p>Projected totals also include upcoming recurring income and recurring obligations.</p>
-        <HelpLink to="/settings/help?topic=what-is-dashboard">Learn more</HelpLink>
-      </HowThisWorks>
-
-      <DashboardPeriodForm appliedPeriod={period} onApply={handleApplyPeriod} />
+      <div className="dashboard-toolbar">
+        <DashboardPeriodForm appliedPeriod={period} onApply={handleApplyPeriod} />
+        <HowThisWorks>
+          <p>Actual totals come from saved Income and Expense entries.</p>
+          <p>Projected income adds upcoming recurring income only — not expenses.</p>
+          <HelpLink to="/settings/help?topic=what-is-dashboard">Learn more</HelpLink>
+        </HowThisWorks>
+      </div>
 
       {error ? <ErrorPanel onRetry={() => void loadDashboard(period)}>{error}</ErrorPanel> : null}
       {loading ? <LoadingState>Loading dashboard…</LoadingState> : null}
+      {actionError ? (
+        <p className="status-banner warning" role="alert">
+          {actionError}
+        </p>
+      ) : null}
 
       {!loading && !error && dashboard ? (
         <>
-          <p className="status-banner" role="status" aria-live="polite">
-            Showing {periodLabel({ year: dashboard.year, month: dashboard.month })}.
+          <p className="period-chip" role="status">
+            {periodLabel({ year: dashboard.year, month: dashboard.month })}
           </p>
 
-          <section aria-labelledby="snapshot-heading" className="dashboard-section">
-            <SectionHeader id="snapshot-heading" title="Financial snapshot" />
-            <div className="snapshot-grid">
-              <StatCard label="Bills due this week" value={formatCurrency(billsDueThisWeek)} />
-              <article className="stat-card">
-                <h2 className="stat-card__label">Budget status</h2>
-                {dashboard.budget ? (
-                  <StatusBadge tone={budgetTone(dashboard.budget.overBudget, dashboard.budget.percentUsed)}>
-                    {budgetStatusLabel(
-                      budgetStatus(dashboard.budget.overBudget, dashboard.budget.percentUsed),
-                    )}
-                  </StatusBadge>
-                ) : (
-                  <p className="stat-card__value" style={{ fontSize: '1rem' }}>
-                    No budget set
-                  </p>
-                )}
+          <section className="decision-fold" aria-label="Financial decision snapshot">
+            <div className="hero-metric-wrap">
+              <p className="hero-metric__label">
+                Projected income
+                <InfoTooltip label="About projected income">
+                  Recorded income plus expected recurring income for this month.
+                </InfoTooltip>
+              </p>
+              <button
+                type="button"
+                className="hero-metric"
+                aria-expanded={projectedIncomeOpen}
+                aria-controls={projectedIncomePanelId}
+                aria-label="Projected income"
+                onClick={() => setProjectedIncomeOpen((open) => !open)}
+              >
+                <span className="hero-metric__value">{formatCurrency(projectedIncome)}</span>
+                <span className="hero-metric__hint">
+                  {projectedIncomeOpen ? 'Hide breakdown' : 'View breakdown'}
+                </span>
+              </button>
+            </div>
+
+            {projectedIncomeOpen ? (
+              <div id={projectedIncomePanelId} className="hero-metric__panel">
+                <ul className="metric-breakdown">
+                  <li>
+                    <span>Recorded income</span>
+                    <strong>{formatCurrency(dashboard.totalIncome)}</strong>
+                  </li>
+                  <li>
+                    <span>Expected recurring income</span>
+                    <strong>{formatCurrency(dashboard.planning.expectedIncome)}</strong>
+                  </li>
+                  <li>
+                    <span>Scheduled recurring income contributing</span>
+                    <strong>{dashboard.planning.upcomingIncomeCount}</strong>
+                  </li>
+                  <li className="metric-breakdown__total">
+                    <span>Total projected income</span>
+                    <strong>{formatCurrency(projectedIncome)}</strong>
+                  </li>
+                </ul>
+              </div>
+            ) : (
+              <div id={projectedIncomePanelId} hidden />
+            )}
+
+            <div className="support-metrics">
+              <article className="support-metric">
+                <h2 className="support-metric__label">Bills due this week</h2>
+                <p className="support-metric__value">{formatCurrency(billsDueThisWeek)}</p>
               </article>
-              <StatCard
-                label={
-                  <span className="metric-heading">
-                    Expected income
-                    <InfoTooltip label="About expected income">{CALCULATION_DEFS.expectedIncome.short}</InfoTooltip>
-                  </span>
-                }
-                value={formatCurrency(dashboard.planning.expectedIncome)}
-              />
-              <StatCard
-                label={
-                  <span className="metric-heading">
-                    Expected obligations
-                    <InfoTooltip label="About expected obligations">
-                      {CALCULATION_DEFS.expectedObligations.short}
-                    </InfoTooltip>
-                  </span>
-                }
-                value={formatCurrency(dashboard.planning.expectedExpenses)}
-              />
-              <StatCard
-                label={
-                  <span className="metric-heading">
-                    Projected cash flow
-                    <InfoTooltip label="About projected cash flow">
-                      {CALCULATION_DEFS.projectedCashFlow.short}
-                    </InfoTooltip>
-                  </span>
-                }
-                value={formatCurrency(dashboard.planning.projectedCashFlow)}
-                negative={dashboard.planning.projectedCashFlow < 0}
-              />
+              <article className="support-metric support-metric--emphasis">
+                <h2 className="support-metric__label">
+                  Remaining budget
+                  <InfoTooltip label="About remaining budget">
+                    {CALCULATION_DEFS.remainingBudget.short}
+                  </InfoTooltip>
+                </h2>
+                <p
+                  className={`support-metric__value support-metric__value--hero ${
+                    remainingBudget !== null && remainingBudget < 0 ? 'is-negative' : ''
+                  }`}
+                >
+                  {remainingBudget === null ? '—' : formatCurrency(remainingBudget)}
+                </p>
+              </article>
+              <article className="support-metric">
+                <h2 className="support-metric__label">
+                  Safe to spend
+                  <InfoTooltip label="About safe to spend">
+                    Remaining budget minus bills due this week. Shown only when a monthly budget
+                    exists.
+                  </InfoTooltip>
+                </h2>
+                <p className={`support-metric__value ${safeSpend !== null && safeSpend < 0 ? 'is-negative' : ''}`}>
+                  {safeSpend === null ? '—' : formatCurrency(safeSpend)}
+                </p>
+              </article>
             </div>
           </section>
 
-          <section aria-labelledby="actions-heading" className="dashboard-section">
-            <SectionHeader id="actions-heading" title="What would you like to do?" />
-            <div className="action-hub">
+          <section className="action-hub" aria-labelledby="action-hub-heading">
+            <h2 id="action-hub-heading">What would you like to do?</h2>
+            <div className="action-hub__grid">
               <Link className="action-hub__card" to={paths.transactionsExpensesAdd}>
-                <p className="action-hub__title">Add Expense</p>
-                <p className="action-hub__desc">Record a one-time or start a recurring bill.</p>
+                Add Expense
               </Link>
               <Link className="action-hub__card" to={paths.transactionsIncomeAdd}>
-                <p className="action-hub__title">Add Income</p>
-                <p className="action-hub__desc">Log pay or set up recurring income.</p>
+                Add Income
               </Link>
               <Link className="action-hub__card" to={paths.transactionsRecurringExpenseNew}>
-                <p className="action-hub__title">Add Recurring Schedule</p>
-                <p className="action-hub__desc">Plan subscriptions and repeating payments.</p>
+                Add Recurring
               </Link>
-              <Link
-                className="action-hub__card"
-                to={
-                  dashboard.budget
-                    ? paths.budgetsMonthly
-                    : `/budgets/new?year=${dashboard.year}&month=${dashboard.month}`
-                }
-              >
-                <p className="action-hub__title">Set or View Budget</p>
-                <p className="action-hub__desc">Create limits or review this month’s plan.</p>
+              <Link className="action-hub__card" to={paths.budgetsMonthly}>
+                View budgets
               </Link>
               <Link className="action-hub__card" to={paths.reportsMonthly}>
-                <p className="action-hub__title">View Reports</p>
-                <p className="action-hub__desc">Open monthly summaries and trends.</p>
-              </Link>
-              <Link className="action-hub__card" to={paths.transactionsRecurringExpenses}>
-                <p className="action-hub__title">Review Upcoming Payments</p>
-                <p className="action-hub__desc">Check recurring obligations due soon.</p>
+                View reports
               </Link>
             </div>
           </section>
 
-          <section aria-labelledby="activity-heading" className="dashboard-section">
-            <SectionHeader
-              id="activity-heading"
-              title="Activity"
-              description="Recent income and expenses from the selected month."
-              actions={
-                <Button variant="tertiary" to={paths.transactionsExpenses}>
-                  View all
-                </Button>
-              }
-            />
-            {activity.length === 0 ? (
+          <section className="dashboard-section" aria-labelledby="agenda-heading">
+            <div className="section-heading-row">
+              <h2 id="agenda-heading">Upcoming</h2>
+              <Link to={paths.transactionsRecurringExpenses} className="text-link">
+                Manage schedules
+              </Link>
+            </div>
+            {agenda.length === 0 ? (
               <p className="dashboard-empty" role="status">
-                No activity recorded for this month yet.
+                Nothing due in the next week.
               </p>
             ) : (
-              <ul className="dashboard-compact-list">
-                {activity.map((item) => (
-                  <li key={item.id}>
-                    <strong>{item.description}</strong> · {formatCurrency(item.amount)} ·{' '}
-                    {formatIsoDate(item.date)} · {item.detail} ·{' '}
-                    {item.kind === 'expense' ? 'Expense' : 'Income'}
-                  </li>
-                ))}
-              </ul>
+              AGENDA_SECTIONS.map((section) => {
+                const rows = agenda.filter((item) => item.group === section.key)
+                if (rows.length === 0) return null
+                return (
+                  <div key={section.key} className="agenda-group">
+                    <h3 className="agenda-group__title">{section.title}</h3>
+                    <ul className="agenda-list">
+                      {rows.map((item) => (
+                        <li key={item.id} className="agenda-row">
+                          <div className="agenda-row__main">
+                            <p className="agenda-row__title">
+                              <strong>{item.label}</strong>
+                              <span className={`agenda-pill agenda-pill--${item.kind}`}>
+                                {item.kind === 'payment' ? 'Bill' : 'Income'}
+                              </span>
+                            </p>
+                            <p className="agenda-row__meta">
+                              {formatIsoDate(item.date)} · {item.detail} ·{' '}
+                              {formatCurrency(item.amount)}
+                            </p>
+                          </div>
+                          <Button
+                            variant="secondary"
+                            type="button"
+                            disabled={actionBusyId === item.id}
+                            onClick={() => void handleAgendaAction(item)}
+                          >
+                            {actionBusyId === item.id
+                              ? 'Working…'
+                              : item.kind === 'payment'
+                                ? 'Mark Paid'
+                                : 'Mark Received'}
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )
+              })
             )}
           </section>
 
-          <section aria-labelledby="upcoming-heading" className="dashboard-section">
-            <SectionHeader
-              id="upcoming-heading"
-              title="Upcoming"
-              description="Recurring income and obligations due in the next 7 days."
+          <section className="dashboard-section" aria-labelledby="activity-heading">
+            <div className="section-heading-row">
+              <h2 id="activity-heading">Recent activity</h2>
+              <Link to={paths.transactionsAll} className="text-link">
+                View all
+              </Link>
+            </div>
+            <ActivityRowList
+              items={activityRows}
+              emptyMessage="No expenses or income recorded this month yet."
+              todayIso={today}
             />
-            {upcomingThisWeek.length === 0 ? (
-              <p className="dashboard-empty" role="status">
-                Nothing scheduled for the next 7 days in this month’s recurring plans.
-              </p>
-            ) : (
-              <ul className="dashboard-compact-list">
-                {upcomingThisWeek.map((item) => (
-                  <li key={item.id}>
-                    <strong>{item.label}</strong> · {formatCurrency(item.amount)} ·{' '}
-                    {formatIsoDate(item.date)} · {item.detail} ·{' '}
-                    {item.kind === 'payment' ? 'Payment' : 'Income'}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section aria-label="Monthly overview" className="dashboard-section">
-            <SectionHeader title="Monthly overview" />
-            {isEmptyMonth ? (
-              <p className="dashboard-empty" role="status">
-                No income or expense entries for this month.
-              </p>
-            ) : null}
-            <div className="dashboard-summary-grid">
-              <StatCard label="Total income" value={formatCurrency(dashboard.totalIncome)} />
-              <StatCard label="Total expenses" value={formatCurrency(dashboard.totalExpenses)} />
-              <StatCard
-                label={
-                  <span className="metric-heading">
-                    Net cash flow
-                    <InfoTooltip label="About net cash flow">{CALCULATION_DEFS.netCashFlow.short}</InfoTooltip>
-                  </span>
-                }
-                value={formatCurrency(dashboard.netCashFlow)}
-                negative={dashboard.netCashFlow < 0}
-              />
-              <StatCard label="Income entries" value={dashboard.incomeEntryCount} />
-              <StatCard label="Expense entries" value={dashboard.expenseEntryCount} />
-            </div>
-          </section>
-
-          <section className="dashboard-section" aria-labelledby="budget-overview-heading">
-            <SectionHeader id="budget-overview-heading" title="Budget status" />
-            {dashboard.budget ? (
-              <div className="dashboard-summary-grid">
-                <StatCard label="Total budget" value={formatCurrency(dashboard.budget.totalLimit)} />
-                <StatCard
-                  label={
-                    <span className="metric-heading">
-                      Remaining budget
-                      <InfoTooltip label="About remaining budget">
-                        {CALCULATION_DEFS.remainingBudget.short}
-                      </InfoTooltip>
-                    </span>
-                  }
-                  value={formatCurrency(dashboard.budget.remaining)}
-                  negative={dashboard.budget.remaining < 0}
-                />
-                <StatCard
-                  label={
-                    <span className="metric-heading">
-                      Percent used
-                      <InfoTooltip label="About percent used">{CALCULATION_DEFS.percentUsed.short}</InfoTooltip>
-                    </span>
-                  }
-                  value={`${dashboard.budget.percentUsed.toFixed(2)}%`}
-                />
-                <article className="stat-card">
-                  <h2 className="stat-card__label">Budget status</h2>
-                  <StatusBadge tone={budgetTone(dashboard.budget.overBudget, dashboard.budget.percentUsed)}>
-                    {budgetStatusLabel(
-                      budgetStatus(dashboard.budget.overBudget, dashboard.budget.percentUsed),
-                    )}
-                  </StatusBadge>
-                </article>
-              </div>
-            ) : (
-              <div className="status-panel" role="status">
-                <p>No budget set for this month.</p>
-                <Button
-                  variant="secondary"
-                  to={`/budgets/new?year=${dashboard.year}&month=${dashboard.month}`}
-                >
-                  Create budget
-                </Button>
-              </div>
-            )}
-          </section>
-
-          <section className="dashboard-section" aria-labelledby="cash-flow-planning-heading">
-            <SectionHeader
-              id="cash-flow-planning-heading"
-              title="Cash-flow planning"
-              description="Estimates for this month based on active recurring schedules. Not a guarantee of cash received or spent."
-            />
-            <HelpLink to="/settings/help?topic=projected-cash-flow">How is this calculated?</HelpLink>
-            <div className="dashboard-summary-grid">
-              <StatCard
-                label="Expected income"
-                value={formatCurrency(dashboard.planning.expectedIncome)}
-              />
-              <StatCard
-                label="Expected obligations"
-                value={formatCurrency(dashboard.planning.expectedExpenses)}
-              />
-              <StatCard
-                label="Projected cash flow"
-                value={formatCurrency(dashboard.planning.projectedCashFlow)}
-                negative={dashboard.planning.projectedCashFlow < 0}
-              />
-              <StatCard label="Upcoming income" value={dashboard.planning.upcomingIncomeCount} />
-              <StatCard label="Upcoming payments" value={dashboard.planning.upcomingExpenseCount} />
-            </div>
-
-            <div className="dashboard-planning-lists">
-              <div>
-                <h3>Expected income breakdown</h3>
-                {dashboard.planning.upcomingIncomeItems.length === 0 ? (
-                  <p className="dashboard-empty" role="status">
-                    No scheduled recurring income in this month.
-                  </p>
-                ) : (
-                  <ul className="dashboard-compact-list">
-                    {dashboard.planning.upcomingIncomeItems.map((item) => (
-                      <li key={item.id}>
-                        <strong>{item.description}</strong> · {formatCurrency(item.amount)} ·{' '}
-                        {formatIsoDate(item.nextIncomeDate)} · {item.source}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div>
-                <h3>Expected obligations breakdown</h3>
-                {dashboard.planning.upcomingExpenseItems.length === 0 ? (
-                  <p className="dashboard-empty" role="status">
-                    No scheduled recurring payments in this month.
-                  </p>
-                ) : (
-                  <ul className="dashboard-compact-list">
-                    {dashboard.planning.upcomingExpenseItems.map((item) => (
-                      <li key={item.id}>
-                        <strong>{item.description}</strong> · {formatCurrency(item.amount)} ·{' '}
-                        {formatIsoDate(item.nextPaymentDate)} · {item.categoryName}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          </section>
-
-          <section className="dashboard-section" aria-labelledby="spending-by-category-heading">
-            <SectionHeader id="spending-by-category-heading" title="Spending by category" />
-            {dashboard.spendingByCategory.length === 0 ? (
-              <p className="dashboard-empty">No expenses in this month.</p>
-            ) : (
-              <div className="data-table-wrap">
-                <table className="data-table dashboard-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Category</th>
-                      <th scope="col" className="numeric">
-                        Entries
-                      </th>
-                      <th scope="col" className="numeric">
-                        Total
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dashboard.spendingByCategory.map((row) => (
-                      <tr key={row.categoryId}>
-                        <th scope="row">{row.categoryName}</th>
-                        <td className="numeric">{row.entryCount}</td>
-                        <td className="numeric">{formatCurrency(row.total)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-
-          <section className="dashboard-section" aria-labelledby="income-by-source-heading">
-            <SectionHeader id="income-by-source-heading" title="Income by source" />
-            {dashboard.incomeBySource.length === 0 ? (
-              <p className="dashboard-empty">No income entries in this month.</p>
-            ) : (
-              <div className="data-table-wrap">
-                <table className="data-table dashboard-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Source</th>
-                      <th scope="col" className="numeric">
-                        Entries
-                      </th>
-                      <th scope="col" className="numeric">
-                        Total
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dashboard.incomeBySource.map((row) => (
-                      <tr key={row.source.toLowerCase()}>
-                        <th scope="row">{row.source}</th>
-                        <td className="numeric">{row.entryCount}</td>
-                        <td className="numeric">{formatCurrency(row.total)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-
-          <section className="dashboard-section" aria-labelledby="largest-entries-heading">
-            <SectionHeader id="largest-entries-heading" title="Largest entries" />
-            <div className="dashboard-highlights">
-              <article className="dashboard-highlight lb-card">
-                <h3 className="label">Largest income</h3>
-                {dashboard.largestIncome ? (
-                  <>
-                    <p className="amount">{formatCurrency(dashboard.largestIncome.amount)}</p>
-                    <p>
-                      {dashboard.largestIncome.description} · {dashboard.largestIncome.source}
-                    </p>
-                    <p className="label">{formatIsoDate(dashboard.largestIncome.incomeDate)}</p>
-                  </>
-                ) : (
-                  <p className="dashboard-empty">No income entries this month.</p>
-                )}
-              </article>
-              <article className="dashboard-highlight lb-card">
-                <h3 className="label">Largest expense</h3>
-                {dashboard.largestExpense ? (
-                  <>
-                    <p className="amount">{formatCurrency(dashboard.largestExpense.amount)}</p>
-                    <p>
-                      {dashboard.largestExpense.description} · {dashboard.largestExpense.categoryName}
-                    </p>
-                    <p className="label">{formatIsoDate(dashboard.largestExpense.expenseDate)}</p>
-                  </>
-                ) : (
-                  <p className="dashboard-empty">No expense entries this month.</p>
-                )}
-              </article>
-            </div>
           </section>
         </>
       ) : null}

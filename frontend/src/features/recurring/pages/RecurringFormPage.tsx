@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
+import { expenseDisplayTitle } from '../../../utils/expenseDisplay'
 import { formatAmountForInput } from '../../../utils/moneyUtils'
 import { getCategories } from '../../categories/api/categoryApi'
 import type { Category } from '../../categories/types'
@@ -119,7 +120,7 @@ export function RecurringFormPage({ mode }: RecurringFormPageProps) {
           return
         }
         setInitialValues({
-          description: item.description,
+          description: item.description ?? '',
           merchant: item.merchant ?? '',
           amount: formatAmountForInput(item.amount),
           categoryId: String(item.category.id),
@@ -159,8 +160,9 @@ export function RecurringFormPage({ mode }: RecurringFormPageProps) {
     try {
       if (mode === 'create') {
         const created = await createRecurringExpense(toRecurringCreateRequest(values))
+        const title = expenseDisplayTitle(created.description, created.category.name)
         navigate('/transactions/recurring-expenses', {
-          state: { successMessage: `Created recurring expense "${created.description}".` },
+          state: { successMessage: `Created recurring expense "${title}".` },
         })
         return
       }
@@ -168,8 +170,9 @@ export function RecurringFormPage({ mode }: RecurringFormPageProps) {
         routeId as number,
         toRecurringWriteRequest(values),
       )
+      const title = expenseDisplayTitle(updated.description, updated.category.name)
       navigate('/transactions/recurring-expenses', {
-        state: { successMessage: `Updated recurring expense "${updated.description}".` },
+        state: { successMessage: `Updated recurring expense "${title}".` },
       })
     } catch (error) {
       if (error instanceof ApiClientError) {

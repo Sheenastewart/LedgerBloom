@@ -239,14 +239,12 @@ public class RecurringIncomeService {
 			);
 		}
 
-		String receiptNote = buildMarkReceivedNote(entity);
-
 		IncomeEntryResponse createdIncomeEntry = incomeEntryService.create(new IncomeEntryCreateRequest(
 			entity.getDescription(),
 			entity.getSource(),
 			entity.getAmount(),
 			incomeDate,
-			receiptNote
+			null
 		));
 		linkOccurrenceRecord(entity, incomeDate, createdIncomeEntry.id());
 
@@ -346,7 +344,7 @@ public class RecurringIncomeService {
 				entity.getSource(),
 				entity.getAmount(),
 				date,
-				buildCatchUpNote(entity)
+				null
 			));
 			if (tryLinkOccurrenceRecord(entity, date, createdEntry.id())) {
 				createdDates.add(date);
@@ -380,7 +378,7 @@ public class RecurringIncomeService {
 			entity.getSource(),
 			entity.getAmount(),
 			date,
-			buildHistoricalNote(entity)
+			null
 		));
 		linkOccurrenceRecord(entity, date, created.id());
 	}
@@ -413,22 +411,6 @@ public class RecurringIncomeService {
 				);
 			}
 		}
-	}
-
-	private String buildMarkReceivedNote(RecurringIncome entity) {
-		String source = "Received from recurring income #" + entity.getId();
-		if (entity.getNotes() == null || entity.getNotes().isBlank()) {
-			return source;
-		}
-		return source + ". " + entity.getNotes();
-	}
-
-	private String buildCatchUpNote(RecurringIncome entity) {
-		return "Caught up from recurring income #" + entity.getId();
-	}
-
-	private String buildHistoricalNote(RecurringIncome entity) {
-		return "Recorded during setup of recurring income #" + entity.getId();
 	}
 
 	private RecurringIncome getOrThrow(Long id, Long userId) {

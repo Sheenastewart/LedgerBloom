@@ -30,6 +30,8 @@ const sampleBudget = {
   month: 7,
   totalLimit: 1000,
   actualExpenses: 200,
+  budgetableExpenses: 200,
+  assistanceApplied: 0,
   remaining: 800,
   percentUsed: 20,
   overBudget: false,
@@ -39,7 +41,9 @@ const sampleBudget = {
       id: 50,
       category: { id: 1, name: 'Groceries' },
       limitAmount: 300,
+      assistanceAmount: 0,
       actualSpent: 150,
+      budgetableSpent: 150,
       remaining: 150,
       percentUsed: 50,
       overBudget: false,
@@ -170,14 +174,32 @@ describe('BudgetsPage', () => {
     await user.click(screen.getByRole('button', { name: 'Add category limit' }))
     await user.selectOptions(screen.getByLabelText('Category'), '1')
     await user.type(screen.getByLabelText('Limit amount'), '300.00')
+    await user.type(screen.getByLabelText('Food assistance'), '150.00')
     await user.click(screen.getByRole('button', { name: 'Save category limit' }))
 
     await waitFor(() => {
       expect(budgetApi.createCategoryLimit).toHaveBeenCalledWith(10, {
         categoryId: 1,
         limitAmount: 300,
+        assistanceAmount: 150,
       })
     })
+  })
+
+  it('shows food assistance coverage on the monthly budget summary', async () => {
+    vi.mocked(budgetApi.getMonthlyBudget).mockResolvedValue({
+      ...sampleBudget,
+      actualExpenses: 300,
+      budgetableExpenses: 100,
+      assistanceApplied: 200,
+      remaining: 900,
+      percentUsed: 10,
+    })
+
+    renderPage()
+
+    expect(await screen.findByText('Counts toward budget')).toBeInTheDocument()
+    expect(screen.getByText(/\$200\.00 covered by food assistance/i)).toBeInTheDocument()
   })
 
   it('shows duplicate category limit errors', async () => {

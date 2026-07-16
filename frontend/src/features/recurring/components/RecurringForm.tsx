@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { isAbortError } from '../../../api/ApiClientError'
 import { OccurrenceChecklist } from '../../../components/OccurrenceChecklist'
 import { isPastDate } from '../../../utils/dueDateUtils'
+import { isOtherCategoryName } from '../../../utils/expenseDisplay'
 import {
   amountToRequestValue,
   normalizeAmountInput,
@@ -34,22 +35,35 @@ type RecurringFormProps = {
   onCancel: () => void
 }
 
-function validateValues(values: RecurringFormValues, mode: 'create' | 'edit'): RecurringFormErrors {
+function selectedCategoryName(values: RecurringFormValues, categories: Category[]): string {
+  return categories.find((category) => String(category.id) === values.categoryId)?.name ?? ''
+}
+
+function validateValues(
+  values: RecurringFormValues,
+  mode: 'create' | 'edit',
+  categories: Category[],
+): RecurringFormErrors {
   const errors: RecurringFormErrors = {}
-  if (!values.description.trim()) {
-    errors.description = 'Description is required.'
-  } else if (values.description.trim().length > 160) {
+  const categoryName = selectedCategoryName(values, categories)
+  const trimmedDescription = values.description.trim()
+
+  if (!values.categoryId.trim()) {
+    errors.categoryId = 'Category is required.'
+  }
+
+  if (isOtherCategoryName(categoryName) && !trimmedDescription) {
+    errors.description = 'Description is required when category is Other.'
+  } else if (trimmedDescription.length > 160) {
     errors.description = 'Description must be at most 160 characters.'
   }
+
   if (values.merchant.trim().length > 120) {
     errors.merchant = 'Merchant must be at most 120 characters.'
   }
   const amountError = validateAmount(values.amount)
   if (amountError) {
     errors.amount = amountError
-  }
-  if (!values.categoryId.trim()) {
-    errors.categoryId = 'Category is required.'
   }
   if (!values.cadence.trim()) {
     errors.cadence = 'Cadence is required.'
@@ -61,14 +75,14 @@ function validateValues(values: RecurringFormValues, mode: 'create' | 'edit'): R
   if (values.cadence === 'SEMIMONTHLY') {
     const first = Number(values.firstPaymentDay)
     if (!values.firstPaymentDay.trim() || !Number.isInteger(first) || first < 1 || first > 31) {
-      errors.firstPaymentDay = 'First payment day must be a whole number between 1 and 31.'
+      errors.firstPaymentDay = 'First day of month must be a whole number between 1 and 31.'
     }
     const second = Number(values.secondPaymentDay)
     if (!values.secondPaymentDay.trim() || !Number.isInteger(second) || second < 1 || second > 31) {
-      errors.secondPaymentDay = 'Second payment day must be a whole number between 1 and 31.'
+      errors.secondPaymentDay = 'Second day of month must be a whole number between 1 and 31.'
     }
     if (!errors.firstPaymentDay && !errors.secondPaymentDay && first === second) {
-      errors.secondPaymentDay = 'Payment days must be different.'
+      errors.secondPaymentDay = 'The two days of the month must be different.'
     }
   }
 
@@ -98,8 +112,9 @@ function paymentDaysForCadence(values: RecurringFormValues): {
 }
 
 export function toRecurringWriteRequest(values: RecurringFormValues): RecurringWriteRequest {
+  const description = values.description.trim()
   return {
-    description: values.description.trim(),
+    description: description.length === 0 ? null : description,
     merchant: values.merchant.trim() ? values.merchant.trim() : null,
     amount: amountToRequestValue(normalizeAmountInput(values.amount)),
     categoryId: Number(values.categoryId),
@@ -233,13 +248,16 @@ export function RecurringForm({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const nextErrors = validateValues(values, mode)
+    const nextErrors = validateValues(values, mode, categories)
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) {
       return
     }
     onSubmit(values)
   }
+
+  const categoryName = selectedCategoryName(values, categories)
+  const otherSelected = isOtherCategoryName(categoryName)
 
   return (
     <form className="entity-form" onSubmit={handleSubmit} noValidate autoComplete="off">
@@ -250,6 +268,30 @@ export function RecurringForm({
       ) : null}
 
       <div className="field">
+        <label htmlFor="recurring-category">Category</label>
+        <select
+          id="recurring-category"
+          value={values.categoryId}
+          disabled={submitting}
+          aria-invalid={merged.categoryId ? true : undefined}
+          aria-describedby={merged.categoryId ? 'recurring-category-error' : undefined}
+          onChange={(event) => setValues((current) => ({ ...current, categoryId: event.target.value }))}
+        >
+          <option value="">Select category</option>
+          {categories.map((category) => (
+            <option key={category.id} value={String(category.id)}>
+              {category.name}
+            </option>
+          ))}
+        </select>
+        {merged.categoryId ? (
+          <p id="recurring-category-error" className="field-error" role="alert">
+            {merged.categoryId}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="field">
         <label htmlFor="recurring-description">Description</label>
         <input
           id="recurring-description"
@@ -257,9 +299,16 @@ export function RecurringForm({
           disabled={submitting}
           autoComplete="off"
           aria-invalid={merged.description ? true : undefined}
-          aria-describedby={merged.description ? 'recurring-description-error' : undefined}
+          aria-describedby={
+            merged.description ? 'recurring-description-error' : 'recurring-description-hint'
+          }
           onChange={(event) => setValues((current) => ({ ...current, description: event.target.value }))}
         />
+        <p id="recurring-description-hint" className="field-hint">
+          {otherSelected
+            ? 'Required when category is Other'
+            : 'Optional — leave blank to use the category name'}
+        </p>
         {merged.description ? (
           <p id="recurring-description-error" className="field-error" role="alert">
             {merged.description}
@@ -275,9 +324,12 @@ export function RecurringForm({
           disabled={submitting}
           autoComplete="off"
           aria-invalid={merged.merchant ? true : undefined}
-          aria-describedby={merged.merchant ? 'recurring-merchant-error' : undefined}
+          aria-describedby={merged.merchant ? 'recurring-merchant-error' : 'recurring-merchant-hint'}
           onChange={(event) => setValues((current) => ({ ...current, merchant: event.target.value }))}
         />
+        <p id="recurring-merchant-hint" className="field-hint">
+          Optional, up to 120 characters
+        </p>
         {merged.merchant ? (
           <p id="recurring-merchant-error" className="field-error" role="alert">
             {merged.merchant}
@@ -300,30 +352,6 @@ export function RecurringForm({
         {merged.amount ? (
           <p id="recurring-amount-error" className="field-error" role="alert">
             {merged.amount}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="field">
-        <label htmlFor="recurring-category">Category</label>
-        <select
-          id="recurring-category"
-          value={values.categoryId}
-          disabled={submitting}
-          aria-invalid={merged.categoryId ? true : undefined}
-          aria-describedby={merged.categoryId ? 'recurring-category-error' : undefined}
-          onChange={(event) => setValues((current) => ({ ...current, categoryId: event.target.value }))}
-        >
-          <option value="">Select category</option>
-          {categories.map((category) => (
-            <option key={category.id} value={String(category.id)}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-        {merged.categoryId ? (
-          <p id="recurring-category-error" className="field-error" role="alert">
-            {merged.categoryId}
           </p>
         ) : null}
       </div>
@@ -360,7 +388,10 @@ export function RecurringForm({
           ))}
         </select>
         {values.cadence === 'SEMIMONTHLY' ? (
-          <p className="field-hint">Semimonthly — paid twice per month on selected calendar days.</p>
+          <p className="field-hint">
+            Paid twice each month on the calendar days you choose (for example, the 1st and the
+            15th).
+          </p>
         ) : null}
         {merged.cadence ? (
           <p id="recurring-cadence-error" className="field-error" role="alert">
@@ -372,7 +403,7 @@ export function RecurringForm({
       {values.cadence === 'SEMIMONTHLY' ? (
         <div className="field-grid two-up">
           <div className="field">
-            <label htmlFor="recurring-first-payment-day">First payment day</label>
+            <label htmlFor="recurring-first-payment-day">First day of month</label>
             <input
               id="recurring-first-payment-day"
               type="number"
@@ -393,7 +424,7 @@ export function RecurringForm({
             ) : null}
           </div>
           <div className="field">
-            <label htmlFor="recurring-second-payment-day">Second payment day</label>
+            <label htmlFor="recurring-second-payment-day">Second day of month</label>
             <input
               id="recurring-second-payment-day"
               type="number"

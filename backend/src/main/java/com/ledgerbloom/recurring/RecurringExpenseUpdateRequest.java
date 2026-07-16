@@ -3,7 +3,6 @@ package com.ledgerbloom.recurring;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
@@ -11,7 +10,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record RecurringExpenseUpdateRequest(
-		@NotBlank(message = "Description is required")
 		@Size(max = 160, message = "Description must be at most 160 characters")
 		String description,
 

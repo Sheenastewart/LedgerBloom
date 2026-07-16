@@ -80,10 +80,12 @@ describe('TrendsPage', () => {
 
     expect(screen.getByText('Loading trends…')).toBeInTheDocument()
     expect(await screen.findByRole('columnheader', { name: 'Month' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Projected income' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Budget status' })).toBeInTheDocument()
     expect(screen.getByText('Near budget')).toBeInTheDocument()
     expect(screen.getByText('No budget')).toBeInTheDocument()
-    expect(screen.getByText('$4,000.00')).toBeInTheDocument()
+    expect(screen.getAllByText('$4,000.00')).toHaveLength(2)
+    expect(screen.getByText('$4,300.00')).toBeInTheDocument()
     expect(screen.getByText('-$300.00')).toBeInTheDocument()
   })
 
@@ -115,7 +117,7 @@ describe('TrendsPage', () => {
     expect(await screen.findByText('Unable to load trends. Please try again.')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Retry' }))
-    expect(await screen.findByText('$4,000.00')).toBeInTheDocument()
+    expect(await screen.findByText('$4,300.00')).toBeInTheDocument()
   })
 
   it('shows a validation error for a range that is too large', async () => {
@@ -139,7 +141,7 @@ describe('TrendsPage', () => {
     vi.mocked(reportsApi.getMonthlyComparison).mockResolvedValue(sampleComparison)
 
     renderPage()
-    await screen.findByText('$4,000.00')
+    await screen.findByText('$4,300.00')
 
     await user.clear(screen.getByLabelText('Start year'))
     await user.type(screen.getByLabelText('Start year'), '2025')
@@ -157,7 +159,7 @@ describe('TrendsPage', () => {
     vi.mocked(reportsApi.getMonthlyComparison).mockResolvedValue(sampleComparison)
 
     renderPage()
-    await screen.findByText('$4,000.00')
+    await screen.findByText('$4,300.00')
 
     await user.selectOptions(screen.getByLabelText('Start month'), '12')
     await user.clear(screen.getByLabelText('Start year'))

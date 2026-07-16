@@ -22,7 +22,7 @@ export function ReportsCashFlowPage() {
   return (
     <ComingSoonPage
       title="Cash Flow"
-      description="A dedicated cash-flow report view will live here. Projected cash flow remains available on the Dashboard today."
+      description="A dedicated cash-flow report view will live here. Projected income remains available on the Dashboard today."
     />
   )
 }

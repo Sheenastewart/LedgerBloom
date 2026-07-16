@@ -61,14 +61,14 @@ function validateValues(
   if (values.cadence === 'SEMIMONTHLY') {
     const first = Number(values.firstPaymentDay)
     if (!values.firstPaymentDay.trim() || !Number.isInteger(first) || first < 1 || first > 31) {
-      errors.firstPaymentDay = 'First payment day must be a whole number between 1 and 31.'
+      errors.firstPaymentDay = 'First day of month must be a whole number between 1 and 31.'
     }
     const second = Number(values.secondPaymentDay)
     if (!values.secondPaymentDay.trim() || !Number.isInteger(second) || second < 1 || second > 31) {
-      errors.secondPaymentDay = 'Second payment day must be a whole number between 1 and 31.'
+      errors.secondPaymentDay = 'Second day of month must be a whole number between 1 and 31.'
     }
     if (!errors.firstPaymentDay && !errors.secondPaymentDay && first === second) {
-      errors.secondPaymentDay = 'Payment days must be different.'
+      errors.secondPaymentDay = 'The two days of the month must be different.'
     }
   }
 
@@ -340,7 +340,10 @@ export function RecurringIncomeForm({
           ))}
         </select>
         {values.cadence === 'SEMIMONTHLY' ? (
-          <p className="field-hint">Semimonthly — paid twice per month on selected calendar days.</p>
+          <p className="field-hint">
+            Received twice each month on the calendar days you choose (for example, the 1st and the
+            15th).
+          </p>
         ) : null}
         {merged.cadence ? (
           <p id="recurring-income-cadence-error" className="field-error" role="alert">
@@ -352,7 +355,7 @@ export function RecurringIncomeForm({
       {values.cadence === 'SEMIMONTHLY' ? (
         <div className="field-grid two-up">
           <div className="field">
-            <label htmlFor="recurring-income-first-payment-day">First payment day</label>
+            <label htmlFor="recurring-income-first-payment-day">First day of month</label>
             <input
               id="recurring-income-first-payment-day"
               type="number"
@@ -375,7 +378,7 @@ export function RecurringIncomeForm({
             ) : null}
           </div>
           <div className="field">
-            <label htmlFor="recurring-income-second-payment-day">Second payment day</label>
+            <label htmlFor="recurring-income-second-payment-day">Second day of month</label>
             <input
               id="recurring-income-second-payment-day"
               type="number"

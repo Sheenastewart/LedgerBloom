@@ -13,7 +13,7 @@ export type SourceIncomeTotal = {
 
 export type LargestExpenseSummary = {
   id: number
-  description: string
+  description: string | null
   amount: number
   expenseDate: string
   categoryName: string
@@ -57,7 +57,7 @@ export type DashboardUpcomingIncomeItem = {
 
 export type DashboardUpcomingExpenseItem = {
   id: number
-  description: string
+  description: string | null
   categoryName: string
   amount: number
   nextPaymentDate: string

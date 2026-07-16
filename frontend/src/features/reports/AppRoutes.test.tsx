@@ -205,7 +205,7 @@ describe('Reports routes', () => {
     await user.click(screen.getByRole('link', { name: 'Exports' }))
     expect(await screen.findByRole('heading', { name: 'Exports' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('link', { name: 'Monthly Report' }))
+    await user.click(screen.getByRole('link', { name: 'Monthly' }))
     expect(await screen.findByRole('heading', { name: 'Monthly report' })).toBeInTheDocument()
   })
 })

@@ -29,7 +29,7 @@ public class Expense {
 	@JoinColumn(name = "user_id", nullable = false)
 	private User user;
 
-	@Column(nullable = false, length = 160)
+	@Column(length = 160)
 	private String description;
 
 	@Column(length = 120)

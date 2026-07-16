@@ -141,8 +141,16 @@ class RecurringExpenseServiceTest {
 	}
 
 	@Test
-	void createRejectsBlankDescription() {
-		assertThatThrownBy(() -> recurringExpenseService.create(createRequest(
+	void createConvertsBlankDescriptionToNull() throws Exception {
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
+		when(recurringExpenseRepository.saveAndFlush(any(RecurringExpense.class))).thenAnswer(invocation -> {
+			RecurringExpense expense = invocation.getArgument(0);
+			setId(expense, 12L);
+			onCreate(expense);
+			return expense;
+		});
+
+		RecurringExpenseResponse response = recurringExpenseService.create(createRequest(
 			"   ",
 			null,
 			"10.00",
@@ -151,8 +159,12 @@ class RecurringExpenseServiceTest {
 			LocalDate.of(2026, 8, 1),
 			true,
 			null
-		))).isInstanceOf(InvalidRecurringExpenseDataException.class);
-		verify(recurringExpenseRepository, never()).saveAndFlush(any());
+		));
+
+		assertThat(response.description()).isNull();
+		ArgumentCaptor<RecurringExpense> captor = ArgumentCaptor.forClass(RecurringExpense.class);
+		verify(recurringExpenseRepository).saveAndFlush(captor.capture());
+		assertThat(captor.getValue().getDescription()).isNull();
 	}
 
 	@Test
@@ -306,7 +318,7 @@ class RecurringExpenseServiceTest {
 		assertThat(expenseRequest.amount()).isEqualByComparingTo("15.99");
 		assertThat(expenseRequest.expenseDate()).isEqualTo(next);
 		assertThat(expenseRequest.categoryId()).isEqualTo(1L);
-		assertThat(expenseRequest.notes()).contains("Paid from recurring expense #10");
+		assertThat(expenseRequest.notes()).isNull();
 
 		assertThat(response.updatedRecurringExpense().nextPaymentDate()).isEqualTo(LocalDate.of(2026, 8, 15));
 		assertThat(response.createdExpense().id()).isEqualTo(50L);
@@ -687,7 +699,7 @@ class RecurringExpenseServiceTest {
 			new BigDecimal("15.99"),
 			LocalDate.of(2026, 7, 15),
 			new com.ledgerbloom.expense.ExpenseCategorySummary(1L, "Groceries"),
-			"Paid from recurring expense #10",
+			null,
 			Instant.parse("2026-07-15T00:00:00Z"),
 			Instant.parse("2026-07-15T00:00:00Z")
 		);

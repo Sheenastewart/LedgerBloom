@@ -1,5 +1,6 @@
 import { InfoTooltip } from '../../../components/InfoTooltip'
 import { daysUntil, dueDateStatus } from '../../../utils/dueDateUtils'
+import { expenseDisplayTitle } from '../../../utils/expenseDisplay'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
 import { cadenceLabel, type RecurringExpense } from '../types'
 
@@ -28,7 +29,7 @@ export function UpcomingPayments({ items, todayIso }: UpcomingPaymentsProps) {
             return (
               <li key={item.id} className="upcoming-item">
                 <p className="recurring-item-header">
-                  <strong>{item.description}</strong>
+                  <strong>{expenseDisplayTitle(item.description, item.category.name)}</strong>
                   <span>{formatCurrency(item.amount)}</span>
                 </p>
                 <p className="recurring-meta">

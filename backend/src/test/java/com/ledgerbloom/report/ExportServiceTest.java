@@ -203,6 +203,7 @@ class ExportServiceTest {
 		assertThat(content).contains("Total Income,3000.00");
 		assertThat(content).contains("Total Expenses,120.25");
 		assertThat(content).contains("Net Cash Flow,2879.75");
+		assertThat(content).contains("Projected Income,3000.00");
 		assertThat(content).contains("Over Budget,false");
 		assertThat(content).contains("Spending By Category");
 		assertThat(content).contains("Utilities,120.25,1");

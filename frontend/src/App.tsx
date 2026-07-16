@@ -27,7 +27,9 @@ import { RecurringIncomeFormPage } from './features/recurringIncome/pages/Recurr
 import { RecurringIncomePage } from './features/recurringIncome/pages/RecurringIncomePage'
 import { ReportsLayout } from './features/reports/ReportsLayout'
 import { ExportsPage } from './features/reports/pages/ExportsPage'
+import { InsightsPage } from './features/reports/pages/InsightsPage'
 import { MonthlyReportPage } from './features/reports/pages/MonthlyReportPage'
+import { MonthlyReviewPage } from './features/reports/pages/MonthlyReviewPage'
 import { TrendsPage } from './features/reports/pages/TrendsPage'
 import { YtdPage } from './features/reports/pages/YtdPage'
 import { SettingsLayout } from './features/settings/SettingsLayout'
@@ -39,6 +41,7 @@ import {
   SettingsPreferencesPage,
 } from './features/settings/pages/placeholderPages'
 import { TransactionsLayout } from './features/transactions/TransactionsLayout'
+import { TransactionsAllPage } from './features/transactions/pages/TransactionsAllPage'
 import { HomePage } from './pages/HomePage'
 import { paths } from './routes/paths'
 
@@ -84,7 +87,8 @@ export function AppRoutes() {
               </Protected>
             }
           >
-            <Route index element={<Navigate to={paths.transactionsExpenses} replace />} />
+            <Route index element={<Navigate to={paths.transactionsAll} replace />} />
+            <Route path="all" element={<TransactionsAllPage />} />
             <Route path="expenses" element={<ExpensesPage />} />
             <Route path="expenses/add" element={<ExpenseAddChoicePage />} />
             <Route path="expenses/new" element={<ExpenseFormPage mode="create" />} />
@@ -146,6 +150,8 @@ export function AppRoutes() {
           >
             <Route index element={<Navigate to={paths.reportsMonthly} replace />} />
             <Route path="monthly" element={<MonthlyReportPage />} />
+            <Route path="monthly-review" element={<MonthlyReviewPage />} />
+            <Route path="insights" element={<InsightsPage />} />
             <Route path="trends" element={<TrendsPage />} />
             <Route path="year-to-date" element={<YtdPage />} />
             <Route path="cash-flow" element={<ReportsCashFlowPage />} />

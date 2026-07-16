@@ -6,6 +6,7 @@ import {
 import { ActionMenu, confirmDestructive } from '../../../components/ui/ActionMenu'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { daysUntil, dueDateStatus, isPastDate } from '../../../utils/dueDateUtils'
+import { expenseDisplayTitle } from '../../../utils/expenseDisplay'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
 import { CALCULATION_DEFS } from '../../guidance/calculationDefs'
 import { HelpLink } from '../../guidance/HelpLink'
@@ -58,11 +59,12 @@ export function RecurringList({
         const status = paymentStatus(item, todayIso)
         const overdue = item.active && isPastDate(item.nextPaymentDate, todayIso)
         const catchUpId = `recurring-catchup-${item.id}`
+        const title = expenseDisplayTitle(item.description, item.category.name)
         return (
           <li key={item.id} className="recurring-item list-row">
             <div className="list-row__main">
               <div className="recurring-item-header">
-                <h3 className="list-row__title">{item.description}</h3>
+                <h3 className="list-row__title">{title}</h3>
                 <strong className="list-row__amount">{formatCurrency(item.amount)}</strong>
               </div>
               <p className="recurring-meta list-row__meta">
@@ -83,7 +85,7 @@ export function RecurringList({
             </div>
             <div className="recurring-actions list-row__actions">
               <ActionMenu
-                label={`Actions for ${item.description}`}
+                label={`Actions for ${title}`}
                 items={[
                   {
                     id: 'edit',
@@ -118,7 +120,7 @@ export function RecurringList({
                     onSelect: () => {
                       if (
                         confirmDestructive(
-                          `Delete recurring expense “${item.description}”? This cannot be undone.`,
+                          `Delete recurring expense “${title}”? This cannot be undone.`,
                         )
                       ) {
                         onDelete(item)

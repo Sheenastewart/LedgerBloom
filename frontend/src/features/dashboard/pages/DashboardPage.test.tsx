@@ -22,6 +22,14 @@ vi.mock('../../income/api/incomeApi', () => ({
   getIncomeEntries: vi.fn(),
 }))
 
+vi.mock('../../recurring/api/recurringApi', () => ({
+  markRecurringExpensePaid: vi.fn(),
+}))
+
+vi.mock('../../recurringIncome/api/recurringIncomeApi', () => ({
+  markRecurringIncomeReceived: vi.fn(),
+}))
+
 vi.mock('../../auth/api/authApi', () => ({
   getMe: vi.fn(),
   login: vi.fn(),
@@ -59,7 +67,14 @@ const sampleDashboard = {
     incomeDate: '2026-07-01',
     source: 'Salary',
   },
-  budget: null,
+  budget: {
+    id: 1,
+    totalLimit: 2000,
+    actualExpenses: 200.25,
+    remaining: 1799.75,
+    percentUsed: 10.01,
+    overBudget: false,
+  },
   planning: {
     expectedIncome: 1000,
     expectedExpenses: 250,
@@ -120,7 +135,7 @@ describe('DashboardPage', () => {
     })
   })
 
-  it('shows personalized greeting, action hub, and overview totals', async () => {
+  it('shows personalized greeting, action hub, and decision metrics', async () => {
     vi.mocked(dashboardApi.getMonthlyDashboard).mockResolvedValue(sampleDashboard)
 
     renderPage()
@@ -132,11 +147,10 @@ describe('DashboardPage', () => {
       'href',
       '/transactions/expenses/add',
     )
-    expect(screen.getByRole('heading', { name: 'Activity' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Recent activity' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Upcoming' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Monthly overview' })).toBeInTheDocument()
-    expect(screen.getByText('$3,250.50')).toBeInTheDocument()
-    expect(screen.getByText('$200.25')).toBeInTheDocument()
+    expect(screen.getByText('Remaining budget')).toBeInTheDocument()
+    expect(screen.getByText('Safe to spend')).toBeInTheDocument()
   })
 
   it('shows activity items from expenses and income', async () => {
@@ -190,7 +204,7 @@ describe('DashboardPage', () => {
 
     expect(await screen.findByText('Invalid month')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Retry' }))
-    expect(await screen.findByRole('heading', { name: 'Monthly overview' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'What would you like to do?' })).toBeInTheDocument()
   })
 
   it('applies a new period from the form', async () => {
@@ -211,5 +225,25 @@ describe('DashboardPage', () => {
         expect.any(AbortSignal),
       )
     })
+  })
+
+  it('expands projected income breakdown when the hero metric is clicked', async () => {
+    const user = userEvent.setup()
+    vi.mocked(dashboardApi.getMonthlyDashboard).mockResolvedValue(sampleDashboard)
+
+    renderPage()
+
+    const toggle = await screen.findByRole('button', { name: 'Projected income' })
+    expect(screen.queryByText('Total projected income')).not.toBeInTheDocument()
+
+    await user.click(toggle)
+
+    expect(screen.getByText('Recorded income')).toBeVisible()
+    expect(screen.getByText('Expected recurring income')).toBeVisible()
+    expect(screen.getByText('Total projected income')).toBeVisible()
+    expect(screen.getAllByText('$4,250.50').length).toBeGreaterThan(0)
+
+    await user.click(toggle)
+    expect(screen.queryByText('Total projected income')).not.toBeInTheDocument()
   })
 })

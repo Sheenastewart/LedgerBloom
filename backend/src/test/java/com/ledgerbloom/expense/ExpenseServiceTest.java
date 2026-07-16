@@ -116,6 +116,31 @@ class ExpenseServiceTest {
 	}
 
 	@Test
+	void createConvertsBlankDescriptionToNull() throws Exception {
+		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
+		when(expenseRepository.saveAndFlush(any(Expense.class))).thenAnswer(invocation -> {
+			Expense expense = invocation.getArgument(0);
+			setId(expense, 12L);
+			expense.onCreate();
+			return expense;
+		});
+
+		ExpenseResponse response = expenseService.create(new ExpenseCreateRequest(
+			"   ",
+			null,
+			new BigDecimal("10.00"),
+			LocalDate.of(2026, 7, 1),
+			1L,
+			null
+		));
+
+		assertThat(response.description()).isNull();
+		ArgumentCaptor<Expense> captor = ArgumentCaptor.forClass(Expense.class);
+		verify(expenseRepository).saveAndFlush(captor.capture());
+		assertThat(captor.getValue().getDescription()).isNull();
+	}
+
+	@Test
 	void createConvertsBlankMerchantToNull() throws Exception {
 		when(categoryRepository.findByIdAndUser_Id(1L, USER_ID)).thenReturn(Optional.of(groceries));
 		when(expenseRepository.saveAndFlush(any(Expense.class))).thenAnswer(invocation -> {

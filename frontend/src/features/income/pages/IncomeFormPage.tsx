@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
 import { formatAmountForInput } from '../../../utils/moneyUtils'
+import { userFacingNotes } from '../../../utils/notesUtils'
 import { createIncomeEntry, getIncomeEntry, updateIncomeEntry } from '../api/incomeApi'
 import { IncomeForm, toIncomeWriteRequest } from '../components/IncomeForm'
 import { parseIncomeRouteId } from '../parseIncomeRouteId'
@@ -104,7 +105,7 @@ export function IncomeFormPage({ mode }: IncomeFormPageProps) {
           source: entry.source,
           amount: formatAmountForInput(entry.amount),
           incomeDate: entry.incomeDate,
-          notes: entry.notes ?? '',
+          notes: userFacingNotes(entry.notes) ?? '',
         })
         setFormKey((value) => value + 1)
       } catch (error) {

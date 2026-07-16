@@ -41,29 +41,30 @@ export function TrendsTable({ months, caption }: TrendsTableProps) {
             </th>
             <th scope="col">Budget status</th>
             <th scope="col" className="numeric">
-              Projected cash flow
+              Projected income
             </th>
           </tr>
         </thead>
         <tbody>
-          {months.map((item) => (
-            <tr key={`${item.year}-${item.month}`}>
-              <th scope="row">{monthLabel(item)}</th>
-              <td className="numeric">{formatCurrency(item.totalIncome)}</td>
-              <td className="numeric">{formatCurrency(item.totalExpenses)}</td>
-              <td className={item.netCashFlow < 0 ? 'numeric negative' : 'numeric'}>
-                {formatCurrency(item.netCashFlow)}
-              </td>
-              <td>
-                <span className={`budget-status ${budgetStatusClass(item)}`}>
-                  {budgetStatusText(item)}
-                </span>
-              </td>
-              <td className={item.projectedCashFlow < 0 ? 'numeric negative' : 'numeric'}>
-                {formatCurrency(item.projectedCashFlow)}
-              </td>
-            </tr>
-          ))}
+          {months.map((item) => {
+            const projectedIncome = item.totalIncome + item.expectedRecurringIncome
+            return (
+              <tr key={`${item.year}-${item.month}`}>
+                <th scope="row">{monthLabel(item)}</th>
+                <td className="numeric">{formatCurrency(item.totalIncome)}</td>
+                <td className="numeric">{formatCurrency(item.totalExpenses)}</td>
+                <td className={item.netCashFlow < 0 ? 'numeric negative' : 'numeric'}>
+                  {formatCurrency(item.netCashFlow)}
+                </td>
+                <td>
+                  <span className={`budget-status ${budgetStatusClass(item)}`}>
+                    {budgetStatusText(item)}
+                  </span>
+                </td>
+                <td className="numeric">{formatCurrency(projectedIncome)}</td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

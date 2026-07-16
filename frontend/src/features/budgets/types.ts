@@ -7,7 +7,9 @@ export type CategoryBudgetLimit = {
   id: number
   category: BudgetCategorySummary
   limitAmount: number
+  assistanceAmount: number
   actualSpent: number
+  budgetableSpent: number
   remaining: number
   percentUsed: number
   overBudget: boolean
@@ -19,6 +21,8 @@ export type MonthlyBudget = {
   month: number
   totalLimit: number
   actualExpenses: number
+  budgetableExpenses: number
+  assistanceApplied: number
   remaining: number
   percentUsed: number
   overBudget: boolean
@@ -64,21 +68,25 @@ export type MonthlyBudgetUpdateRequest = {
 export type CategoryLimitFormValues = {
   categoryId: string
   limitAmount: string
+  assistanceAmount: string
 }
 
 export type CategoryLimitFormErrors = {
   categoryId?: string
   limitAmount?: string
+  assistanceAmount?: string
   form?: string
 }
 
 export type CategoryLimitCreateRequest = {
   categoryId: number
   limitAmount: number
+  assistanceAmount: number
 }
 
 export type CategoryLimitUpdateRequest = {
   limitAmount: number
+  assistanceAmount: number
 }
 
 export type BudgetStatus = 'on-track' | 'near-budget' | 'over-budget'

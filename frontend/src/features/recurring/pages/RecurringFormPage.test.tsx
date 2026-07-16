@@ -85,8 +85,55 @@ describe('RecurringFormPage', () => {
     renderCreate()
     await screen.findByLabelText('Description')
     await user.click(screen.getByRole('button', { name: 'Create recurring expense' }))
-    expect(await screen.findByText('Description is required.')).toBeInTheDocument()
+    expect(await screen.findByText('Category is required.')).toBeInTheDocument()
     expect(recurringApi.createRecurringExpense).not.toHaveBeenCalled()
+  })
+
+  it('requires description when category is Other', async () => {
+    const user = userEvent.setup()
+    vi.mocked(categoryApi.getCategories).mockResolvedValue([
+      { id: 1, name: 'Other', description: null, createdAt: '', updatedAt: '' },
+    ])
+    renderCreate()
+    await screen.findByLabelText('Description')
+    await user.type(screen.getByLabelText('Amount'), '15.99')
+    await user.selectOptions(screen.getByLabelText('Category'), '1')
+    await user.selectOptions(screen.getByLabelText('Cadence'), 'MONTHLY')
+    await user.type(screen.getByLabelText('Next payment date'), '2026-08-01')
+    await user.click(screen.getByRole('button', { name: 'Create recurring expense' }))
+    expect(await screen.findByText('Description is required when category is Other.')).toBeInTheDocument()
+    expect(recurringApi.createRecurringExpense).not.toHaveBeenCalled()
+  })
+
+  it('creates a recurring expense without a description', async () => {
+    const user = userEvent.setup()
+    vi.mocked(recurringApi.createRecurringExpense).mockResolvedValue({
+      id: 10,
+      description: null,
+      merchant: null,
+      amount: 15.99,
+      category: { id: 1, name: 'Entertainment' },
+      cadence: 'MONTHLY',
+      nextPaymentDate: '2026-08-01',
+      active: true,
+      notes: null,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    })
+
+    renderCreate()
+    expect(await screen.findByLabelText('Description')).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('Amount'), '15.99')
+    await user.selectOptions(screen.getByLabelText('Category'), '1')
+    await user.selectOptions(screen.getByLabelText('Cadence'), 'MONTHLY')
+    await user.type(screen.getByLabelText('Next payment date'), '2026-08-01')
+    await user.click(screen.getByRole('button', { name: 'Create recurring expense' }))
+
+    await waitFor(() => {
+      expect(recurringApi.createRecurringExpense).toHaveBeenCalled()
+    })
+    expect(await screen.findByText('Recurring home')).toBeInTheDocument()
   })
 
   it('shows semimonthly payment day fields with defaults when that cadence is selected', async () => {
@@ -96,9 +143,9 @@ describe('RecurringFormPage', () => {
 
     await user.selectOptions(screen.getByLabelText('Cadence'), 'SEMIMONTHLY')
 
-    expect(screen.getByLabelText('First payment day')).toHaveValue(1)
-    expect(screen.getByLabelText('Second payment day')).toHaveValue(15)
-    expect(screen.getByText(/paid twice per month/)).toBeInTheDocument()
+    expect(screen.getByLabelText('First day of month')).toHaveValue(1)
+    expect(screen.getByLabelText('Second day of month')).toHaveValue(15)
+    expect(screen.getByText(/twice each month/i)).toBeInTheDocument()
   })
 
   it('allows a past next payment date and requires a history choice before submitting', async () => {

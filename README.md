@@ -89,7 +89,7 @@ Stage 6 does **not** include automatic background expense creation, reminders/no
 - V6 `recurring_income` table for expected income schedules (separate from `income_entries`)
 - Recurring Income CRUD + upcoming + mark-received creating a real IncomeEntry only after confirmation
 - Required `expectedNextIncomeDate` on mark-received (409 conflict on stale/duplicate)
-- Dashboard **Cash Flow Planning** section: expected income/obligations, projected cash flow, upcoming lists for the selected month
+- Dashboard **Cash Flow Planning** section: expected income/obligations, projected income, upcoming lists for the selected month
 - In-app overdue / due today / due soon labels on recurring expense and income UIs
 
 Stage 7 does **not** include email/SMS/push notifications, scheduled jobs, background auto-posting, charts, authentication, or bank sync.

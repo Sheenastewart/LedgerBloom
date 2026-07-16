@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { isAbortError } from '../../../api/ApiClientError'
 import { paths } from '../../../routes/paths'
+import { expenseDisplayTitle } from '../../../utils/expenseDisplay'
 import { getCategories } from '../../categories/api/categoryApi'
 import type { Category } from '../../categories/types'
 import { deleteExpense, getExpenses } from '../api/expenseApi'
@@ -108,14 +109,15 @@ export function ExpensesPage() {
   }
 
   async function handleDelete(expense: Expense) {
+    const title = expenseDisplayTitle(expense.description, expense.category.name)
     setDeleteError(null)
     setDeletingExpenseId(expense.id)
     try {
       await deleteExpense(expense.id)
       await loadExpenses(appliedFilters)
-      setSuccessMessage(`Deleted expense "${expense.description}".`)
+      setSuccessMessage(`Deleted expense "${title}".`)
     } catch {
-      setDeleteError(`Could not delete "${expense.description}". Please try again.`)
+      setDeleteError(`Could not delete "${title}". Please try again.`)
     } finally {
       setDeletingExpenseId(null)
     }

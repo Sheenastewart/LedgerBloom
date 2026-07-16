@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
 import { HowThisWorks } from '../../../components/HowThisWorks'
+import { SimpleLineChart } from '../../../components/charts/SimpleCharts'
 import { HelpLink } from '../../guidance/HelpLink'
 import { getMonthlyComparison } from '../api/reportsApi'
 import { MonthRangeForm } from '../components/MonthRangeForm'
@@ -8,6 +9,7 @@ import { TrendsTable } from '../components/TrendsTable'
 import { lastSixMonthsRange, monthLabel } from '../reportsFormat'
 import type { MonthlyComparisonResponse, MonthRange } from '../types'
 import '../reports.css'
+import '../../dashboard/pages/dashboardPolish.css'
 import '../../guidance/help.css'
 
 const DEFAULT_RANGE = lastSixMonthsRange()
@@ -86,8 +88,7 @@ export function TrendsPage() {
       <HowThisWorks>
         <p>
           Income, expenses, and net cash flow in this table use actual saved ledger entries.
-          Projected cash flow also includes expected recurring income and obligations for each
-          month.
+          Projected income adds expected recurring income scheduled for each month.
         </p>
         <HelpLink to="/settings/help?topic=reports-overview">Learn more</HelpLink>
       </HowThisWorks>
@@ -127,6 +128,20 @@ export function TrendsPage() {
             <p className="dashboard-empty" role="status">
               No income or expense entries in this range.
             </p>
+          ) : null}
+
+          {comparison.months.length > 0 ? (
+            <section className="reports-section" aria-labelledby="spending-trend-heading">
+              <h2 id="spending-trend-heading">Monthly spending trend</h2>
+              <SimpleLineChart
+                data={comparison.months.map((month) => ({
+                  label: monthLabel({ year: month.year, month: month.month }).slice(0, 3),
+                  value: month.totalExpenses,
+                }))}
+                ariaLabel="Monthly spending trend"
+                color="var(--lb-color-warning)"
+              />
+            </section>
           ) : null}
 
           {comparison.months.length === 0 ? (

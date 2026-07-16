@@ -98,8 +98,8 @@ class RecurringExpenseControllerTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{
-						  "description":"",
-						  "amount":15.99,
+						  "description":"Netflix",
+						  "amount":0,
 						  "categoryId":1,
 						  "cadence":"MONTHLY",
 						  "nextPaymentDate":"2026-08-01",
@@ -109,6 +109,43 @@ class RecurringExpenseControllerTest {
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
 			.andExpect(jsonPath("$.timestamp").exists());
+	}
+
+	@Test
+	void createBlankDescriptionIsAllowed() throws Exception {
+		when(recurringExpenseService.create(any(RecurringExpenseCreateRequest.class))).thenReturn(
+			new RecurringExpenseResponse(
+				10L,
+				null,
+				null,
+				new BigDecimal("15.99"),
+				new RecurringExpenseCategorySummary(1L, "Entertainment"),
+				RecurringExpenseCadence.MONTHLY,
+				LocalDate.of(2026, 8, 1),
+				true,
+				null,
+				Instant.parse("2026-01-01T00:00:00Z"),
+				Instant.parse("2026-01-01T00:00:00Z"),
+				null,
+				null
+			)
+		);
+
+		mockMvc.perform(post("/api/recurring-expenses")
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "description":"",
+						  "amount":15.99,
+						  "categoryId":1,
+						  "cadence":"MONTHLY",
+						  "nextPaymentDate":"2026-08-01",
+						  "active":true
+						}
+						"""))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.id").value(10));
 	}
 
 	@Test
@@ -203,7 +240,7 @@ class RecurringExpenseControllerTest {
 					new BigDecimal("15.99"),
 					LocalDate.of(2026, 8, 1),
 					new ExpenseCategorySummary(1L, "Entertainment"),
-					"Paid from recurring expense #10",
+					null,
 					Instant.parse("2026-01-01T00:00:00Z"),
 					Instant.parse("2026-01-01T00:00:00Z")
 				),
@@ -351,13 +388,13 @@ class RecurringExpenseControllerTest {
 					new ExpenseResponse(
 						51L, "Netflix", "Netflix Inc", new BigDecimal("15.99"), LocalDate.of(2026, 6, 1),
 						new ExpenseCategorySummary(1L, "Entertainment"),
-						"Caught up from recurring expense #10",
+						null,
 						Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z")
 					),
 					new ExpenseResponse(
 						52L, "Netflix", "Netflix Inc", new BigDecimal("15.99"), LocalDate.of(2026, 7, 1),
 						new ExpenseCategorySummary(1L, "Entertainment"),
-						"Caught up from recurring expense #10",
+						null,
 						Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z")
 					)
 				)

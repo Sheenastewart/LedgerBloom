@@ -5,7 +5,7 @@ export type ExpenseCategoryRef = {
 
 export type Expense = {
   id: number
-  description: string
+  description: string | null
   merchant: string | null
   amount: number
   expenseDate: string
@@ -16,7 +16,7 @@ export type Expense = {
 }
 
 export type ExpenseWriteRequest = {
-  description: string
+  description: string | null
   merchant: string | null
   amount: number
   expenseDate: string

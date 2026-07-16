@@ -70,13 +70,19 @@ describe('ExpenseForm', () => {
     )
   })
 
-  it('rejects a blank description', async () => {
+  it('allows a blank description when category is not Other', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
     render(
       <ExpenseForm
         mode="create"
-        initialValues={{ ...emptyValues, description: '   ' }}
+        initialValues={{
+          ...emptyValues,
+          description: '',
+          amount: '12.50',
+          expenseDate: '2026-07-10',
+          categoryId: '1',
+        }}
         categories={sampleCategories}
         submitting={false}
         onSubmit={onSubmit}
@@ -85,7 +91,42 @@ describe('ExpenseForm', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Create expense' }))
-    expect(screen.getByText('Description is required')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalled()
+    })
+  })
+
+  it('requires description when category is Other', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    render(
+      <ExpenseForm
+        mode="create"
+        initialValues={{
+          ...emptyValues,
+          description: '',
+          amount: '12.50',
+          expenseDate: '2026-07-10',
+          categoryId: '2',
+        }}
+        categories={[
+          ...sampleCategories,
+          {
+            id: 2,
+            name: 'Other',
+            description: null,
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          },
+        ]}
+        submitting={false}
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Create expense' }))
+    expect(screen.getByText('Description is required when category is Other')).toBeInTheDocument()
     expect(onSubmit).not.toHaveBeenCalled()
   })
 

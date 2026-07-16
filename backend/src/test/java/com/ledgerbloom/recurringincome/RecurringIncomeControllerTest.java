@@ -210,7 +210,7 @@ class RecurringIncomeControllerTest {
 					"Acme Corp",
 					new BigDecimal("5000.00"),
 					LocalDate.of(2026, 8, 1),
-					"Received from recurring income #10",
+					null,
 					Instant.parse("2026-01-01T00:00:00Z"),
 					Instant.parse("2026-01-01T00:00:00Z"),
 					10L,
@@ -359,12 +359,12 @@ class RecurringIncomeControllerTest {
 				List.of(
 					new IncomeEntryResponse(
 						51L, "Salary", "Acme Corp", new BigDecimal("5000.00"), LocalDate.of(2026, 6, 1),
-						"Caught up from recurring income #10",
+						null,
 						Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z"), 10L, false
 					),
 					new IncomeEntryResponse(
 						52L, "Salary", "Acme Corp", new BigDecimal("5000.00"), LocalDate.of(2026, 7, 1),
-						"Caught up from recurring income #10",
+						null,
 						Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z"), 10L, false
 					)
 				)

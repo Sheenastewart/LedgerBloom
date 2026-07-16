@@ -87,9 +87,9 @@ describe('RecurringIncomeFormPage', () => {
 
     await user.selectOptions(screen.getByLabelText('Cadence'), 'SEMIMONTHLY')
 
-    expect(screen.getByLabelText('First payment day')).toHaveValue(1)
-    expect(screen.getByLabelText('Second payment day')).toHaveValue(15)
-    expect(screen.getByText(/paid twice per month/)).toBeInTheDocument()
+    expect(screen.getByLabelText('First day of month')).toHaveValue(1)
+    expect(screen.getByLabelText('Second day of month')).toHaveValue(15)
+    expect(screen.getByText(/twice each month/i)).toBeInTheDocument()
   })
 
   it('allows a past next income date and requires a history choice before submitting', async () => {

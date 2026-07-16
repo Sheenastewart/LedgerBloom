@@ -27,10 +27,10 @@ describe('InfoTooltip', () => {
 
   it('opens on keyboard focus', async () => {
     const user = userEvent.setup()
-    render(<InfoTooltip label="About projected cash flow">Projected detail</InfoTooltip>)
+    render(<InfoTooltip label="About projected income">Projected detail</InfoTooltip>)
 
     await user.tab()
-    expect(screen.getByRole('button', { name: 'About projected cash flow' })).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'About projected income' })).toHaveFocus()
     expect(screen.getByRole('tooltip')).toHaveTextContent('Projected detail')
   })
 

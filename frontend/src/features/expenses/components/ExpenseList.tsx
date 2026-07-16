@@ -1,5 +1,7 @@
 import { ActionMenu, confirmDestructive } from '../../../components/ui/ActionMenu'
 import { paths } from '../../../routes/paths'
+import { expenseDisplayTitle } from '../../../utils/expenseDisplay'
+import { userFacingNotes } from '../../../utils/notesUtils'
 import { formatCurrency, formatExpenseDate } from '../amountUtils'
 import type { Expense } from '../types'
 
@@ -14,10 +16,12 @@ export function ExpenseList({ expenses, deletingExpenseId, onDelete }: ExpenseLi
     <ul className="expense-list" aria-label="Expenses">
       {expenses.map((expense) => {
         const isDeleting = deletingExpenseId === expense.id
+        const notes = userFacingNotes(expense.notes)
+        const title = expenseDisplayTitle(expense.description, expense.category.name)
         return (
           <li key={expense.id} className="expense-row list-row">
             <div className="expense-main list-row__main">
-              <h2 className="expense-description list-row__title">{expense.description}</h2>
+              <h2 className="expense-description list-row__title">{title}</h2>
               <p className="expense-amount list-row__amount">{formatCurrency(expense.amount)}</p>
               <p className="expense-meta list-row__meta">
                 {formatExpenseDate(expense.expenseDate)} · {expense.category.name}
@@ -25,11 +29,11 @@ export function ExpenseList({ expenses, deletingExpenseId, onDelete }: ExpenseLi
               {expense.merchant ? (
                 <p className="expense-meta list-row__meta">Merchant: {expense.merchant}</p>
               ) : null}
-              {expense.notes ? <p className="expense-meta list-row__meta">Notes: {expense.notes}</p> : null}
+              {notes ? <p className="expense-meta list-row__meta">Notes: {notes}</p> : null}
             </div>
             <div className="expense-actions list-row__actions">
               <ActionMenu
-                label={`Actions for ${expense.description}`}
+                label={`Actions for ${title}`}
                 items={[
                   {
                     id: 'edit',
@@ -42,12 +46,12 @@ export function ExpenseList({ expenses, deletingExpenseId, onDelete }: ExpenseLi
                     to: paths.transactionsExpensesNew,
                     state: {
                       prefill: {
-                        description: expense.description,
+                        description: expense.description ?? '',
                         merchant: expense.merchant ?? '',
                         amount: String(expense.amount),
                         expenseDate: expense.expenseDate,
                         categoryId: String(expense.category.id),
-                        notes: expense.notes ?? '',
+                        notes: notes ?? '',
                       },
                     },
                   },
@@ -57,14 +61,14 @@ export function ExpenseList({ expenses, deletingExpenseId, onDelete }: ExpenseLi
                     to: paths.transactionsRecurringExpenseNew,
                     state: {
                       prefill: {
-                        description: expense.description,
+                        description: expense.description ?? '',
                         merchant: expense.merchant ?? '',
                         amount: String(expense.amount),
                         categoryId: String(expense.category.id),
                         cadence: 'MONTHLY',
                         nextPaymentDate: expense.expenseDate,
                         active: true,
-                        notes: expense.notes ?? '',
+                        notes: notes ?? '',
                         firstPaymentDay: '',
                         secondPaymentDay: '',
                         historyMode: '',
@@ -80,7 +84,7 @@ export function ExpenseList({ expenses, deletingExpenseId, onDelete }: ExpenseLi
                     onSelect: () => {
                       if (
                         confirmDestructive(
-                          `Delete expense “${expense.description}”? This cannot be undone.`,
+                          `Delete expense “${title}”? This cannot be undone.`,
                         )
                       ) {
                         onDelete(expense)

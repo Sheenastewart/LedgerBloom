@@ -95,12 +95,12 @@ export type RecurringIncomeFormErrors = {
 
 export const CADENCE_OPTIONS: { value: RecurringIncomeCadence; label: string }[] = [
   { value: 'WEEKLY', label: 'Weekly' },
-  { value: 'BIWEEKLY', label: 'Biweekly' },
+  { value: 'BIWEEKLY', label: 'Biweekly (every 2 weeks)' },
   { value: 'MONTHLY', label: 'Monthly' },
-  { value: 'QUARTERLY', label: 'Quarterly' },
-  { value: 'SEMIANNUAL', label: 'Semiannual' },
-  { value: 'ANNUAL', label: 'Annual' },
-  { value: 'SEMIMONTHLY', label: 'Semimonthly' },
+  { value: 'QUARTERLY', label: 'Quarterly (every 3 months)' },
+  { value: 'SEMIANNUAL', label: 'Semiannual (every 6 months)' },
+  { value: 'ANNUAL', label: 'Annual (once a year)' },
+  { value: 'SEMIMONTHLY', label: 'Semimonthly (twice a month)' },
 ]
 
 export function cadenceLabel(cadence: RecurringIncomeCadence): string {

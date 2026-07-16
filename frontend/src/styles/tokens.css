@@ -8,27 +8,37 @@
   --lb-color-secondary: #3d6b5c;
   --lb-color-accent: #c47a2c;
 
-  /* Status */
+  /* Semantic hierarchy — use intentionally, not everything green */
   --lb-color-success: #1f6b45;
   --lb-color-success-bg: #e3f4ea;
   --lb-color-success-border: #8fbf9a;
-  --lb-color-warning: #8a5a12;
-  --lb-color-warning-bg: #f8efd9;
-  --lb-color-warning-border: #d4b36a;
-  --lb-color-danger: #8b2e2e;
-  --lb-color-danger-bg: #f7ecec;
-  --lb-color-danger-border: #d7a0a0;
   --lb-color-info: #245a78;
   --lb-color-info-bg: #e7f1f7;
   --lb-color-info-border: #8fb4c9;
+  --lb-color-warning: #b45309;
+  --lb-color-warning-bg: #fef3c7;
+  --lb-color-warning-border: #f0b429;
+  --lb-color-danger: #b91c1c;
+  --lb-color-danger-bg: #fef2f2;
+  --lb-color-danger-border: #fca5a5;
+  --lb-color-inactive: #6b7280;
+  --lb-color-inactive-bg: #f3f4f6;
+  --lb-color-inactive-border: #d1d5db;
+
+  /* Money tones */
+  --lb-color-income: #1f6b45;
+  --lb-color-expense: #1a2b24;
+  --lb-color-over-budget: var(--lb-color-danger);
+  --lb-color-attention: var(--lb-color-warning);
 
   /* Surfaces */
   --lb-color-bg: #eef2ef;
   --lb-color-bg-accent: #dce8e1;
-  --lb-color-surface: rgba(255, 255, 255, 0.78);
+  --lb-color-surface: rgba(255, 255, 255, 0.88);
   --lb-color-surface-solid: #fbfcfb;
   --lb-color-border: #c5d3cb;
   --lb-color-border-strong: #9fb3a5;
+  --lb-color-border-subtle: #dde5e0;
 
   /* Text */
   --lb-color-text: #1a2b24;
@@ -51,13 +61,16 @@
   --lb-radius-md: 0.55rem;
   --lb-radius-lg: 0.75rem;
   --lb-radius-xl: 1rem;
+  --lb-radius-full: 999px;
 
   /* Shadows */
   --lb-shadow-sm: 0 1px 2px rgba(26, 43, 36, 0.06);
   --lb-shadow-md: 0 4px 14px rgba(26, 43, 36, 0.08);
+  --lb-shadow-lg: 0 10px 28px rgba(26, 43, 36, 0.12);
 
   /* Typography */
   --lb-font-sans: "Segoe UI", "Helvetica Neue", "Avenir Next", sans-serif;
+  --lb-font-display: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
   --lb-font-size-xs: 0.8125rem;
   --lb-font-size-sm: 0.875rem;
   --lb-font-size-md: 1rem;
@@ -65,6 +78,7 @@
   --lb-font-size-xl: 1.35rem;
   --lb-font-size-2xl: clamp(1.75rem, 4vw, 2.25rem);
   --lb-font-size-3xl: clamp(2.25rem, 5vw, 3rem);
+  --lb-font-size-hero: clamp(2rem, 5vw, 2.75rem);
   --lb-line-height-tight: 1.25;
   --lb-line-height-body: 1.5;
 
@@ -76,6 +90,7 @@
   --lb-content-width: 56rem;
   --lb-content-narrow: 36rem;
   --lb-topbar-width: min(var(--lb-content-width), 100%);
+  --lb-fab-size: 3.25rem;
 
   /* Breakpoints (documentation; used in media queries) */
   --lb-bp-sm: 40rem;

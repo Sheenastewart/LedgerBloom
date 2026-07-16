@@ -10,6 +10,8 @@ public record MonthlyBudgetResponse(
 		int month,
 		BigDecimal totalLimit,
 		BigDecimal actualExpenses,
+		BigDecimal budgetableExpenses,
+		BigDecimal assistanceApplied,
 		BigDecimal remaining,
 		BigDecimal percentUsed,
 		boolean overBudget,

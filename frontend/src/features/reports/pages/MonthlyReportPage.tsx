@@ -2,6 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
 import { HowThisWorks } from '../../../components/HowThisWorks'
 import { InfoTooltip } from '../../../components/InfoTooltip'
+import {
+  SimpleBarChart,
+  SimpleCompareChart,
+} from '../../../components/charts/SimpleCharts'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
 import { budgetStatus, budgetStatusLabel } from '../../budgets/budgetStatus'
 import { DashboardPeriodForm } from '../../dashboard/components/DashboardPeriodForm'
@@ -193,6 +197,24 @@ export function MonthlyReportPage() {
             </div>
           </section>
 
+          <section className="reports-section no-print" aria-labelledby="monthly-charts-heading">
+            <h2 id="monthly-charts-heading">Charts</h2>
+            <SimpleCompareChart
+              income={dashboard.totalIncome}
+              expenses={dashboard.totalExpenses}
+              ariaLabel="Income versus expenses for the selected month"
+            />
+            <h3 className="reports-subheading">Category spending</h3>
+            <SimpleBarChart
+              data={dashboard.spendingByCategory.map((row) => ({
+                label: row.categoryName,
+                value: row.total,
+                color: 'var(--lb-color-warning)',
+              }))}
+              ariaLabel="Spending by category"
+            />
+          </section>
+
           <section className="reports-section" aria-labelledby="monthly-budget-heading">
             <h2 id="monthly-budget-heading">Budget</h2>
             {dashboard.budget ? (
@@ -261,19 +283,15 @@ export function MonthlyReportPage() {
               </article>
               <article className="reports-card">
                 <h2 className="metric-heading">
-                  Projected cash flow
-                  <InfoTooltip label="About projected cash flow">
-                    {CALCULATION_DEFS.projectedCashFlow.short}
+                  Projected income
+                  <InfoTooltip label="About projected income">
+                    {CALCULATION_DEFS.projectedIncome.short}
                   </InfoTooltip>
                 </h2>
-                <p
-                  className={
-                    dashboard.planning.projectedCashFlow < 0
-                      ? 'reports-card-value negative'
-                      : 'reports-card-value'
-                  }
-                >
-                  {formatCurrency(dashboard.planning.projectedCashFlow)}
+                <p className="reports-card-value">
+                  {formatCurrency(
+                    dashboard.totalIncome + dashboard.planning.expectedIncome,
+                  )}
                 </p>
               </article>
             </div>

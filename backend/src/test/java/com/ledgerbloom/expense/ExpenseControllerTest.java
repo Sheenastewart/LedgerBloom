@@ -82,7 +82,21 @@ class ExpenseControllerTest {
 	}
 
 	@Test
-	void createBlankDescriptionReturns400() throws Exception {
+	void createBlankDescriptionIsAllowed() throws Exception {
+		when(expenseService.create(any(ExpenseCreateRequest.class))).thenReturn(
+			new ExpenseResponse(
+				5L,
+				null,
+				null,
+				new BigDecimal("10.00"),
+				LocalDate.of(2026, 7, 10),
+				new ExpenseCategorySummary(1L, "Groceries"),
+				null,
+				Instant.parse("2026-01-01T00:00:00Z"),
+				Instant.parse("2026-01-01T00:00:00Z")
+			)
+		);
+
 		mockMvc.perform(post("/api/expenses")
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
@@ -94,11 +108,8 @@ class ExpenseControllerTest {
 						  "categoryId":1
 						}
 						"""))
-			.andExpect(status().isBadRequest())
-			.andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
-			.andExpect(jsonPath("$.fieldErrors[0].field").value("description"))
-			.andExpect(jsonPath("$.path").value("/api/expenses"))
-			.andExpect(jsonPath("$.timestamp").exists());
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.description").value((Object) null));
 	}
 
 	@Test

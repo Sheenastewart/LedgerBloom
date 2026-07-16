@@ -159,7 +159,7 @@ describe('Income routes', () => {
 
     expect(await screen.findByRole('heading', { name: /Test User/ })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Transactions' }))
-    expect(await screen.findByRole('heading', { name: 'Expenses' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'All activity' })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Income' }))
     expect(await screen.findByRole('heading', { name: 'Income' })).toBeInTheDocument()
   })

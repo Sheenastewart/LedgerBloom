@@ -26,6 +26,27 @@ type CategoryLimitFormProps = {
   onCancel: () => void
 }
 
+const AMOUNT_PATTERN = /^(\d{1,10})(\.\d{1,2})?$/
+
+function validateAssistanceAmount(amount: string): string | undefined {
+  const normalized = normalizeAmountInput(amount)
+  if (!normalized) {
+    return undefined
+  }
+  if (!AMOUNT_PATTERN.test(normalized)) {
+    return 'Enter a valid assistance amount'
+  }
+  return undefined
+}
+
+function assistanceToRequestValue(amount: string): number {
+  const normalized = normalizeAmountInput(amount)
+  if (!normalized) {
+    return 0
+  }
+  return amountToRequestValue(normalized)
+}
+
 function validateValues(
   values: CategoryLimitFormValues,
   mode: 'create' | 'edit',
@@ -48,6 +69,11 @@ function validateValues(
     errors.limitAmount = amountError
   }
 
+  const assistanceError = validateAssistanceAmount(values.assistanceAmount)
+  if (assistanceError) {
+    errors.assistanceAmount = assistanceError
+  }
+
   return errors
 }
 
@@ -55,12 +81,14 @@ export function toCategoryLimitCreateRequest(values: CategoryLimitFormValues): C
   return {
     categoryId: Number(values.categoryId.trim()),
     limitAmount: amountToRequestValue(normalizeAmountInput(values.limitAmount)),
+    assistanceAmount: assistanceToRequestValue(values.assistanceAmount),
   }
 }
 
 export function toCategoryLimitUpdateRequest(values: CategoryLimitFormValues): CategoryLimitUpdateRequest {
   return {
     limitAmount: amountToRequestValue(normalizeAmountInput(values.limitAmount)),
+    assistanceAmount: assistanceToRequestValue(values.assistanceAmount),
   }
 }
 
@@ -77,6 +105,9 @@ export function CategoryLimitForm({
   const [errors, setErrors] = useState<CategoryLimitFormErrors>({})
 
   const merged: CategoryLimitFormErrors = { ...errors, ...serverErrors }
+  const selectedCategoryName =
+    categories.find((category) => String(category.id) === values.categoryId)?.name ?? ''
+  const groceriesSelected = selectedCategoryName.toLowerCase() === 'groceries'
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -137,6 +168,36 @@ export function CategoryLimitForm({
         {merged.limitAmount ? (
           <p id="category-limit-amount-error" className="field-error" role="alert">
             {merged.limitAmount}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="field">
+        <label htmlFor="category-limit-assistance">Food assistance</label>
+        <input
+          id="category-limit-assistance"
+          type="text"
+          inputMode="decimal"
+          value={values.assistanceAmount}
+          disabled={submitting}
+          aria-invalid={merged.assistanceAmount ? true : undefined}
+          aria-describedby={
+            merged.assistanceAmount
+              ? 'category-limit-assistance-error'
+              : 'category-limit-assistance-hint'
+          }
+          onChange={(event) =>
+            setValues((current) => ({ ...current, assistanceAmount: event.target.value }))
+          }
+        />
+        <p id="category-limit-assistance-hint" className="field-hint">
+          {groceriesSelected
+            ? 'SNAP / food stamps for this month. Covered grocery spend does not count toward this limit or the overall budget.'
+            : 'Optional. Covered spend in this category does not count toward this limit or the overall budget.'}
+        </p>
+        {merged.assistanceAmount ? (
+          <p id="category-limit-assistance-error" className="field-error" role="alert">
+            {merged.assistanceAmount}
           </p>
         ) : null}
       </div>

@@ -5,6 +5,7 @@ import { paths } from '../../routes/paths'
 import '../../components/sectionNav.css'
 
 const TABS = [
+  { to: paths.transactionsAll, label: 'All' },
   { to: paths.transactionsExpenses, label: 'Expenses' },
   { to: paths.transactionsIncome, label: 'Income' },
   { to: paths.transactionsRecurringExpenses, label: 'Recurring Expenses' },
@@ -18,7 +19,7 @@ export function TransactionsLayout() {
       <div className="hub-header">
         <PageHeader
           title="Transactions"
-          description="Manage your expenses, income, recurring schedules, and categories."
+          description="Review activity, manage schedules, and organize categories."
         />
       </div>
       <SectionTabs ariaLabel="Transactions sections" tabs={TABS} />

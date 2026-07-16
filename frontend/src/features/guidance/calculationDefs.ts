@@ -9,24 +9,23 @@ export const CALCULATION_DEFS = {
     detail:
       'Net cash flow is calculated from saved Income and Expense entries only. It does not include recurring schedules until those are confirmed as actual entries.',
   },
-  projectedCashFlow: {
-    title: 'Projected cash flow',
-    short:
-      'Actual income plus expected recurring income, minus actual expenses and expected recurring obligations.',
+  projectedIncome: {
+    title: 'Projected income',
+    short: 'Recorded income plus expected recurring income for the selected period.',
     detail:
-      'Projected cash flow combines recorded ledger totals with estimated recurring activity scheduled in the selected period. Projected values are estimates, not guarantees.',
+      'Projected income adds saved Income entries for the month to active recurring income still scheduled in that month. Expected amounts are estimates until Mark Received creates a real income entry.',
   },
   remainingBudget: {
     title: 'Remaining budget',
-    short: 'Monthly budget minus actual expenses.',
+    short: 'Monthly budget minus spending that counts toward the budget.',
     detail:
-      'Remaining budget is the month’s total budget limit minus spending from saved Expense entries for that month. Category limits are optional and tracked separately.',
+      'Remaining budget is the month’s total budget limit minus budgetable expenses. Food assistance on a category limit reduces how much of that category’s spend counts toward the overall budget and the category limit. Actual ledger expenses are unchanged.',
   },
   percentUsed: {
     title: 'Percent used',
-    short: 'Actual expenses divided by budget limit, shown as a percentage.',
+    short: 'Budgetable expenses divided by budget limit, shown as a percentage.',
     detail:
-      'Percent used is actual expenses for the month divided by the monthly budget limit, then shown as a percentage. Values at or above 100% mean the budget is fully used or overspent.',
+      'Percent used is budgetable expenses for the month divided by the monthly budget limit, then shown as a percentage. Values at or above 100% mean the budget is fully used or overspent.',
   },
   expectedIncome: {
     title: 'Expected income',
@@ -59,7 +58,7 @@ export const CALCULATION_DEFS = {
     title: 'Category budget limit',
     short: 'An optional spending ceiling for one category within the month.',
     detail:
-      'Category limits help plan spending within a category. They do not replace the overall monthly budget. Actual category spending comes from saved expenses assigned to that category.',
+      'Category limits help plan spending within a category. They do not replace the overall monthly budget. Optional food assistance reduces how much of that category’s spend counts toward the limit and the overall monthly budget.',
   },
   cadence: {
     title: 'Cadence',

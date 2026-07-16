@@ -96,6 +96,25 @@ describe('ExpensesPage', () => {
     expect(screen.getByText('Merchant: Market')).toBeInTheDocument()
   })
 
+  it('shows the category name when description is blank', async () => {
+    vi.mocked(expenseApi.getExpenses).mockResolvedValue([
+      {
+        id: 3,
+        description: null,
+        merchant: null,
+        amount: 80,
+        expenseDate: '2026-07-12',
+        category: { id: 1, name: 'Groceries' },
+        notes: null,
+        createdAt: '2026-07-12T10:00:00Z',
+        updatedAt: '2026-07-12T10:00:00Z',
+      },
+    ])
+    renderPage()
+
+    expect(await screen.findByRole('heading', { name: 'Groceries' })).toBeInTheDocument()
+  })
+
   it('shows an empty state when there are no expenses', async () => {
     vi.mocked(expenseApi.getExpenses).mockResolvedValue([])
     renderPage()

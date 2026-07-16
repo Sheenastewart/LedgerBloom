@@ -13,7 +13,7 @@ describe('helpContent', () => {
   })
 
   it('finds a topic by id', () => {
-    expect(findHelpTopic('projected-cash-flow')?.title).toMatch(/projected cash flow/i)
+    expect(findHelpTopic('projected-cash-flow')?.title).toMatch(/projected income/i)
     expect(HELP_TOPICS.length).toBeGreaterThan(15)
   })
 })

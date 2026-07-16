@@ -1,6 +1,8 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../features/auth/AuthContext'
 import { paths } from '../routes/paths'
+import { FloatingAddButton } from './FloatingAddButton'
+import { GlobalSearch } from './GlobalSearch'
 import { Button } from './ui/Button'
 import '../features/auth/auth.css'
 
@@ -66,6 +68,7 @@ export function AppLayout() {
         </nav>
         {user ? (
           <div className="user-menu">
+            <GlobalSearch />
             <span className="user-menu-name">{user.displayName}</span>
             <Button variant="secondary" type="button" onClick={() => void handleLogout()}>
               Log out
@@ -83,6 +86,7 @@ export function AppLayout() {
         )}
       </header>
       <Outlet />
+      {user ? <FloatingAddButton /> : null}
     </div>
   )
 }

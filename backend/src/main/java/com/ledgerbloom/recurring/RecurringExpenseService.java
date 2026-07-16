@@ -242,15 +242,13 @@ public class RecurringExpenseService {
 			);
 		}
 
-		String paymentNote = buildMarkPaidNote(entity);
-
 		ExpenseResponse createdExpense = expenseService.create(new ExpenseCreateRequest(
 			entity.getDescription(),
 			entity.getMerchant(),
 			entity.getAmount(),
 			paymentDate,
 			entity.getCategory().getId(),
-			paymentNote
+			null
 		));
 		linkOccurrenceRecord(entity, paymentDate, createdExpense.id());
 
@@ -307,7 +305,7 @@ public class RecurringExpenseService {
 				entity.getAmount(),
 				date,
 				entity.getCategory().getId(),
-				buildCatchUpNote(entity)
+				null
 			));
 			if (tryLinkOccurrenceRecord(entity, date, createdExpense.id())) {
 				createdDates.add(date);
@@ -342,7 +340,7 @@ public class RecurringExpenseService {
 			entity.getAmount(),
 			date,
 			entity.getCategory().getId(),
-			buildHistoricalNote(entity)
+			null
 		));
 		linkOccurrenceRecord(entity, date, created.id());
 	}
@@ -375,22 +373,6 @@ public class RecurringExpenseService {
 				);
 			}
 		}
-	}
-
-	private String buildMarkPaidNote(RecurringExpense entity) {
-		String source = "Paid from recurring expense #" + entity.getId();
-		if (entity.getNotes() == null || entity.getNotes().isBlank()) {
-			return source;
-		}
-		return source + ". " + entity.getNotes();
-	}
-
-	private String buildCatchUpNote(RecurringExpense entity) {
-		return "Caught up from recurring expense #" + entity.getId();
-	}
-
-	private String buildHistoricalNote(RecurringExpense entity) {
-		return "Recorded during setup of recurring expense #" + entity.getId();
 	}
 
 	private RecurringExpense getOrThrow(Long id, Long userId) {
@@ -432,14 +414,7 @@ public class RecurringExpenseService {
 			String notes,
 			Integer firstPaymentDay,
 			Integer secondPaymentDay) {
-		String normalizedDescription = description == null ? "" : description.trim();
-		if (normalizedDescription.isBlank()) {
-			throw new InvalidRecurringExpenseDataException("Description is required");
-		}
-		if (normalizedDescription.length() > 160) {
-			throw new InvalidRecurringExpenseDataException("Description must be at most 160 characters");
-		}
-
+		String normalizedDescription = normalizeOptional(description, 160, "Description");
 		String normalizedMerchant = normalizeOptional(merchant, 120, "Merchant");
 		String normalizedNotes = normalizeOptional(notes, null, "Notes");
 		validateAmount(amount);

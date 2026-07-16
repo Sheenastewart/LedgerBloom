@@ -1,6 +1,7 @@
 import { ActionMenu, confirmDestructive } from '../../../components/ui/ActionMenu'
 import { paths } from '../../../routes/paths'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
+import { userFacingNotes } from '../../../utils/notesUtils'
 import type { IncomeEntry } from '../types'
 
 type IncomeListProps = {
@@ -24,6 +25,7 @@ export function IncomeList({
         const isDeleting = deletingIncomeId === entry.id
         const isUndoing = undoingIncomeId === entry.id
         const fromRecurring = entry.recurringIncomeId != null
+        const notes = userFacingNotes(entry.notes)
         return (
           <li key={entry.id} className="income-row list-row">
             <div className="income-main list-row__main">
@@ -32,7 +34,7 @@ export function IncomeList({
               <p className="income-meta list-row__meta">
                 {formatIsoDate(entry.incomeDate)} · {entry.source}
               </p>
-              {entry.notes ? <p className="income-meta list-row__meta">Notes: {entry.notes}</p> : null}
+              {notes ? <p className="income-meta list-row__meta">Notes: {notes}</p> : null}
               {fromRecurring ? (
                 <p className="income-meta list-row__meta">Recorded from a recurring schedule.</p>
               ) : null}
@@ -56,7 +58,7 @@ export function IncomeList({
                         source: entry.source,
                         amount: String(entry.amount),
                         incomeDate: entry.incomeDate,
-                        notes: entry.notes ?? '',
+                        notes: notes ?? '',
                       },
                     },
                   },
@@ -72,7 +74,7 @@ export function IncomeList({
                         cadence: 'MONTHLY',
                         nextIncomeDate: entry.incomeDate,
                         active: true,
-                        notes: entry.notes ?? '',
+                        notes: notes ?? '',
                       },
                     },
                   },

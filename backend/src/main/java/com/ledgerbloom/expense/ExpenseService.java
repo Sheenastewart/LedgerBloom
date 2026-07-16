@@ -181,14 +181,7 @@ public class ExpenseService {
 			LocalDate expenseDate,
 			Long categoryId,
 			String notes) {
-		String normalizedDescription = description == null ? "" : description.trim();
-		if (normalizedDescription.isBlank()) {
-			throw new InvalidExpenseDataException("Description is required");
-		}
-		if (normalizedDescription.length() > 160) {
-			throw new InvalidExpenseDataException("Description must be at most 160 characters");
-		}
-
+		String normalizedDescription = normalizeOptionalText(description, 160, "Description");
 		String normalizedMerchant = normalizeOptionalText(merchant, 120, "Merchant");
 		String normalizedNotes = normalizeOptionalText(notes, null, "Notes");
 		validateAmount(amount);

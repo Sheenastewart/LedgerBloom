@@ -105,6 +105,7 @@ public class MonthlyBudgetService {
 			throw new InvalidBudgetDataException("Category id must be positive");
 		}
 		BigDecimal limitAmount = validateAmount(request.limitAmount(), "Limit amount");
+		BigDecimal assistanceAmount = validateAssistanceAmount(request.assistanceAmount());
 		Category category = categoryRepository.findByIdAndUser_Id(categoryId, userId)
 			.orElseThrow(() -> new CategoryNotFoundException(categoryId));
 
@@ -112,7 +113,13 @@ public class MonthlyBudgetService {
 			throw new CategoryBudgetAlreadyExistsException(budgetId, categoryId);
 		}
 
-		CategoryBudgetLimit limit = new CategoryBudgetLimit(currentUser.requireUserReference(), budget, category, limitAmount);
+		CategoryBudgetLimit limit = new CategoryBudgetLimit(
+			currentUser.requireUserReference(),
+			budget,
+			category,
+			limitAmount,
+			assistanceAmount
+		);
 		try {
 			categoryBudgetLimitRepository.saveAndFlush(limit);
 		}
@@ -131,6 +138,7 @@ public class MonthlyBudgetService {
 		CategoryBudgetLimit limit = categoryBudgetLimitRepository.findByIdAndMonthlyBudget_IdAndUser_Id(limitId, budgetId, userId)
 			.orElseThrow(() -> new CategoryBudgetLimitNotFoundException(budgetId, limitId));
 		limit.setLimitAmount(validateAmount(request.limitAmount(), "Limit amount"));
+		limit.setAssistanceAmount(validateAssistanceAmount(request.assistanceAmount()));
 		categoryBudgetLimitRepository.saveAndFlush(limit);
 		return toResponse(getBudgetOrThrow(budgetId, userId));
 	}
@@ -178,6 +186,22 @@ public class MonthlyBudgetService {
 		return amount;
 	}
 
+	private BigDecimal validateAssistanceAmount(BigDecimal amount) {
+		if (amount == null) {
+			return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+		}
+		if (amount.compareTo(BigDecimal.ZERO) < 0) {
+			throw new InvalidBudgetDataException("Assistance amount must be zero or greater");
+		}
+		if (amount.scale() > 2) {
+			throw new InvalidBudgetDataException("Assistance amount must have at most 2 decimal places");
+		}
+		if (amount.compareTo(MAX_AMOUNT) > 0) {
+			throw new InvalidBudgetDataException("Assistance amount must fit NUMERIC(12,2)");
+		}
+		return amount.setScale(2, RoundingMode.HALF_UP);
+	}
+
 	private MonthlyBudgetResponse toResponse(MonthlyBudget budget) {
 		LocalDate start = YearMonth.of(budget.getBudgetYear(), budget.getBudgetMonth()).atDay(1);
 		LocalDate endExclusive = start.plusMonths(1);
@@ -191,9 +215,6 @@ public class MonthlyBudgetService {
 
 		BigDecimal actualExpenses = sumAmounts(expenses.stream().map(Expense::getAmount).toList());
 		BigDecimal totalLimit = budget.getTotalLimit();
-		BigDecimal remaining = totalLimit.subtract(actualExpenses).setScale(2, RoundingMode.HALF_UP);
-		boolean overBudget = actualExpenses.compareTo(totalLimit) > 0;
-		BigDecimal percentUsed = percentUsed(actualExpenses, totalLimit);
 
 		Map<Long, BigDecimal> spentByCategory = new HashMap<>();
 		for (Expense expense : expenses) {
@@ -204,25 +225,40 @@ public class MonthlyBudgetService {
 		List<CategoryBudgetLimit> limits = categoryBudgetLimitRepository
 			.findByMonthlyBudget_IdOrderByIdAsc(budget.getId());
 
+		BigDecimal assistanceApplied = BigDecimal.ZERO;
 		List<CategoryBudgetLimitResponse> categoryLimitResponses = new ArrayList<>();
 		for (CategoryBudgetLimit limit : limits) {
 			Category category = limit.getCategory();
 			BigDecimal limitAmount = limit.getLimitAmount();
+			BigDecimal assistanceAmount = limit.getAssistanceAmount() == null
+				? BigDecimal.ZERO
+				: limit.getAssistanceAmount().setScale(2, RoundingMode.HALF_UP);
 			BigDecimal actualSpent = spentByCategory
 				.getOrDefault(category.getId(), BigDecimal.ZERO)
 				.setScale(2, RoundingMode.HALF_UP);
-			BigDecimal categoryRemaining = limitAmount.subtract(actualSpent).setScale(2, RoundingMode.HALF_UP);
-			boolean categoryOverBudget = actualSpent.compareTo(limitAmount) > 0;
+			BigDecimal covered = actualSpent.min(assistanceAmount);
+			BigDecimal budgetableSpent = actualSpent.subtract(covered).setScale(2, RoundingMode.HALF_UP);
+			assistanceApplied = assistanceApplied.add(covered);
+			BigDecimal categoryRemaining = limitAmount.subtract(budgetableSpent).setScale(2, RoundingMode.HALF_UP);
+			boolean categoryOverBudget = budgetableSpent.compareTo(limitAmount) > 0;
 			categoryLimitResponses.add(new CategoryBudgetLimitResponse(
 				limit.getId(),
 				new BudgetCategorySummary(category.getId(), category.getName()),
 				limitAmount,
+				assistanceAmount,
 				actualSpent,
+				budgetableSpent,
 				categoryRemaining,
-				percentUsed(actualSpent, limitAmount),
+				percentUsed(budgetableSpent, limitAmount),
 				categoryOverBudget
 			));
 		}
+
+		assistanceApplied = assistanceApplied.setScale(2, RoundingMode.HALF_UP);
+		BigDecimal budgetableExpenses = actualExpenses.subtract(assistanceApplied).setScale(2, RoundingMode.HALF_UP);
+		BigDecimal remaining = totalLimit.subtract(budgetableExpenses).setScale(2, RoundingMode.HALF_UP);
+		boolean overBudget = budgetableExpenses.compareTo(totalLimit) > 0;
+		BigDecimal percentUsed = percentUsed(budgetableExpenses, totalLimit);
 
 		categoryLimitResponses.sort(
 			Comparator.comparing((CategoryBudgetLimitResponse row) -> row.category().name(), String.CASE_INSENSITIVE_ORDER)
@@ -235,6 +271,8 @@ public class MonthlyBudgetService {
 			budget.getBudgetMonth(),
 			totalLimit,
 			actualExpenses,
+			budgetableExpenses,
+			assistanceApplied,
 			remaining,
 			percentUsed,
 			overBudget,

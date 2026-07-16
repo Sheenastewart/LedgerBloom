@@ -16,7 +16,7 @@ export type RecurringCategoryRef = {
 
 export type RecurringExpense = {
   id: number
-  description: string
+  description: string | null
   merchant: string | null
   amount: number
   category: RecurringCategoryRef
@@ -31,7 +31,7 @@ export type RecurringExpense = {
 }
 
 export type RecurringWriteRequest = {
-  description: string
+  description: string | null
   merchant: string | null
   amount: number
   categoryId: number
@@ -107,12 +107,12 @@ export type RecurringFormErrors = {
 
 export const CADENCE_OPTIONS: { value: RecurringCadence; label: string }[] = [
   { value: 'WEEKLY', label: 'Weekly' },
-  { value: 'BIWEEKLY', label: 'Biweekly' },
+  { value: 'BIWEEKLY', label: 'Biweekly (every 2 weeks)' },
   { value: 'MONTHLY', label: 'Monthly' },
-  { value: 'QUARTERLY', label: 'Quarterly' },
-  { value: 'SEMIANNUAL', label: 'Semiannual' },
-  { value: 'ANNUAL', label: 'Annual' },
-  { value: 'SEMIMONTHLY', label: 'Semimonthly' },
+  { value: 'QUARTERLY', label: 'Quarterly (every 3 months)' },
+  { value: 'SEMIANNUAL', label: 'Semiannual (every 6 months)' },
+  { value: 'ANNUAL', label: 'Annual (once a year)' },
+  { value: 'SEMIMONTHLY', label: 'Semimonthly (twice a month)' },
 ]
 
 export function cadenceLabel(cadence: RecurringCadence): string {

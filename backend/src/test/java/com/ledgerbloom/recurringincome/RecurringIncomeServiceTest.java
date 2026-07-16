@@ -302,7 +302,7 @@ class RecurringIncomeServiceTest {
 		assertThat(incomeRequest.source()).isEqualTo("Acme Corp");
 		assertThat(incomeRequest.amount()).isEqualByComparingTo("5000.00");
 		assertThat(incomeRequest.incomeDate()).isEqualTo(next);
-		assertThat(incomeRequest.notes()).contains("Received from recurring income #10");
+		assertThat(incomeRequest.notes()).isNull();
 
 		assertThat(response.updatedRecurringIncome().nextIncomeDate()).isEqualTo(LocalDate.of(2026, 8, 15));
 		assertThat(response.createdIncomeEntry().id()).isEqualTo(50L);
@@ -748,7 +748,7 @@ class RecurringIncomeServiceTest {
 			"Acme Corp",
 			new BigDecimal("5000.00"),
 			LocalDate.of(2026, 7, 15),
-			"Received from recurring income #10",
+			null,
 			Instant.parse("2026-07-15T00:00:00Z"),
 			Instant.parse("2026-07-15T00:00:00Z"),
 			null,

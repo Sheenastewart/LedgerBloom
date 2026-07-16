@@ -163,7 +163,11 @@ public class ExportService {
 				.append(CSV_LINE_TERMINATOR);
 			appendMetric(csv, "Expected Recurring Income", item.expectedRecurringIncome());
 			appendMetric(csv, "Expected Recurring Expenses", item.expectedRecurringExpenses());
-			appendMetric(csv, "Projected Cash Flow", item.projectedCashFlow());
+			appendMetric(
+				csv,
+				"Projected Income",
+				item.totalIncome().add(item.expectedRecurringIncome())
+			);
 			csv.append(CSV_LINE_TERMINATOR);
 
 			csv.append(CsvUtil.toCsvLine("Spending By Category")).append(CSV_LINE_TERMINATOR);

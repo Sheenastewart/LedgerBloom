@@ -39,6 +39,9 @@ public class CategoryBudgetLimit {
 	@Column(name = "limit_amount", nullable = false, precision = 12, scale = 2)
 	private BigDecimal limitAmount;
 
+	@Column(name = "assistance_amount", nullable = false, precision = 12, scale = 2)
+	private BigDecimal assistanceAmount = BigDecimal.ZERO;
+
 	@Column(name = "created_at", nullable = false)
 	private Instant createdAt;
 
@@ -48,11 +51,21 @@ public class CategoryBudgetLimit {
 	protected CategoryBudgetLimit() {
 	}
 
-	public CategoryBudgetLimit(User user, MonthlyBudget monthlyBudget, Category category, BigDecimal limitAmount) {
+	public CategoryBudgetLimit(
+			User user,
+			MonthlyBudget monthlyBudget,
+			Category category,
+			BigDecimal limitAmount,
+			BigDecimal assistanceAmount) {
 		this.user = user;
 		this.monthlyBudget = monthlyBudget;
 		this.category = category;
 		this.limitAmount = limitAmount;
+		this.assistanceAmount = assistanceAmount != null ? assistanceAmount : BigDecimal.ZERO;
+	}
+
+	public CategoryBudgetLimit(User user, MonthlyBudget monthlyBudget, Category category, BigDecimal limitAmount) {
+		this(user, monthlyBudget, category, limitAmount, BigDecimal.ZERO);
 	}
 
 	@PrePersist
@@ -60,6 +73,9 @@ public class CategoryBudgetLimit {
 		Instant now = Instant.now();
 		this.createdAt = now;
 		this.updatedAt = now;
+		if (this.assistanceAmount == null) {
+			this.assistanceAmount = BigDecimal.ZERO;
+		}
 	}
 
 	@PreUpdate
@@ -97,6 +113,14 @@ public class CategoryBudgetLimit {
 
 	public void setLimitAmount(BigDecimal limitAmount) {
 		this.limitAmount = limitAmount;
+	}
+
+	public BigDecimal getAssistanceAmount() {
+		return assistanceAmount;
+	}
+
+	public void setAssistanceAmount(BigDecimal assistanceAmount) {
+		this.assistanceAmount = assistanceAmount;
 	}
 
 	public Instant getCreatedAt() {

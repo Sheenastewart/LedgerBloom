@@ -1,48 +1,76 @@
 import { describe, expect, it } from 'vitest'
 import {
-  addDaysIso,
-  greetingForNow,
-  isWithinNextDays,
+  activityItemsToRows,
+  buildAgenda,
   mergeRecentActivity,
+  safeToSpend,
 } from './dashboardPresentation'
 
 describe('dashboardPresentation', () => {
-  it('returns time-of-day greetings', () => {
-    expect(greetingForNow(new Date('2026-07-15T08:00:00'))).toBe('Good morning')
-    expect(greetingForNow(new Date('2026-07-15T13:00:00'))).toBe('Good afternoon')
-    expect(greetingForNow(new Date('2026-07-15T19:00:00'))).toBe('Good evening')
-  })
-
-  it('detects dates within the next N days', () => {
-    expect(isWithinNextDays('2026-07-16', '2026-07-15', 7)).toBe(true)
-    expect(isWithinNextDays('2026-07-30', '2026-07-15', 7)).toBe(false)
-    expect(addDaysIso('2026-07-15', 2)).toBe('2026-07-17')
-  })
-
-  it('merges and sorts recent activity newest first', () => {
+  it('merges activity and maps to activity rows', () => {
     const items = mergeRecentActivity(
       [
         {
           id: 1,
-          description: 'Old expense',
-          amount: 10,
-          expenseDate: '2026-07-01',
-          category: { name: 'Food' },
+          description: null,
+          merchant: 'Market',
+          amount: 40,
+          expenseDate: '2026-07-12',
+          category: { name: 'Groceries' },
         },
       ],
       [
         {
           id: 2,
-          description: 'New income',
-          amount: 20,
-          incomeDate: '2026-07-10',
+          description: 'Pay',
+          amount: 100,
+          incomeDate: '2026-07-13',
           source: 'Job',
+          recurringIncomeId: 9,
         },
       ],
       5,
     )
-    expect(items).toHaveLength(2)
-    expect(items[0]?.description).toBe('New income')
-    expect(items[1]?.description).toBe('Old expense')
+    expect(items[0]?.description).toBe('Pay')
+    expect(items[1]?.description).toBe('Groceries')
+    const rows = activityItemsToRows(items)
+    expect(rows[0]?.recurring).toBe(true)
+    expect(rows[1]?.merchant).toBe('Market')
+  })
+
+  it('builds agenda groups and safe-to-spend', () => {
+    const agenda = buildAgenda({
+      todayIso: '2026-07-15',
+      expenseItems: [
+        {
+          id: 1,
+          description: 'Rent',
+          categoryName: 'Housing',
+          amount: 100,
+          nextPaymentDate: '2026-07-14',
+        },
+        {
+          id: 2,
+          description: 'Power',
+          categoryName: 'Utilities',
+          amount: 50,
+          nextPaymentDate: '2026-07-16',
+        },
+      ],
+      incomeItems: [
+        {
+          id: 3,
+          description: 'Pay',
+          source: 'Job',
+          amount: 200,
+          nextIncomeDate: '2026-07-15',
+        },
+      ],
+    })
+    expect(agenda.find((item) => item.id.includes('exp-1'))?.group).toBe('overdue')
+    expect(agenda.find((item) => item.id.includes('inc-3'))?.group).toBe('today')
+    expect(agenda.find((item) => item.id.includes('exp-2'))?.group).toBe('tomorrow')
+    expect(safeToSpend(500, 120)).toBe(380)
+    expect(safeToSpend(null, 120)).toBeNull()
   })
 })

@@ -3,6 +3,7 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
 import { HowThisWorks } from '../../../components/HowThisWorks'
 import { InfoTooltip } from '../../../components/InfoTooltip'
+import { ProgressRing } from '../../../components/ui/ProgressRing'
 import { formatAmountForInput, formatCurrency } from '../../../utils/moneyUtils'
 import { getCategories } from '../../categories/api/categoryApi'
 import type { Category } from '../../categories/types'
@@ -30,8 +31,10 @@ import type {
   MonthlyBudget,
 } from '../types'
 import '../budgets.css'
+import '../budgetPolish.css'
 import '../../categories/categories.css'
 import '../../dashboard/dashboard.css'
+import '../../dashboard/pages/dashboardPolish.css'
 import '../../guidance/help.css'
 
 const MONTH_NAMES = [
@@ -286,7 +289,11 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
       if (err instanceof ApiClientError) {
         const next: CategoryLimitFormErrors = {}
         for (const fieldError of err.fieldErrors) {
-          if (fieldError.field === 'categoryId' || fieldError.field === 'limitAmount') {
+          if (
+            fieldError.field === 'categoryId' ||
+            fieldError.field === 'limitAmount' ||
+            fieldError.field === 'assistanceAmount'
+          ) {
             next[fieldError.field] = fieldError.message
           }
         }
@@ -389,15 +396,7 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
             <>
               <section aria-label="Budget summary">
                 <div className="budget-summary-grid">
-                  <article className="budget-card">
-                    <h2>Total budget</h2>
-                    <p className="budget-card-value">{formatCurrency(budget.totalLimit)}</p>
-                  </article>
-                  <article className="budget-card">
-                    <h2>Actual expenses</h2>
-                    <p className="budget-card-value">{formatCurrency(budget.actualExpenses)}</p>
-                  </article>
-                  <article className="budget-card">
+                  <article className="budget-card budget-card--hero">
                     <h2 className="metric-heading">
                       Remaining
                       <InfoTooltip label="About remaining budget">
@@ -408,6 +407,23 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
                       {formatCurrency(budget.remaining)}
                     </p>
                   </article>
+                  <article className="budget-card">
+                    <h2>Total budget</h2>
+                    <p className="budget-card-value">{formatCurrency(budget.totalLimit)}</p>
+                  </article>
+                  <article className="budget-card">
+                    <h2>Actual expenses</h2>
+                    <p className="budget-card-value">{formatCurrency(budget.actualExpenses)}</p>
+                  </article>
+                  {budget.assistanceApplied > 0 ? (
+                    <article className="budget-card">
+                      <h2>Counts toward budget</h2>
+                      <p className="budget-card-value">{formatCurrency(budget.budgetableExpenses)}</p>
+                      <p className="field-hint">
+                        {formatCurrency(budget.assistanceApplied)} covered by food assistance.
+                      </p>
+                    </article>
+                  ) : null}
                   <article className="budget-card">
                     <h2 className="metric-heading">
                       Percent used
@@ -480,68 +496,69 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
                 No category limits for this month.
               </p>
             ) : (
-              <div className="budget-table-wrap">
-                <table className="budget-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Category</th>
-                      <th scope="col" className="numeric">
-                        Limit
-                      </th>
-                      <th scope="col" className="numeric">
-                        Spent
-                      </th>
-                      <th scope="col" className="numeric">
-                        Remaining
-                      </th>
-                      <th scope="col" className="numeric">
-                        Used
-                      </th>
-                      <th scope="col">Status</th>
-                      <th scope="col">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {budget.categoryLimits.map((limit) => {
-                      const status = budgetStatus(limit.overBudget, limit.percentUsed)
-                      return (
-                        <tr key={limit.id}>
-                          <th scope="row">{limit.category.name}</th>
-                          <td className="numeric">{formatCurrency(limit.limitAmount)}</td>
-                          <td className="numeric">{formatCurrency(limit.actualSpent)}</td>
-                          <td className="numeric">{formatCurrency(limit.remaining)}</td>
-                          <td className="numeric">{limit.percentUsed.toFixed(2)}%</td>
-                          <td>
-                            <span className={`budget-status ${status}`}>{budgetStatusLabel(status)}</span>
-                          </td>
-                          <td>
-                            <div className="budget-actions-row">
-                              <button
-                                type="button"
-                                className="button button-secondary"
-                                onClick={() => {
-                                  setLimitServerErrors({})
-                                  setLimitEditor({ mode: 'edit', limit })
-                                }}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                className="button button-secondary"
-                                disabled={deletingLimitId === limit.id}
-                                onClick={() => void handleDeleteLimit(limit)}
-                              >
-                                {deletingLimitId === limit.id ? 'Deleting…' : 'Delete'}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <ul className="budget-limit-list" aria-label="Category budget limits">
+                {budget.categoryLimits.map((limit) => {
+                  const status = budgetStatus(limit.overBudget, limit.percentUsed)
+                  const tone =
+                    status === 'over-budget'
+                      ? 'danger'
+                      : status === 'near-budget'
+                        ? 'warning'
+                        : 'success'
+                  return (
+                    <li key={limit.id} className="budget-limit-row">
+                      <ProgressRing
+                        percent={limit.percentUsed}
+                        tone={tone}
+                        label={`${limit.category.name} ${limit.percentUsed.toFixed(0)} percent used`}
+                      />
+                      <div>
+                        <p className="budget-limit-row__hero">
+                          <span className="budget-limit-row__hero-label">
+                            {limit.category.name} · Remaining
+                          </span>
+                          <span
+                            className={`budget-limit-row__hero-value ${
+                              limit.remaining < 0 ? 'is-negative' : ''
+                            }`}
+                          >
+                            {formatCurrency(limit.remaining)}
+                          </span>
+                        </p>
+                        <p className="budget-limit-row__meta">
+                          <span>Spent {formatCurrency(limit.actualSpent)}</span>
+                          <span>Toward limit {formatCurrency(limit.budgetableSpent)}</span>
+                          <span>Budget {formatCurrency(limit.limitAmount)}</span>
+                          {limit.assistanceAmount > 0 ? (
+                            <span>Assistance {formatCurrency(limit.assistanceAmount)}</span>
+                          ) : null}
+                          <span className={`budget-status ${status}`}>{budgetStatusLabel(status)}</span>
+                        </p>
+                      </div>
+                      <div className="budget-limit-row__actions">
+                        <button
+                          type="button"
+                          className="button button-secondary"
+                          onClick={() => {
+                            setLimitServerErrors({})
+                            setLimitEditor({ mode: 'edit', limit })
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="button button-secondary"
+                          disabled={deletingLimitId === limit.id}
+                          onClick={() => void handleDeleteLimit(limit)}
+                        >
+                          {deletingLimitId === limit.id ? 'Deleting…' : 'Delete'}
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
             )}
           </section>
 
@@ -561,10 +578,14 @@ export function BudgetsPage({ view = 'monthly' }: BudgetsPageProps) {
                   categories={availableCategories}
                   initialValues={
                     limitEditor.mode === 'create'
-                      ? { categoryId: '', limitAmount: '' }
+                      ? { categoryId: '', limitAmount: '', assistanceAmount: '' }
                       : {
                           categoryId: String(limitEditor.limit.category.id),
                           limitAmount: formatAmountForInput(limitEditor.limit.limitAmount),
+                          assistanceAmount:
+                            limitEditor.limit.assistanceAmount > 0
+                              ? formatAmountForInput(limitEditor.limit.assistanceAmount)
+                              : '',
                         }
                   }
                   serverErrors={limitServerErrors}

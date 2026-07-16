@@ -118,7 +118,7 @@ export function HelpPage() {
             type="search"
             value={query}
             onChange={(event) => handleSearchChange(event.target.value)}
-            placeholder="Try projected cash flow, Mark Paid, CSV…"
+            placeholder="Try projected income, Mark Paid, CSV…"
             autoComplete="off"
           />
           {query ? (

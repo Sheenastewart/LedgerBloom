@@ -76,7 +76,7 @@ export const HELP_CATEGORIES: HelpCategory[] = [
   {
     id: 'cash-flow-planning',
     title: 'Cash Flow Planning',
-    introduction: 'Understand expected income, obligations, and projected cash flow.',
+    introduction: 'Understand expected income, obligations, and projected income.',
   },
   {
     id: 'reports-and-trends',
@@ -228,14 +228,13 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'projected-cash-flow',
     categoryId: 'understanding-calculations',
-    title: 'What projected cash flow means',
-    summary:
-      'Actual income plus expected recurring income, minus actual expenses and expected obligations.',
-    keywords: ['projected', 'estimate', 'cash flow', 'planning'],
+    title: 'What projected income means',
+    summary: 'Recorded income plus expected recurring income for the selected period.',
+    keywords: ['projected', 'estimate', 'income', 'planning', 'cash flow'],
     body: [
-      'Projected cash flow combines recorded ledger totals with upcoming recurring estimates.',
-      'Formula: actual income + expected recurring income − actual expenses − expected recurring obligations.',
-      'Treat projected values as planning estimates, not guarantees.',
+      'Projected income adds saved Income entries for the month to active recurring income still scheduled in that month.',
+      'Formula: recorded income + expected recurring income.',
+      'Expected amounts are estimates until Mark Received creates a real income entry.',
     ],
     relatedPath: '/dashboard',
     relatedLabel: 'See cash flow planning',
@@ -343,7 +342,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     body: [
       'Recurring items are schedules. They do not automatically create income or expense rows.',
       'Actual income and expenses exist only after you save them, or after Mark Received / Mark Paid confirms a due schedule.',
-      'Reports and net cash flow use actual rows. Projected cash flow also includes scheduled estimates.',
+      'Reports and net cash flow use actual rows. Projected income also includes scheduled recurring income estimates.',
     ],
     relatedPath: '/transactions/recurring-expenses',
     relatedLabel: 'Manage recurring expenses',
@@ -406,11 +405,11 @@ export const HELP_TOPICS: HelpTopic[] = [
     id: 'cash-flow-planning-overview',
     categoryId: 'cash-flow-planning',
     title: 'How cash flow planning works',
-    summary: 'Estimated income and obligations for the selected month plus projected cash flow.',
-    keywords: ['planning', 'cash flow', 'projected', 'expected'],
+    summary: 'Estimated income and obligations for the selected month plus projected income.',
+    keywords: ['planning', 'cash flow', 'projected', 'expected', 'income'],
     body: [
       'Cash Flow Planning appears on the dashboard and printable monthly report.',
-      'It shows expected income, expected obligations, and projected cash flow for the selected month.',
+      'It shows expected income, expected obligations, and projected income for the selected month.',
       'These figures include recurring schedules and are labeled as estimates.',
     ],
     relatedPath: '/dashboard',
