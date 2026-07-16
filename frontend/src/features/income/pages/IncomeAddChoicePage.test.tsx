@@ -8,7 +8,7 @@ describe('IncomeAddChoicePage', () => {
     cleanup()
   })
 
-  it('offers one-time and recurring income paths with clear labels', () => {
+  it('asks whether income is recurring and routes to both flows', () => {
     render(
       <MemoryRouter initialEntries={['/income/add']}>
         <Routes>
@@ -18,22 +18,11 @@ describe('IncomeAddChoicePage', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Add income' })).toBeInTheDocument()
-    expect(screen.getByText('What kind of income are you adding?')).toBeInTheDocument()
-
-    const oneTime = screen.getByRole('link', { name: 'One-time income' })
-    expect(oneTime).toHaveAttribute('href', '/income/new')
-    expect(
-      screen.getByText(
-        'Record money you received once, such as a refund, bonus, or one-time payment.',
-      ),
-    ).toBeInTheDocument()
-
-    const recurring = screen.getByRole('link', { name: 'Recurring income' })
-    expect(recurring).toHaveAttribute('href', '/recurring-income/new')
-    expect(
-      screen.getByText(
-        'Set up income received on a repeating schedule, such as weekly, biweekly, or monthly pay.',
-      ),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Is this recurring?')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'One-time' })).toHaveAttribute('href', '/income/new')
+    expect(screen.getByRole('link', { name: 'Recurring schedule' })).toHaveAttribute(
+      'href',
+      '/recurring-income/new',
+    )
   })
 })

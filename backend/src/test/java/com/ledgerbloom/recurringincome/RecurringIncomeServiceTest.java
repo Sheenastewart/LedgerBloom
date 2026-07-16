@@ -185,10 +185,28 @@ class RecurringIncomeServiceTest {
 
 	@Test
 	void filtersForwardToRepository() {
-		when(recurringIncomeRepository.findFiltered(USER_ID, true, RecurringIncomeCadence.MONTHLY, "Acme Corp"))
+		when(recurringIncomeRepository.findFiltered(USER_ID, true, RecurringIncomeCadence.MONTHLY, true, "acme corp"))
 			.thenReturn(List.of());
 		recurringIncomeService.findAll(true, "MONTHLY", "Acme Corp");
-		verify(recurringIncomeRepository).findFiltered(USER_ID, true, RecurringIncomeCadence.MONTHLY, "Acme Corp");
+		verify(recurringIncomeRepository).findFiltered(USER_ID, true, RecurringIncomeCadence.MONTHLY, true, "acme corp");
+	}
+
+	@Test
+	void findAllWithNullSourceAvoidsNullBindThatBreaksPostgresLower() {
+		when(recurringIncomeRepository.findFiltered(USER_ID, null, null, false, "")).thenReturn(List.of());
+
+		recurringIncomeService.findAll(null, null, null);
+
+		verify(recurringIncomeRepository).findFiltered(USER_ID, null, null, false, "");
+	}
+
+	@Test
+	void findAllWithBlankSourceTreatedAsNoSourceFilter() {
+		when(recurringIncomeRepository.findFiltered(USER_ID, null, null, false, "")).thenReturn(List.of());
+
+		recurringIncomeService.findAll(null, null, "   ");
+
+		verify(recurringIncomeRepository).findFiltered(USER_ID, null, null, false, "");
 	}
 
 	@Test

@@ -7,6 +7,7 @@ import com.ledgerbloom.income.IncomeEntryService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,8 +35,15 @@ public class RecurringIncomeService {
 	public List<RecurringIncomeResponse> findAll(Boolean active, String cadence, String source) {
 		RecurringIncomeCadence cadenceEnum = parseCadenceFilter(cadence);
 		String normalizedSource = normalizeSourceFilter(source);
+		boolean filterBySource = normalizedSource != null;
+		// Never bind a null String into LOWER(:source) — PostgreSQL types that parameter as
+		// bytea and fails with "function lower(bytea) does not exist". Pass a typed empty
+		// string when the source filter is inactive, and compare against a Java-lowercased value.
+		String sourceParam = filterBySource ? normalizedSource.toLowerCase(Locale.ROOT) : "";
 		Long userId = currentUser.requireUserId();
-		return recurringIncomeRepository.findFiltered(userId, active, cadenceEnum, normalizedSource).stream()
+		return recurringIncomeRepository
+			.findFiltered(userId, active, cadenceEnum, filterBySource, sourceParam)
+			.stream()
 			.map(this::toResponse)
 			.toList();
 	}

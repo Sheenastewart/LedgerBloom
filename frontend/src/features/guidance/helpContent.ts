@@ -190,7 +190,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     keywords: ['income', 'pay', 'add', 'source', 'salary'],
     body: [
       'Income entries are actual money already received.',
-      'Open Income, choose Add One-Time Income (or Add income → One-time), enter description, source, amount, and date, then save. Use Add Recurring Income for pay on a repeating schedule.',
+      'Open Income, choose Add income, pick One-time or Recurring, then complete the form. One-time saves a received entry; Recurring saves a schedule under the Recurring schedules tab.',
       'Saved income feeds dashboard totals, reports, and net cash flow.',
     ],
     relatedPath: '/income',
@@ -276,8 +276,8 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Expected income sums active recurring income schedules whose next expected date falls in the selected month.',
       'It is an estimate until Mark Received creates a saved income entry.',
     ],
-    relatedPath: '/recurring-income',
-    relatedLabel: 'Manage recurring income',
+    relatedPath: '/income?section=recurring',
+    relatedLabel: 'Open Income schedules',
   },
   {
     id: 'expected-obligations',
@@ -386,8 +386,8 @@ export const HELP_TOPICS: HelpTopic[] = [
       'It advances the next expected income date for that schedule.',
       'Until confirmed, recurring income remains an estimate in cash-flow planning.',
     ],
-    relatedPath: '/recurring-income',
-    relatedLabel: 'Manage recurring income',
+    relatedPath: '/income?section=recurring',
+    relatedLabel: 'Open Income schedules',
   },
   {
     id: 'upcoming-income',
@@ -399,8 +399,8 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Upcoming income lists active recurring income schedules with a next expected date in the selected period.',
       'Use Mark Received when the income is actually received to post it to the ledger.',
     ],
-    relatedPath: '/recurring-income',
-    relatedLabel: 'Manage recurring income',
+    relatedPath: '/income?section=recurring',
+    relatedLabel: 'Open Income schedules',
   },
   {
     id: 'cash-flow-planning-overview',

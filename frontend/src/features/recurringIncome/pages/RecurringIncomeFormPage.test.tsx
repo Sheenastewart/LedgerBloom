@@ -20,7 +20,7 @@ function renderCreate() {
     <MemoryRouter initialEntries={['/recurring-income/new']}>
       <Routes>
         <Route path="/recurring-income/new" element={<RecurringIncomeFormPage mode="create" />} />
-        <Route path="/recurring-income" element={<p>Recurring income home</p>} />
+        <Route path="/income" element={<p>Income recurring section</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -65,7 +65,7 @@ describe('RecurringIncomeFormPage', () => {
     await waitFor(() => {
       expect(recurringIncomeApi.createRecurringIncome).toHaveBeenCalled()
     })
-    expect(await screen.findByText('Recurring income home')).toBeInTheDocument()
+    expect(await screen.findByText('Income recurring section')).toBeInTheDocument()
   })
 
   it('validates required fields', async () => {

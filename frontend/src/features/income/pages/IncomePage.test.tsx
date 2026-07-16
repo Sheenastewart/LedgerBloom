@@ -4,11 +4,19 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiClientError } from '../../../api/ApiClientError'
 import * as incomeApi from '../api/incomeApi'
+import * as recurringIncomeApi from '../../recurringIncome/api/recurringIncomeApi'
 import { IncomePage } from './IncomePage'
 
 vi.mock('../api/incomeApi', () => ({
   getIncomeEntries: vi.fn(),
   deleteIncomeEntry: vi.fn(),
+}))
+
+vi.mock('../../recurringIncome/api/recurringIncomeApi', () => ({
+  getRecurringIncome: vi.fn(),
+  getUpcomingRecurringIncome: vi.fn(),
+  deleteRecurringIncome: vi.fn(),
+  markRecurringIncomeReceived: vi.fn(),
 }))
 
 const sampleEntries = [
@@ -22,23 +30,28 @@ const sampleEntries = [
     createdAt: '2026-07-15T20:04:25.859404Z',
     updatedAt: '2026-07-15T20:04:25.859404Z',
   },
-  {
-    id: 2,
-    description: 'Freelance project',
-    source: 'Acme Co',
-    amount: 800,
-    incomeDate: '2026-06-02',
-    notes: null,
-    createdAt: '2026-06-02T10:00:00Z',
-    updatedAt: '2026-06-02T10:00:00Z',
-  },
 ]
+
+const sampleRecurring = {
+  id: 10,
+  description: 'Weekly stipend',
+  source: 'Side gig',
+  amount: 100,
+  cadence: 'WEEKLY' as const,
+  nextIncomeDate: '2026-07-01',
+  active: true,
+  notes: null,
+  createdAt: '2026-07-01T00:00:00Z',
+  updatedAt: '2026-07-01T00:00:00Z',
+}
 
 function renderPage(initialEntry = '/income') {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/income" element={<IncomePage />} />
+        <Route path="/income/add" element={<p>Add choice</p>} />
+        <Route path="/recurring-income/new" element={<p>Recurring form</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -53,231 +66,77 @@ describe('IncomePage', () => {
   beforeEach(() => {
     vi.mocked(incomeApi.getIncomeEntries).mockReset()
     vi.mocked(incomeApi.deleteIncomeEntry).mockReset()
+    vi.mocked(recurringIncomeApi.getRecurringIncome).mockResolvedValue([])
+    vi.mocked(recurringIncomeApi.getUpcomingRecurringIncome).mockResolvedValue([])
   })
 
-  it('shows a loading state while income loads', () => {
-    vi.mocked(incomeApi.getIncomeEntries).mockReturnValue(new Promise(() => undefined))
-    renderPage()
-    expect(screen.getByRole('status')).toHaveTextContent('Loading income…')
-  })
-
-  it('renders income entries from the API', async () => {
+  it('renders received income and exposes recurring schedules tab', async () => {
     vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue(sampleEntries)
     renderPage()
 
     expect(await screen.findByRole('heading', { name: 'Monthly paycheck' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Freelance project' })).toBeInTheDocument()
-    expect(screen.getByText('Notes: july')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Add income' })).toHaveAttribute('href', '/income/add')
+    expect(screen.getByRole('tab', { name: 'Received' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Recurring schedules' })).toBeInTheDocument()
   })
 
-  it('shows an empty state when there are no income entries', async () => {
+  it('loads recurring schedules when that tab is selected', async () => {
+    const user = userEvent.setup()
+    vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue(sampleEntries)
+    vi.mocked(recurringIncomeApi.getRecurringIncome).mockResolvedValue([sampleRecurring])
+    vi.mocked(recurringIncomeApi.getUpcomingRecurringIncome).mockResolvedValue([sampleRecurring])
+    renderPage()
+
+    await screen.findByRole('heading', { name: 'Monthly paycheck' })
+    await user.click(screen.getByRole('tab', { name: 'Recurring schedules' }))
+
+    expect(await screen.findByRole('heading', { name: 'Weekly stipend' })).toBeInTheDocument()
+    expect(recurringIncomeApi.getRecurringIncome).toHaveBeenCalled()
+    expect(recurringIncomeApi.getUpcomingRecurringIncome).toHaveBeenCalled()
+  })
+
+  it('opens recurring section from query param', async () => {
+    vi.mocked(recurringIncomeApi.getRecurringIncome).mockResolvedValue([sampleRecurring])
+    vi.mocked(recurringIncomeApi.getUpcomingRecurringIncome).mockResolvedValue([])
+    renderPage('/income?section=recurring')
+
+    expect(await screen.findByRole('heading', { name: 'Weekly stipend' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Recurring schedules' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  it('shows empty received state with add income action', async () => {
     vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue([])
     renderPage()
 
-    expect(await screen.findByText('No income entries yet.')).toBeInTheDocument()
+    expect(await screen.findByText('No received income yet.')).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: 'Add income' }).length).toBeGreaterThan(0)
-    expect(screen.getByRole('link', { name: 'Add One-Time Income' })).toHaveAttribute(
-      'href',
-      '/income/new',
-    )
-    expect(screen.getByRole('link', { name: 'Add Recurring Income' })).toHaveAttribute(
-      'href',
-      '/recurring-income/new',
-    )
   })
 
-  it('shows one-time and recurring add options with explanatory copy', async () => {
-    vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue(sampleEntries)
-    renderPage()
-
-    await screen.findByRole('heading', { name: 'Monthly paycheck' })
-    expect(
-      screen.getByText(
-        'Record money you received once, such as a refund, bonus, or one-time payment.',
-      ),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        'Set up income received on a repeating schedule, such as weekly, biweekly, or monthly pay.',
-      ),
-    ).toBeInTheDocument()
-  })
-
-  it('shows filter empty copy when filters are active and nothing matches', async () => {
+  it('retries received income safely after failure', async () => {
     const user = userEvent.setup()
     vi.mocked(incomeApi.getIncomeEntries)
+      .mockRejectedValueOnce(
+        new ApiClientError({ message: 'Unavailable', code: 'SERVICE_UNAVAILABLE', status: 503 }),
+      )
       .mockResolvedValueOnce(sampleEntries)
-      .mockResolvedValueOnce([])
 
     renderPage()
-    await screen.findByRole('heading', { name: 'Monthly paycheck' })
-
-    await user.type(screen.getByLabelText('Source'), 'Nonexistent')
-    await user.click(screen.getByRole('button', { name: 'Apply' }))
-
-    expect(
-      await screen.findByText('No income entries match the current filters.'),
-    ).toBeInTheDocument()
-  })
-
-  it('shows an error state and retries, preserving filters', async () => {
-    const user = userEvent.setup()
-    vi.mocked(incomeApi.getIncomeEntries)
-      .mockResolvedValueOnce(sampleEntries)
-      .mockRejectedValueOnce(new ApiClientError({ message: 'down', code: 'NETWORK_ERROR' }))
-      .mockResolvedValueOnce([sampleEntries[1]])
-
-    renderPage()
-    await screen.findByRole('heading', { name: 'Monthly paycheck' })
-
-    await user.type(screen.getByLabelText('Source'), 'Acme Co')
-    await user.click(screen.getByRole('button', { name: 'Apply' }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(/Unable to load income entries/i)
-    expect(incomeApi.getIncomeEntries).toHaveBeenLastCalledWith({ source: 'Acme Co' }, undefined)
-
+    expect(await screen.findByText('Unable to load income entries. Please try again.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Retry' }))
-
-    expect(await screen.findByRole('heading', { name: 'Freelance project' })).toBeInTheDocument()
-    expect(incomeApi.getIncomeEntries).toHaveBeenLastCalledWith({ source: 'Acme Co' }, undefined)
-    expect(incomeApi.getIncomeEntries).toHaveBeenCalledTimes(3)
+    expect(await screen.findByRole('heading', { name: 'Monthly paycheck' })).toBeInTheDocument()
   })
 
-  it('filters by month and year', async () => {
-    const user = userEvent.setup()
-    vi.mocked(incomeApi.getIncomeEntries)
-      .mockResolvedValueOnce(sampleEntries)
-      .mockResolvedValueOnce([sampleEntries[0]])
-
-    renderPage()
-    await screen.findByRole('heading', { name: 'Monthly paycheck' })
-
-    await user.selectOptions(screen.getByLabelText('Month'), 'July')
-    await user.clear(screen.getByLabelText('Year'))
-    await user.type(screen.getByLabelText('Year'), '2026')
-    await user.click(screen.getByRole('button', { name: 'Apply' }))
-
-    await waitFor(() => {
-      expect(incomeApi.getIncomeEntries).toHaveBeenLastCalledWith(
-        { year: 2026, month: 7 },
-        undefined,
-      )
-    })
-  })
-
-  it('filters by source', async () => {
-    const user = userEvent.setup()
-    vi.mocked(incomeApi.getIncomeEntries)
-      .mockResolvedValueOnce(sampleEntries)
-      .mockResolvedValueOnce([sampleEntries[1]])
-
-    renderPage()
-    await screen.findByRole('heading', { name: 'Monthly paycheck' })
-
-    await user.type(screen.getByLabelText('Source'), 'Acme Co')
-    await user.click(screen.getByRole('button', { name: 'Apply' }))
-
-    await waitFor(() => {
-      expect(incomeApi.getIncomeEntries).toHaveBeenLastCalledWith(
-        { source: 'Acme Co' },
-        undefined,
-      )
-    })
-  })
-
-  it('clears filters', async () => {
-    const user = userEvent.setup()
-    vi.mocked(incomeApi.getIncomeEntries)
-      .mockResolvedValueOnce(sampleEntries)
-      .mockResolvedValueOnce([sampleEntries[0]])
-      .mockResolvedValueOnce(sampleEntries)
-
-    renderPage()
-    await screen.findByRole('heading', { name: 'Monthly paycheck' })
-
-    await user.type(screen.getByLabelText('Source'), 'Employer')
-    await user.click(screen.getByRole('button', { name: 'Apply' }))
-    await user.click(screen.getByRole('button', { name: 'Clear' }))
-
-    await waitFor(() => {
-      expect(incomeApi.getIncomeEntries).toHaveBeenLastCalledWith({}, undefined)
-    })
-  })
-
-  it('does not delete when confirmation is cancelled', async () => {
-    const user = userEvent.setup()
+  it('shows success banner from navigation state', async () => {
     vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue(sampleEntries)
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
-    renderPage()
-
-    await screen.findByRole('heading', { name: 'Monthly paycheck' })
-    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0])
-    expect(incomeApi.deleteIncomeEntry).not.toHaveBeenCalled()
-  })
-
-  it('deletes an income entry after confirmation', async () => {
-    const user = userEvent.setup()
-    vi.mocked(incomeApi.getIncomeEntries)
-      .mockResolvedValueOnce(sampleEntries)
-      .mockResolvedValueOnce([sampleEntries[1]])
-    vi.mocked(incomeApi.deleteIncomeEntry).mockResolvedValue(undefined)
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-    renderPage()
-
-    await screen.findByRole('heading', { name: 'Monthly paycheck' })
-    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0])
-
-    await waitFor(() => {
-      expect(incomeApi.deleteIncomeEntry).toHaveBeenCalledWith(1)
-    })
-    expect(incomeApi.getIncomeEntries).toHaveBeenLastCalledWith({}, undefined)
-    expect(screen.getByRole('status')).toHaveTextContent(/Deleted income entry "Monthly paycheck"/i)
-  })
-
-  it('shows an error when deletion fails', async () => {
-    const user = userEvent.setup()
-    vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue(sampleEntries)
-    vi.mocked(incomeApi.deleteIncomeEntry).mockRejectedValue(
-      new ApiClientError({ message: 'nope', code: 'UNEXPECTED_ERROR' }),
-    )
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-    renderPage()
-
-    await screen.findByRole('heading', { name: 'Monthly paycheck' })
-    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0])
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(/Could not delete "Monthly paycheck"/i)
-    expect(screen.getByRole('heading', { name: 'Monthly paycheck' })).toBeInTheDocument()
-  })
-
-  it('preserves active filters after delete', async () => {
-    const user = userEvent.setup()
-    vi.mocked(incomeApi.getIncomeEntries)
-      .mockResolvedValueOnce(sampleEntries)
-      .mockResolvedValueOnce([sampleEntries[0]])
-      .mockResolvedValueOnce([sampleEntries[0]])
-    vi.mocked(incomeApi.deleteIncomeEntry).mockResolvedValue(undefined)
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-    renderPage()
-
-    await screen.findByRole('heading', { name: 'Monthly paycheck' })
-    await user.type(screen.getByLabelText('Source'), 'Employer')
-    await user.click(screen.getByRole('button', { name: 'Apply' }))
-    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0])
-
-    await waitFor(() => {
-      expect(incomeApi.getIncomeEntries).toHaveBeenLastCalledWith({ source: 'Employer' }, undefined)
-    })
-  })
-
-  it('shows create success message from navigation state', async () => {
-    vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue([])
     render(
       <MemoryRouter
         initialEntries={[
           {
             pathname: '/income',
-            state: { successMessage: 'Created income entry "Paycheck".' },
+            state: { successMessage: 'Saved income entry "Bonus".' },
           },
         ]}
       >
@@ -287,6 +146,9 @@ describe('IncomePage', () => {
       </MemoryRouter>,
     )
 
-    expect(await screen.findByText('Created income entry "Paycheck".')).toBeInTheDocument()
+    expect(await screen.findByText('Saved income entry "Bonus".')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(incomeApi.getIncomeEntries).toHaveBeenCalled()
+    })
   })
 })

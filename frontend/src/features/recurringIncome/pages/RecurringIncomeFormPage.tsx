@@ -125,7 +125,7 @@ export function RecurringIncomeFormPage({ mode }: RecurringIncomeFormPageProps) 
     try {
       if (mode === 'create') {
         const created = await createRecurringIncome(toRecurringIncomeWriteRequest(values))
-        navigate('/recurring-income', {
+        navigate('/income?section=recurring', {
           state: { successMessage: `Created recurring income "${created.description}".` },
         })
         return
@@ -134,7 +134,7 @@ export function RecurringIncomeFormPage({ mode }: RecurringIncomeFormPageProps) 
         routeId as number,
         toRecurringIncomeWriteRequest(values),
       )
-      navigate('/recurring-income', {
+      navigate('/income?section=recurring', {
         state: { successMessage: `Updated recurring income "${updated.description}".` },
       })
     } catch (error) {
@@ -157,8 +157,8 @@ export function RecurringIncomeFormPage({ mode }: RecurringIncomeFormPageProps) 
             Define a schedule. Income entries are only created when you mark an item received.
           </p>
         </div>
-        <Link to="/recurring-income" className="button button-secondary">
-          Back to recurring income
+        <Link to="/income?section=recurring" className="button button-secondary">
+          Back to income
         </Link>
       </div>
 
@@ -171,8 +171,8 @@ export function RecurringIncomeFormPage({ mode }: RecurringIncomeFormPageProps) 
       {!loading && notFound ? (
         <div className="status-panel" role="alert">
           <p>Recurring income not found.</p>
-          <Link to="/recurring-income" className="button button-secondary">
-            Back to recurring income
+          <Link to="/income?section=recurring" className="button button-secondary">
+            Back to income
           </Link>
         </div>
       ) : null}
@@ -194,7 +194,7 @@ export function RecurringIncomeFormPage({ mode }: RecurringIncomeFormPageProps) 
           serverErrors={serverErrors}
           submitting={submitting}
           onSubmit={(values) => void handleSubmit(values)}
-          onCancel={() => navigate('/recurring-income')}
+          onCancel={() => navigate('/income?section=recurring')}
         />
       ) : null}
     </main>

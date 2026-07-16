@@ -1,3 +1,47 @@
+.income-section-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1.25rem;
+}
+
+.income-tab {
+  appearance: none;
+  border: 1px solid #c7d5cb;
+  background: rgba(255, 255, 255, 0.45);
+  color: #1d2a24;
+  font: inherit;
+  font-weight: 600;
+  padding: 0.55rem 0.95rem;
+  border-radius: 0.45rem;
+  cursor: pointer;
+}
+
+.income-tab.active,
+.income-tab[aria-selected='true'] {
+  background: #2f5d45;
+  border-color: #2f5d45;
+  color: #fff;
+}
+
+.income-tab:focus-visible {
+  outline: 3px solid #6f9b7c;
+  outline-offset: 2px;
+}
+
+.section-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.section-header-row h2 {
+  margin: 0;
+}
+
 .income-entry-options,
 .income-add-choices {
   display: grid;

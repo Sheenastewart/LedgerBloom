@@ -3,8 +3,7 @@ import '../income.css'
 import '../../categories/categories.css'
 
 /**
- * Lightweight choice screen so users pick one-time vs recurring income
- * without needing to understand the internal data model.
+ * First step when adding income: one-time receipt vs recurring schedule.
  */
 export function IncomeAddChoicePage() {
   return (
@@ -12,7 +11,7 @@ export function IncomeAddChoicePage() {
       <div className="page-header">
         <div>
           <h1>Add income</h1>
-          <p className="page-subtitle">What kind of income are you adding?</p>
+          <p className="page-subtitle">Is this recurring?</p>
         </div>
         <Link to="/income" className="button button-secondary">
           Back to income
@@ -21,13 +20,13 @@ export function IncomeAddChoicePage() {
 
       <ul className="income-add-choices">
         <li>
-          <Link to="/income/new" className="income-add-choice" aria-label="One-time income">
-            <h2>One-time income</h2>
+          <Link to="/income/new" className="income-add-choice" aria-label="One-time">
+            <h2>One-time</h2>
             <p>
               Record money you received once, such as a refund, bonus, or one-time
               payment.
             </p>
-            <span className="income-add-choice-cta">Add One-Time Income</span>
+            <span className="income-add-choice-cta">Continue</span>
           </Link>
         </li>
 
@@ -35,14 +34,14 @@ export function IncomeAddChoicePage() {
           <Link
             to="/recurring-income/new"
             className="income-add-choice"
-            aria-label="Recurring income"
+            aria-label="Recurring schedule"
           >
-            <h2>Recurring income</h2>
+            <h2>Recurring</h2>
             <p>
               Set up income received on a repeating schedule, such as weekly,
               biweekly, or monthly pay.
             </p>
-            <span className="income-add-choice-cta">Add Recurring Income</span>
+            <span className="income-add-choice-cta">Continue</span>
           </Link>
         </li>
       </ul>

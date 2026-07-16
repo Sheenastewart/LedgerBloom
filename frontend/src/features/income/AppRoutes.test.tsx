@@ -160,7 +160,7 @@ describe('Income routes', () => {
     expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
   })
 
-  it('renders Add income choice, then one-time and recurring forms', async () => {
+  it('renders Add income choice for one-time and recurring', async () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/income']}>
@@ -169,32 +169,31 @@ describe('Income routes', () => {
     )
 
     expect(await screen.findByRole('heading', { name: 'Income' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Add One-Time Income' })).toHaveAttribute(
-      'href',
-      '/income/new',
-    )
-    expect(screen.getByRole('link', { name: 'Add Recurring Income' })).toHaveAttribute(
-      'href',
-      '/recurring-income/new',
-    )
+    expect(screen.getByRole('tab', { name: 'Received' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Recurring schedules' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Recurring Income' })).not.toBeInTheDocument()
 
     await user.click(screen.getAllByRole('link', { name: 'Add income' })[0])
-    expect(await screen.findByText('What kind of income are you adding?')).toBeInTheDocument()
+    expect(await screen.findByText('Is this recurring?')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('link', { name: 'One-time income' }))
+    await user.click(screen.getByRole('link', { name: 'One-time' }))
     expect(await screen.findByRole('heading', { name: 'Add income' })).toBeInTheDocument()
   })
 
-  it('navigates from Income to the recurring income form', async () => {
+  it('navigates from Income add choice to the recurring income form', async () => {
     const user = userEvent.setup()
     render(
-      <MemoryRouter initialEntries={['/income']}>
+      <MemoryRouter initialEntries={['/income/add']}>
         <AppRoutes />
       </MemoryRouter>,
     )
 
-    expect(await screen.findByRole('heading', { name: 'Income' })).toBeInTheDocument()
-    await user.click(screen.getByRole('link', { name: 'Add Recurring Income' }))
+    expect(await screen.findByText('Is this recurring?')).toBeInTheDocument()
+    const recurringChoice = screen
+      .getAllByRole('link')
+      .find((link) => link.getAttribute('href') === '/recurring-income/new')
+    expect(recurringChoice).toBeTruthy()
+    await user.click(recurringChoice!)
     expect(
       await screen.findByRole('heading', { name: 'Add recurring income' }),
     ).toBeInTheDocument()

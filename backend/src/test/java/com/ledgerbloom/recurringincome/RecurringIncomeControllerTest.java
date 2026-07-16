@@ -103,6 +103,17 @@ class RecurringIncomeControllerTest {
 	}
 
 	@Test
+	void listWithoutFiltersReturnsOk() throws Exception {
+		when(recurringIncomeService.findAll(isNull(), isNull(), isNull())).thenReturn(List.of(sample()));
+
+		mockMvc.perform(get("/api/recurring-income"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$[0].description").value("Salary"));
+
+		verify(recurringIncomeService).findAll(isNull(), isNull(), isNull());
+	}
+
+	@Test
 	void listForwardsFilters() throws Exception {
 		when(recurringIncomeService.findAll(true, "MONTHLY", "Acme Corp")).thenReturn(List.of(sample()));
 

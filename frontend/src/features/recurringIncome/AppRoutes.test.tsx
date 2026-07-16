@@ -145,7 +145,7 @@ describe('Recurring income routes', () => {
     vi.mocked(recurringIncomeApi.getUpcomingRecurringIncome).mockResolvedValue([])
   })
 
-  it('navigates from Home to Recurring Income via nav and CTA', async () => {
+  it('routes Income as the only primary income nav entry and opens recurring schedules there', async () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/']}>
@@ -154,11 +154,10 @@ describe('Recurring income routes', () => {
     )
 
     expect(await screen.findByRole('heading', { name: 'LedgerBloom' })).toBeInTheDocument()
-    await user.click(screen.getByRole('link', { name: 'Recurring Income' }))
-    expect(await screen.findByRole('heading', { name: 'Recurring Income' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('link', { name: 'Home' }))
-    await user.click(screen.getByRole('link', { name: 'Manage recurring income' }))
-    expect(await screen.findByRole('heading', { name: 'Recurring Income' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Recurring Income' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Income' }))
+    expect(await screen.findByRole('heading', { name: 'Income' })).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'Recurring schedules' }))
+    expect(await screen.findByText(/Loading recurring income|No recurring income/)).toBeInTheDocument()
   })
 })

@@ -22,13 +22,14 @@ public interface RecurringIncomeRepository extends JpaRepository<RecurringIncome
 			WHERE r.user.id = :userId
 			AND (:active IS NULL OR r.active = :active)
 			AND (:cadence IS NULL OR r.cadence = :cadence)
-			AND (:source IS NULL OR LOWER(r.source) = LOWER(:source))
+			AND (:filterBySource = false OR LOWER(r.source) = :source)
 			ORDER BY r.active DESC, r.nextIncomeDate ASC, r.id ASC
 			""")
 	List<RecurringIncome> findFiltered(
 			@Param("userId") Long userId,
 			@Param("active") Boolean active,
 			@Param("cadence") RecurringIncomeCadence cadence,
+			@Param("filterBySource") boolean filterBySource,
 			@Param("source") String source);
 
 	@Query("""

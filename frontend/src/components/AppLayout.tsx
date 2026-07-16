@@ -54,12 +54,6 @@ export function AppLayout() {
                 Recurring
               </NavLink>
               <NavLink
-                to="/recurring-income"
-                className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
-              >
-                Recurring Income
-              </NavLink>
-              <NavLink
                 to="/income"
                 className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
               >
