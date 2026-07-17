@@ -26,7 +26,7 @@ import type {
   RecurringExpenseCatchUpResult,
   RecurringFilters as RecurringFilterValues,
 } from '../types'
-import { upcomingFetchDays, groupUpcomingPayments } from '../upcomingPaymentGroups'
+import { upcomingFetchDays, groupUpcomingPayments, endOfCalendarMonth } from '../upcomingPaymentGroups'
 import '../recurring.css'
 import '../../dashboard/dashboard.css'
 import '../../guidance/help.css'
@@ -81,38 +81,50 @@ export function RecurringExpensesPanel({
     [scheduleFilters.categoryId],
   )
 
-  const loadPage = useCallback(async (filters: RecurringFilterValues, signal?: AbortSignal) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const [recurringData, upcomingData] = await Promise.all([
-        getRecurringExpenses(filters, signal),
-        getUpcomingRecurringExpenses(upcomingFetchDays(todayIso()), signal),
-      ])
-      if (signal?.aborted) {
-        return
+  const loadPage = useCallback(
+    async (filters: RecurringFilterValues, upcomingDays: number, signal?: AbortSignal) => {
+      setLoading(true)
+      setError(null)
+      try {
+        const [recurringData, upcomingData] = await Promise.all([
+          getRecurringExpenses(filters, signal),
+          getUpcomingRecurringExpenses(upcomingDays, signal),
+        ])
+        if (signal?.aborted) {
+          return
+        }
+        setItems(recurringData)
+        setUpcoming(upcomingData)
+      } catch (err) {
+        if (isAbortError(err) || signal?.aborted) {
+          return
+        }
+        setError('Unable to load recurring expenses. Please try again.')
+        setItems([])
+        setUpcoming([])
+      } finally {
+        if (!signal?.aborted) {
+          setLoading(false)
+        }
       }
-      setItems(recurringData)
-      setUpcoming(upcomingData)
-    } catch (err) {
-      if (isAbortError(err) || signal?.aborted) {
-        return
-      }
-      setError('Unable to load recurring expenses. Please try again.')
-      setItems([])
-      setUpcoming([])
-    } finally {
-      if (!signal?.aborted) {
-        setLoading(false)
-      }
-    }
-  }, [])
+    },
+    [],
+  )
+
+  const upcomingDays = useMemo(
+    () => upcomingFetchDays(todayIso(), remainingFilters.year, remainingFilters.month),
+    [remainingFilters.year, remainingFilters.month],
+  )
 
   useEffect(() => {
     const controller = new AbortController()
-    void loadPage(apiScheduleFilters, controller.signal)
+    void loadPage(apiScheduleFilters, upcomingDays, controller.signal)
     return () => controller.abort()
-  }, [loadPage, apiScheduleFilters])
+  }, [loadPage, apiScheduleFilters, upcomingDays])
+
+  function reloadLedger() {
+    return loadPage(apiScheduleFilters, upcomingDays)
+  }
 
   async function handleMarkPaid(item: RecurringExpense) {
     const title = expenseDisplayTitle({
@@ -134,11 +146,11 @@ export function RecurringExpensesPanel({
       })
       setLocalSuccess(`Paid "${title}" and advanced the next payment date.`)
       onClearSuccessMessage?.()
-      await loadPage(apiScheduleFilters)
+      await reloadLedger()
     } catch (err) {
       if (err instanceof ApiClientError && err.code === 'RECURRING_EXPENSE_PAYMENT_CONFLICT') {
         setActionError(err.message)
-        await loadPage(apiScheduleFilters)
+        await reloadLedger()
       } else {
         setActionError(`Could not mark "${title}" as paid. Please try again.`)
       }
@@ -159,7 +171,7 @@ export function RecurringExpensesPanel({
       await deleteRecurringExpense(item.id)
       setLocalSuccess(`Deleted recurring expense "${title}".`)
       onClearSuccessMessage?.()
-      await loadPage(apiScheduleFilters)
+      await reloadLedger()
     } catch {
       setActionError(`Could not delete "${title}". Please try again.`)
     } finally {
@@ -195,17 +207,25 @@ export function RecurringExpensesPanel({
       `Recorded ${result.createdCount} past occurrence${result.createdCount === 1 ? '' : 's'} for "${title}".`,
     )
     onClearSuccessMessage?.()
-    void loadPage(apiScheduleFilters)
+    void reloadLedger()
   }
 
   const filteredUpcoming = useMemo(() => {
-    const filtered = filterUpcomingExpenses(upcoming, remainingFilters)
-    return expandUpcomingSchedules(
-      filtered,
-      todayIso(),
+    const today = todayIso()
+    const year = remainingFilters.year
+    const month = remainingFilters.month
+    const periodEnd =
+      year !== undefined && month !== undefined
+        ? endOfCalendarMonth(year, month)
+        : undefined
+    const expanded = expandUpcomingSchedules(
+      upcoming,
+      today,
       (item) => item.nextPaymentDate,
       (item, occurrenceDate) => ({ ...item, nextPaymentDate: occurrenceDate }),
+      periodEnd,
     )
+    return filterUpcomingExpenses(expanded, remainingFilters)
   }, [upcoming, remainingFilters])
 
   const hasScheduleFilters =
@@ -263,7 +283,7 @@ export function RecurringExpensesPanel({
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => void loadPage(apiScheduleFilters)}
+            onClick={() => void reloadLedger()}
           >
             Retry
           </button>

@@ -1,5 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import { MONTH_OPTIONS } from '../../dashboard/components/DashboardPeriodForm'
+import {
+  FILTER_YEAR_MAX,
+  FILTER_YEAR_MIN,
+  MONTH_OPTIONS,
+  YEAR_OPTIONS,
+} from '../../../utils/periodFilterOptions'
 import { monthIndex, rangeMonthCount } from '../reportsFormat'
 import type { MonthRange, MonthRangeDraft } from '../types'
 
@@ -39,11 +44,17 @@ function validateDraft(draft: MonthRangeDraft): { errors: MonthRangeErrors; rang
   const endYear = Number(endYearRaw)
   const endMonth = Number(endMonthRaw)
 
-  if (!Number.isInteger(startYear) || startYear < 1 || startYear > 9999) {
-    return { errors: { form: 'Enter a valid start year between 1 and 9999.' }, range: null }
+  if (!Number.isInteger(startYear) || startYear < FILTER_YEAR_MIN || startYear > FILTER_YEAR_MAX) {
+    return {
+      errors: { form: `Select a start year between ${FILTER_YEAR_MIN} and ${FILTER_YEAR_MAX}.` },
+      range: null,
+    }
   }
-  if (!Number.isInteger(endYear) || endYear < 1 || endYear > 9999) {
-    return { errors: { form: 'Enter a valid end year between 1 and 9999.' }, range: null }
+  if (!Number.isInteger(endYear) || endYear < FILTER_YEAR_MIN || endYear > FILTER_YEAR_MAX) {
+    return {
+      errors: { form: `Select an end year between ${FILTER_YEAR_MIN} and ${FILTER_YEAR_MAX}.` },
+      range: null,
+    }
   }
   if (!Number.isInteger(startMonth) || startMonth < 1 || startMonth > 12) {
     return { errors: { form: 'Select a valid start month.' }, range: null }
@@ -117,17 +128,20 @@ export function MonthRangeForm({ appliedRange, defaultRange, onApply }: MonthRan
           </div>
           <div className="field">
             <label htmlFor="range-start-year">Start year</label>
-            <input
+            <select
               id="range-start-year"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={9999}
               value={draft.startYear}
               onChange={(event) =>
                 setDraft((current) => ({ ...current, startYear: event.target.value }))
               }
-            />
+            >
+              <option value="">Select year</option>
+              {YEAR_OPTIONS.map((year) => (
+                <option key={year} value={String(year)}>
+                  {year}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="field">
             <label htmlFor="range-end-month">End month</label>
@@ -148,17 +162,20 @@ export function MonthRangeForm({ appliedRange, defaultRange, onApply }: MonthRan
           </div>
           <div className="field">
             <label htmlFor="range-end-year">End year</label>
-            <input
+            <select
               id="range-end-year"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={9999}
               value={draft.endYear}
               onChange={(event) =>
                 setDraft((current) => ({ ...current, endYear: event.target.value }))
               }
-            />
+            >
+              <option value="">Select year</option>
+              {YEAR_OPTIONS.map((year) => (
+                <option key={year} value={String(year)}>
+                  {year}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
         <div className="month-range-actions">

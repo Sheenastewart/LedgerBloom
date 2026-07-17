@@ -87,15 +87,38 @@ function buildPeriodBounds(todayIso: string, labels: UpcomingPeriodLabels): Peri
   ]
 }
 
-/** Days from today through the end of next calendar month. */
-export function upcomingFetchDays(todayIso: string): number {
+/** ISO date for the last day of a calendar month (month is 1–12). */
+export function endOfCalendarMonth(year: number, month: number): string {
+  return endOfMonth(year, month)
+}
+
+function daysFromTodayThrough(todayIso: string, endInclusive: string): number {
+  const start = new Date(`${todayIso}T00:00:00`)
+  const end = new Date(`${endInclusive}T00:00:00`)
+  const diff = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+  return Math.max(diff, 0)
+}
+
+/**
+ * Days from today through the end of next calendar month.
+ * When a target month/year is provided, extends the window through that month if later.
+ */
+export function upcomingFetchDays(
+  todayIso: string,
+  throughYear?: number,
+  throughMonth?: number,
+): number {
   const { year, month } = parseIso(todayIso)
   const next = addMonths(year, month, 1)
   const nextMonthEnd = endOfMonth(next.year, next.month)
-  const start = new Date(`${todayIso}T00:00:00`)
-  const end = new Date(`${nextMonthEnd}T00:00:00`)
-  const diff = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-  return Math.max(diff, 28)
+  let days = Math.max(daysFromTodayThrough(todayIso, nextMonthEnd), 28)
+
+  if (throughYear !== undefined && throughMonth !== undefined) {
+    const targetEnd = endOfMonth(throughYear, throughMonth)
+    days = Math.max(days, daysFromTodayThrough(todayIso, targetEnd), 28)
+  }
+
+  return days
 }
 
 export function groupUpcomingByNextDate<T extends { id: number; amount: number }>(

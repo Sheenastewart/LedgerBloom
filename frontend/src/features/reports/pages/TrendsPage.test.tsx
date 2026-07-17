@@ -143,8 +143,7 @@ describe('TrendsPage', () => {
     renderPage()
     await screen.findByText('$4,300.00')
 
-    await user.clear(screen.getByLabelText('Start year'))
-    await user.type(screen.getByLabelText('Start year'), '2025')
+    await user.selectOptions(screen.getByLabelText('Start year'), '2025')
     await user.selectOptions(screen.getByLabelText('Start month'), '1')
     await user.click(screen.getByRole('button', { name: 'Apply' }))
 
@@ -162,8 +161,7 @@ describe('TrendsPage', () => {
     await screen.findByText('$4,300.00')
 
     await user.selectOptions(screen.getByLabelText('Start month'), '12')
-    await user.clear(screen.getByLabelText('Start year'))
-    await user.type(screen.getByLabelText('Start year'), '2030')
+    await user.selectOptions(screen.getByLabelText('Start year'), '2030')
     await user.click(screen.getByRole('button', { name: 'Apply' }))
 
     expect(await screen.findByText('Start period must not be after the end period.')).toBeInTheDocument()

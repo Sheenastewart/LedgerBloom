@@ -209,6 +209,8 @@ describe('ExpensesPage', () => {
     renderPage()
     await screen.findByRole('heading', { name: 'Market' })
 
+    await user.selectOptions(expenseFilters().getByLabelText('Month'), 'Any month')
+    await user.selectOptions(expenseFilters().getByLabelText('Year'), 'Any year')
     await user.selectOptions(expenseFilters().getByLabelText('Category'), '1')
     await user.click(expenseFilters().getByRole('button', { name: 'Apply' }))
 
@@ -234,8 +236,7 @@ describe('ExpensesPage', () => {
     await screen.findByRole('heading', { name: 'Market' })
 
     await user.selectOptions(expenseFilters().getByLabelText('Month'), 'July')
-    await user.clear(expenseFilters().getByLabelText('Year'))
-    await user.type(expenseFilters().getByLabelText('Year'), '2026')
+    await user.selectOptions(expenseFilters().getByLabelText('Year'), '2026')
     await user.click(expenseFilters().getByRole('button', { name: 'Apply' }))
 
     await waitFor(() => {
@@ -252,6 +253,8 @@ describe('ExpensesPage', () => {
     renderPage()
     await screen.findByRole('heading', { name: 'Market' })
 
+    await user.selectOptions(expenseFilters().getByLabelText('Month'), 'Any month')
+    await user.selectOptions(expenseFilters().getByLabelText('Year'), 'Any year')
     await user.selectOptions(expenseFilters().getByLabelText('Category'), '2')
     await user.click(expenseFilters().getByRole('button', { name: 'Apply' }))
 
@@ -270,8 +273,7 @@ describe('ExpensesPage', () => {
     await screen.findByRole('heading', { name: 'Market' })
 
     await user.selectOptions(expenseFilters().getByLabelText('Month'), 'July')
-    await user.clear(expenseFilters().getByLabelText('Year'))
-    await user.type(expenseFilters().getByLabelText('Year'), '2026')
+    await user.selectOptions(expenseFilters().getByLabelText('Year'), '2026')
     await user.selectOptions(expenseFilters().getByLabelText('Category'), '1')
     await user.click(expenseFilters().getByRole('button', { name: 'Apply' }))
 
@@ -366,6 +368,8 @@ describe('ExpensesPage', () => {
     renderPage()
 
     await screen.findByRole('heading', { name: 'Market' })
+    await user.selectOptions(expenseFilters().getByLabelText('Month'), 'Any month')
+    await user.selectOptions(expenseFilters().getByLabelText('Year'), 'Any year')
     await user.selectOptions(expenseFilters().getByLabelText('Category'), '1')
     await user.click(expenseFilters().getByRole('button', { name: 'Apply' }))
     await user.click(screen.getByRole('button', { name: 'Actions for Market' }))

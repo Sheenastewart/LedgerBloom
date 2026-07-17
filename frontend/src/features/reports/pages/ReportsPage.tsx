@@ -4,6 +4,7 @@ import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
 import { HowThisWorks } from '../../../components/HowThisWorks'
 import { InfoTooltip } from '../../../components/InfoTooltip'
 import { HelpLink } from '../../guidance/HelpLink'
+import { FILTER_YEAR_MAX, FILTER_YEAR_MIN, MONTH_OPTIONS, YEAR_OPTIONS } from '../../../utils/periodFilterOptions'
 import { downloadMonthlySummaryCsv, downloadMonthlyTransactionsCsv, saveCsvDownload } from '../api/exportsApi'
 import { currentPeriod } from '../reportsFormat'
 import '../reports.css'
@@ -22,8 +23,8 @@ export function ReportsPage() {
   function parsePeriod(): { year: number; month: number } | null {
     const yearValue = Number(year)
     const monthValue = Number(month)
-    if (!Number.isInteger(yearValue) || yearValue < 1 || yearValue > 9999) {
-      setError('Enter a valid year between 1 and 9999.')
+    if (!Number.isInteger(yearValue) || yearValue < FILTER_YEAR_MIN || yearValue > FILTER_YEAR_MAX) {
+      setError(`Select a year between ${FILTER_YEAR_MIN} and ${FILTER_YEAR_MAX}.`)
       return null
     }
     if (!Number.isInteger(monthValue) || monthValue < 1 || monthValue > 12) {
@@ -130,24 +131,22 @@ export function ReportsPage() {
           <div className="field">
             <label htmlFor="export-month">Month</label>
             <select id="export-month" value={month} onChange={(event) => setMonth(event.target.value)}>
-              {Array.from({ length: 12 }, (_, index) => index + 1).map((value) => (
-                <option key={value} value={value}>
-                  {value}
+              {MONTH_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>
           </div>
           <div className="field">
             <label htmlFor="export-year">Year</label>
-            <input
-              id="export-year"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={9999}
-              value={year}
-              onChange={(event) => setYear(event.target.value)}
-            />
+            <select id="export-year" value={year} onChange={(event) => setYear(event.target.value)}>
+              {YEAR_OPTIONS.map((option) => (
+                <option key={option} value={String(option)}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="exports-panel-actions">
             <button

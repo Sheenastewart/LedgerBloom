@@ -3,15 +3,92 @@ import { PeriodDetails } from '../../../components/PeriodDetails'
 import { daysUntil, expectedIncomeStatus } from '../../../utils/dueDateUtils'
 import { incomeDisplayParts, incomeSourceLabel } from '../../../utils/incomeDisplay'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
+import { MONTH_OPTIONS } from '../../../utils/periodFilterOptions'
 import { groupUpcomingByNextDate } from '../../recurring/upcomingPaymentGroups'
 import { cadenceLabel, type RecurringIncome } from '../types'
+
+type FocusPeriod = {
+  year: number
+  month: number
+}
 
 type UpcomingIncomeProps = {
   items: RecurringIncome[]
   todayIso: string
+  /** When set, show that calendar month as the expected period (not this/next relative to today). */
+  focusPeriod?: FocusPeriod
 }
 
-export function UpcomingIncome({ items, todayIso }: UpcomingIncomeProps) {
+function formatFocusLabel(period: FocusPeriod): string {
+  const monthName =
+    MONTH_OPTIONS.find((option) => option.value === String(period.month))?.label ??
+    String(period.month)
+  return `${monthName} ${period.year}`
+}
+
+function UpcomingIncomeRow({ item, todayIso }: { item: RecurringIncome; todayIso: string }) {
+  const status = expectedIncomeStatus(daysUntil(item.nextIncomeDate, todayIso))
+  const display = incomeDisplayParts({
+    description: item.description,
+    source: item.source,
+  })
+  const fromLabel = incomeSourceLabel(display.source)
+  return (
+    <li className="upcoming-item">
+      <p className="recurring-item-header">
+        <strong>{display.title}</strong>
+        <span>{formatCurrency(item.amount)}</span>
+      </p>
+      <p className="recurring-meta">
+        {formatIsoDate(item.nextIncomeDate)}
+        {fromLabel ? ` · ${fromLabel}` : null} · {cadenceLabel(item.cadence)}
+      </p>
+      <p className={`recurring-status ${status.className}`}>{status.label}</p>
+    </li>
+  )
+}
+
+export function UpcomingIncome({ items, todayIso, focusPeriod }: UpcomingIncomeProps) {
+  if (focusPeriod) {
+    const rangeLabel = formatFocusLabel(focusPeriod)
+    const totalAmount = items.reduce((sum, item) => sum + item.amount, 0)
+    return (
+      <section className="recurring-section" aria-label="Expected income by month">
+        {items.length === 0 ? (
+          <p className="dashboard-empty" role="status">
+            No expected income for {rangeLabel}.
+          </p>
+        ) : (
+          <div className="upcoming-periods">
+            <PeriodDetails className="upcoming-period" defaultOpen>
+              <summary className="upcoming-period__summary">
+                <span className="upcoming-period__title">
+                  <span className="upcoming-period__label">Expected for {rangeLabel}</span>
+                  <span className="upcoming-period__range">{rangeLabel}</span>
+                </span>
+                <span className="upcoming-period__stats">
+                  <span className="upcoming-period__count">
+                    {items.length} {items.length === 1 ? 'paycheck' : 'paychecks'}
+                  </span>
+                  <span className="upcoming-period__total">{formatCurrency(totalAmount)}</span>
+                </span>
+              </summary>
+              <ul className="upcoming-list">
+                {items.map((item) => (
+                  <UpcomingIncomeRow
+                    key={`${item.id}-${item.nextIncomeDate}`}
+                    item={item}
+                    todayIso={todayIso}
+                  />
+                ))}
+              </ul>
+            </PeriodDetails>
+          </div>
+        )}
+      </section>
+    )
+  }
+
   const groups = groupUpcomingByNextDate(items, todayIso, (item) => item.nextIncomeDate, {
     thisMonth: "This month's expected",
     nextMonth: "Next month's expected",
@@ -72,27 +149,13 @@ export function UpcomingIncome({ items, todayIso }: UpcomingIncomeProps) {
                   </p>
                 ) : null}
                 <ul className="upcoming-list">
-                  {group.items.map((item) => {
-                    const status = expectedIncomeStatus(daysUntil(item.nextIncomeDate, todayIso))
-                    const display = incomeDisplayParts({
-                      description: item.description,
-                      source: item.source,
-                    })
-                    const fromLabel = incomeSourceLabel(display.source)
-                    return (
-                      <li key={`${item.id}-${item.nextIncomeDate}`} className="upcoming-item">
-                        <p className="recurring-item-header">
-                          <strong>{display.title}</strong>
-                          <span>{formatCurrency(item.amount)}</span>
-                        </p>
-                        <p className="recurring-meta">
-                          {formatIsoDate(item.nextIncomeDate)}
-                          {fromLabel ? ` · ${fromLabel}` : null} · {cadenceLabel(item.cadence)}
-                        </p>
-                        <p className={`recurring-status ${status.className}`}>{status.label}</p>
-                      </li>
-                    )
-                  })}
+                  {group.items.map((item) => (
+                    <UpcomingIncomeRow
+                      key={`${item.id}-${item.nextIncomeDate}`}
+                      item={item}
+                      todayIso={todayIso}
+                    />
+                  ))}
                 </ul>
               </PeriodDetails>
             )

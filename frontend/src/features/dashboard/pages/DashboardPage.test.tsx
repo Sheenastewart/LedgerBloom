@@ -215,8 +215,7 @@ describe('DashboardPage', () => {
     await screen.findByRole('heading', { name: /Sheena/ })
 
     await user.selectOptions(screen.getByLabelText('Month'), '8')
-    await user.clear(screen.getByLabelText('Year'))
-    await user.type(screen.getByLabelText('Year'), '2025')
+    await user.selectOptions(screen.getByLabelText('Year'), '2025')
     await user.click(screen.getByRole('button', { name: 'Update report' }))
 
     await waitFor(() => {

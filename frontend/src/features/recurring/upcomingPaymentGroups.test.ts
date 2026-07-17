@@ -70,4 +70,9 @@ describe('upcomingFetchDays', () => {
     // Nov 1 → Dec 31 = 60 days
     expect(upcomingFetchDays('2026-11-01')).toBe(60)
   })
+
+  it('extends through a later target month when filtering ahead', () => {
+    // Jul 15 → Sep 30 = 77 days
+    expect(upcomingFetchDays('2026-07-15', 2026, 9)).toBe(77)
+  })
 })

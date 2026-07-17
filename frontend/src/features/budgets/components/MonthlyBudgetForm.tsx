@@ -4,27 +4,18 @@ import {
   normalizeAmountInput,
   validateAmount,
 } from '../../../utils/moneyUtils'
+import {
+  FILTER_YEAR_MAX,
+  FILTER_YEAR_MIN,
+  MONTH_OPTIONS,
+  YEAR_OPTIONS,
+} from '../../../utils/periodFilterOptions'
 import type {
   MonthlyBudgetFormErrors,
   MonthlyBudgetFormValues,
   MonthlyBudgetUpdateRequest,
   MonthlyBudgetWriteRequest,
 } from '../types'
-
-const MONTH_OPTIONS = [
-  { value: '1', label: 'January' },
-  { value: '2', label: 'February' },
-  { value: '3', label: 'March' },
-  { value: '4', label: 'April' },
-  { value: '5', label: 'May' },
-  { value: '6', label: 'June' },
-  { value: '7', label: 'July' },
-  { value: '8', label: 'August' },
-  { value: '9', label: 'September' },
-  { value: '10', label: 'October' },
-  { value: '11', label: 'November' },
-  { value: '12', label: 'December' },
-] as const
 
 type MonthlyBudgetFormProps = {
   mode: 'create' | 'edit'
@@ -53,8 +44,8 @@ function validateValues(values: MonthlyBudgetFormValues, mode: 'create' | 'edit'
       errors.year = 'Year is required.'
     } else {
       const year = Number(yearRaw)
-      if (!Number.isInteger(year) || year < 1 || year > 9999) {
-        errors.year = 'Enter a valid year between 1 and 9999.'
+      if (!Number.isInteger(year) || year < FILTER_YEAR_MIN || year > FILTER_YEAR_MAX) {
+        errors.year = `Select a year between ${FILTER_YEAR_MIN} and ${FILTER_YEAR_MAX}.`
       }
     }
   }
@@ -140,18 +131,21 @@ export function MonthlyBudgetForm({
 
           <div className="field">
             <label htmlFor="budget-year">Year</label>
-            <input
+            <select
               id="budget-year"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={9999}
               value={values.year}
               disabled={submitting}
               aria-invalid={merged.year ? true : undefined}
               aria-describedby={merged.year ? 'budget-year-error' : undefined}
               onChange={(event) => setValues((current) => ({ ...current, year: event.target.value }))}
-            />
+            >
+              <option value="">Select year</option>
+              {YEAR_OPTIONS.map((year) => (
+                <option key={year} value={String(year)}>
+                  {year}
+                </option>
+              ))}
+            </select>
             {merged.year ? (
               <p id="budget-year-error" className="field-error" role="alert">
                 {merged.year}

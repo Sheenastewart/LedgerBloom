@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
+import { FILTER_YEAR_MAX, FILTER_YEAR_MIN, YEAR_OPTIONS } from '../../../utils/periodFilterOptions'
 import { getYearToDate } from '../api/reportsApi'
 import { YtdSummary } from '../components/YtdSummary'
 import { currentPeriod } from '../reportsFormat'
@@ -48,8 +49,8 @@ export function YtdPage() {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const parsed = Number(yearInput.trim())
-    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 9999) {
-      setError('Enter a valid year between 1 and 9999.')
+    if (!Number.isInteger(parsed) || parsed < FILTER_YEAR_MIN || parsed > FILTER_YEAR_MAX) {
+      setError(`Select a year between ${FILTER_YEAR_MIN} and ${FILTER_YEAR_MAX}.`)
       return
     }
     if (parsed === year) {
@@ -76,15 +77,17 @@ export function YtdPage() {
           <legend>Report year</legend>
           <div className="field">
             <label htmlFor="ytd-year">Year</label>
-            <input
+            <select
               id="ytd-year"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={9999}
               value={yearInput}
               onChange={(event) => setYearInput(event.target.value)}
-            />
+            >
+              {YEAR_OPTIONS.map((year) => (
+                <option key={year} value={String(year)}>
+                  {year}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="month-range-actions">
             <button type="submit" className="button button-primary">

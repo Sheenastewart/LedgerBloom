@@ -3,22 +3,14 @@ import {
   isLedgerFilterActive,
   type LedgerFilterScope,
 } from '../../../utils/ledgerPageFilter'
+import {
+  currentPeriodValues,
+  FILTER_YEAR_MAX,
+  FILTER_YEAR_MIN,
+  MONTH_OPTIONS,
+  YEAR_OPTIONS,
+} from '../../../utils/periodFilterOptions'
 import type { IncomeFilterDraft, IncomeFilters } from '../types'
-
-const MONTH_OPTIONS = [
-  { value: '1', label: 'January' },
-  { value: '2', label: 'February' },
-  { value: '3', label: 'March' },
-  { value: '4', label: 'April' },
-  { value: '5', label: 'May' },
-  { value: '6', label: 'June' },
-  { value: '7', label: 'July' },
-  { value: '8', label: 'August' },
-  { value: '9', label: 'September' },
-  { value: '10', label: 'October' },
-  { value: '11', label: 'November' },
-  { value: '12', label: 'December' },
-] as const
 
 export type IncomePageFilters = IncomeFilters & {
   scope: LedgerFilterScope
@@ -41,10 +33,11 @@ type IncomePageFilterDraft = IncomeFilterDraft & {
 }
 
 function filtersToDraft(appliedFilters: IncomePageFilters): IncomePageFilterDraft {
+  const current = currentPeriodValues()
   return {
     scope: appliedFilters.scope ?? 'all',
-    month: appliedFilters.month !== undefined ? String(appliedFilters.month) : '',
-    year: appliedFilters.year !== undefined ? String(appliedFilters.year) : '',
+    month: appliedFilters.month !== undefined ? String(appliedFilters.month) : current.month,
+    year: appliedFilters.year !== undefined ? String(appliedFilters.year) : current.year,
     source: appliedFilters.source !== undefined ? appliedFilters.source : '',
   }
 }
@@ -72,8 +65,8 @@ function validateDraft(draft: IncomePageFilterDraft): {
       errors.month = 'Month must be between 1 and 12.'
     }
 
-    if (!Number.isInteger(year) || year < 1 || year > 9999) {
-      errors.year = 'Enter a valid year between 1 and 9999.'
+    if (!Number.isInteger(year) || year < FILTER_YEAR_MIN || year > FILTER_YEAR_MAX) {
+      errors.year = `Select a year between ${FILTER_YEAR_MIN} and ${FILTER_YEAR_MAX}.`
     }
   }
 
@@ -115,7 +108,8 @@ export function IncomeFilters({ appliedFilters, onApply, onClear }: IncomeFilter
   }
 
   function handleClear() {
-    setDraft({ scope: 'all', month: '', year: '', source: '' })
+    const current = currentPeriodValues()
+    setDraft({ scope: 'all', month: current.month, year: current.year, source: '' })
     setErrors({})
     onClear()
   }
@@ -180,17 +174,20 @@ export function IncomeFilters({ appliedFilters, onApply, onClear }: IncomeFilter
 
           <div className="field">
             <label htmlFor="income-filter-year">Year</label>
-            <input
+            <select
               id="income-filter-year"
-              type="number"
-              min={1}
-              max={9999}
               value={draft.year}
               onChange={(event) => setDraft((current) => ({ ...current, year: event.target.value }))}
               aria-invalid={yearError ? true : undefined}
               aria-describedby={yearError ? 'income-filter-year-error' : undefined}
-              placeholder="Any year"
-            />
+            >
+              <option value="">Any year</option>
+              {YEAR_OPTIONS.map((year) => (
+                <option key={year} value={String(year)}>
+                  {year}
+                </option>
+              ))}
+            </select>
             {yearError ? (
               <p id="income-filter-year-error" className="field-error" role="alert">
                 {yearError}

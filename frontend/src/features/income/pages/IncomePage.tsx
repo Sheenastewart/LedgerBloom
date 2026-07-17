@@ -8,7 +8,12 @@ import { todayIso } from '../../../utils/dueDateUtils'
 import { expandUpcomingSchedules } from '../../../utils/expandRecurringOccurrences'
 import { scopeIncludes } from '../../../utils/ledgerPageFilter'
 import { formatCurrency } from '../../../utils/moneyUtils'
-import { groupUpcomingByNextDate, upcomingFetchDays } from '../../recurring/upcomingPaymentGroups'
+import { MONTH_OPTIONS } from '../../../utils/periodFilterOptions'
+import {
+  endOfCalendarMonth,
+  groupUpcomingByNextDate,
+  upcomingFetchDays,
+} from '../../recurring/upcomingPaymentGroups'
 import {
   getUpcomingRecurringIncome,
 } from '../../recurringIncome/api/recurringIncomeApi'
@@ -63,6 +68,10 @@ function toSectionFilters(
     next.source = page.source
   }
   return next
+}
+
+function fetchDaysForFilters(filters: IncomePageFilters): number {
+  return upcomingFetchDays(todayIso(), filters.year, filters.month)
 }
 
 export function IncomePage() {
@@ -123,11 +132,11 @@ export function IncomePage() {
     }
   }, [])
 
-  const loadUpcoming = useCallback(async (signal?: AbortSignal) => {
+  const loadUpcoming = useCallback(async (days: number, signal?: AbortSignal) => {
     setUpcomingLoading(true)
     setUpcomingError(null)
     try {
-      const data = await getUpcomingRecurringIncome(upcomingFetchDays(todayIso()), signal)
+      const data = await getUpcomingRecurringIncome(days, signal)
       if (signal?.aborted) {
         return
       }
@@ -146,26 +155,31 @@ export function IncomePage() {
   }, [])
 
   const loadLedger = useCallback(
-    async (filters: IncomeFilterValues, signal?: AbortSignal) => {
-      await Promise.all([loadReceived(filters, signal), loadUpcoming(signal)])
+    async (pageFilters: IncomePageFilters, signal?: AbortSignal) => {
+      await Promise.all([
+        loadReceived(toRecordedFilters(pageFilters), signal),
+        loadUpcoming(fetchDaysForFilters(pageFilters), signal),
+      ])
     },
     [loadReceived, loadUpcoming],
   )
 
   useEffect(() => {
     const controller = new AbortController()
-    void loadLedger({}, controller.signal)
+    void loadLedger(EMPTY_PAGE_FILTERS, controller.signal)
     return () => controller.abort()
   }, [loadLedger])
 
   function handleApplyFilters(filters: IncomePageFilters) {
     setAppliedFilters(filters)
     void loadReceived(toRecordedFilters(filters))
+    void loadUpcoming(fetchDaysForFilters(filters))
   }
 
   function handleClearFilters() {
     setAppliedFilters(EMPTY_PAGE_FILTERS)
     void loadReceived({})
+    void loadUpcoming(fetchDaysForFilters(EMPTY_PAGE_FILTERS))
   }
 
   async function handleUndoReceived(entry: IncomeEntry) {
@@ -180,7 +194,7 @@ export function IncomePage() {
     setUndoingIncomeId(entry.id)
     try {
       await undoReceivedIncomeEntry(entry.id)
-      await loadLedger(recordedFilters)
+      await loadLedger(appliedFilters)
       setSuccessMessage(`Undid receiving "${entry.description}".`)
     } catch {
       setDeleteError(`Could not undo "${entry.description}". Please try again.`)
@@ -208,14 +222,27 @@ export function IncomePage() {
     recordedFilters.month !== undefined ||
     recordedFilters.source !== undefined
 
+  const focusPeriod =
+    expectedFilters.year !== undefined && expectedFilters.month !== undefined
+      ? { year: expectedFilters.year, month: expectedFilters.month }
+      : undefined
+
   const filteredUpcoming = useMemo(() => {
-    const filtered = filterUpcomingIncome(upcoming, expectedFilters)
-    return expandUpcomingSchedules(
-      filtered,
-      todayIso(),
+    const today = todayIso()
+    const year = expectedFilters.year
+    const month = expectedFilters.month
+    const periodEnd =
+      year !== undefined && month !== undefined
+        ? endOfCalendarMonth(year, month)
+        : undefined
+    const expanded = expandUpcomingSchedules(
+      upcoming,
+      today,
       (item) => item.nextIncomeDate,
       (item, occurrenceDate) => ({ ...item, nextIncomeDate: occurrenceDate }),
+      periodEnd,
     )
+    return filterUpcomingIncome(expanded, expectedFilters)
   }, [upcoming, expectedFilters])
 
   const recurringSuccess =
@@ -236,8 +263,18 @@ export function IncomePage() {
     [filteredUpcoming],
   )
   const thisMonthExpected = expectedGroups.find((group) => group.id === 'thisMonth')
-  const expectedCount = thisMonthExpected?.items.length ?? 0
-  const expectedTotal = thisMonthExpected?.totalAmount ?? 0
+  const expectedCount = focusPeriod
+    ? filteredUpcoming.length
+    : (thisMonthExpected?.items.length ?? 0)
+  const expectedTotal = focusPeriod
+    ? filteredUpcoming.reduce((sum, item) => sum + item.amount, 0)
+    : (thisMonthExpected?.totalAmount ?? 0)
+  const expectedRangeHint = focusPeriod
+    ? `Expected pay for ${
+        MONTH_OPTIONS.find((option) => option.value === String(focusPeriod.month))?.label ??
+        focusPeriod.month
+      } ${focusPeriod.year}`
+    : "This month's expected pay — next month is a preview only"
 
   return (
     <main className="content-page">
@@ -354,9 +391,7 @@ export function IncomePage() {
           <summary className="upcoming-period__summary">
             <span className="upcoming-period__title">
               <span className="upcoming-period__label">Expected income</span>
-              <span className="upcoming-period__range">
-                This month&apos;s expected pay — next month is a preview only
-              </span>
+              <span className="upcoming-period__range">{expectedRangeHint}</span>
             </span>
             <span className="upcoming-period__stats">
               <span className="upcoming-period__count">
@@ -393,7 +428,7 @@ export function IncomePage() {
                 <button
                   type="button"
                   className="button button-secondary"
-                  onClick={() => void loadUpcoming()}
+                  onClick={() => void loadUpcoming(fetchDaysForFilters(appliedFilters))}
                 >
                   Retry
                 </button>
@@ -401,7 +436,11 @@ export function IncomePage() {
             ) : null}
 
             {!upcomingLoading && !upcomingError ? (
-              <UpcomingIncome items={filteredUpcoming} todayIso={todayIso()} />
+              <UpcomingIncome
+                items={filteredUpcoming}
+                todayIso={todayIso()}
+                focusPeriod={focusPeriod}
+              />
             ) : null}
           </div>
         </details>
@@ -411,7 +450,7 @@ export function IncomePage() {
         <RecurringIncomePanel
           successMessage={recurringSuccess}
           onClearSuccessMessage={() => setSuccessMessage(null)}
-          onLedgerChanged={() => void loadLedger(recordedFilters)}
+          onLedgerChanged={() => void loadLedger(appliedFilters)}
           scheduleFilters={scheduleFilters}
         />
       </section>

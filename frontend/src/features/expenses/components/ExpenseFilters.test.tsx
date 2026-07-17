@@ -79,7 +79,7 @@ describe('ExpenseFilters', () => {
     )
 
     await user.selectOptions(screen.getByLabelText('Month'), 'July')
-    await user.type(screen.getByLabelText('Year'), '2026')
+    await user.selectOptions(screen.getByLabelText('Year'), '2026')
     await user.click(screen.getByRole('button', { name: 'Apply' }))
 
     expect(onApply).toHaveBeenCalledWith({ scope: 'all', year: 2026, month: 7 })
@@ -101,13 +101,34 @@ describe('ExpenseFilters', () => {
     const monthSelect = screen.getByLabelText('Month')
     expect(screen.getByRole('option', { name: 'January' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'December' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: '1992' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: '2035' })).toBeInTheDocument()
 
     await user.selectOptions(monthSelect, 'March')
-    await user.type(screen.getByLabelText('Year'), '2026')
+    await user.selectOptions(screen.getByLabelText('Year'), '2026')
     await user.click(screen.getByRole('button', { name: 'Apply' }))
 
     expect(onApply).toHaveBeenCalledWith({ scope: 'all', year: 2026, month: 3 })
     expect((monthSelect as HTMLSelectElement).value).toBe('3')
+  })
+
+  it('defaults month and year to the current period', () => {
+    const now = new Date()
+    render(
+      <ExpenseFilters
+        categories={[]}
+        appliedFilters={{ scope: 'all' }}
+        onApply={vi.fn()}
+        onClear={vi.fn()}
+      />,
+    )
+
+    expect((screen.getByLabelText('Month') as HTMLSelectElement).value).toBe(
+      String(now.getMonth() + 1),
+    )
+    expect((screen.getByLabelText('Year') as HTMLSelectElement).value).toBe(
+      String(now.getFullYear()),
+    )
   })
 
   it('clears filters', async () => {
