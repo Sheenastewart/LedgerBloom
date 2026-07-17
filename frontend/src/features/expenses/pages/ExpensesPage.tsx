@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { isAbortError } from '../../../api/ApiClientError'
+import { Alert, EmptyState, ErrorPanel, LoadingState, SuccessBanner } from '../../../components/ui/Feedback'
 import { paths } from '../../../routes/paths'
 import { expenseDisplayTitle } from '../../../utils/expenseDisplay'
 import { scopeIncludes } from '../../../utils/ledgerPageFilter'
@@ -200,16 +201,12 @@ export function ExpensesPage() {
         </div>
       </div>
 
-      {successMessage ? (
-        <p className="status-banner success" role="status" aria-live="polite">
-          {successMessage}
-        </p>
-      ) : null}
+      {successMessage ? <SuccessBanner>{successMessage}</SuccessBanner> : null}
 
       {deleteError ? (
-        <p className="status-banner error" role="alert">
+        <Alert tone="error" role="alert">
           {deleteError}
-        </p>
+        </Alert>
       ) : null}
 
       <ExpenseFilters
@@ -240,36 +237,27 @@ export function ExpensesPage() {
         </summary>
 
         <div className="upcoming-period__body">
-          {loading ? (
-            <p className="status-banner" role="status" aria-live="polite">
-              Loading expenses…
-            </p>
-          ) : null}
+          {loading ? <LoadingState withSkeleton>Loading expenses…</LoadingState> : null}
 
           {!loading && error ? (
-            <div className="status-panel" role="alert">
+            <ErrorPanel onRetry={() => void loadPage(recordedFilters)}>
               <p>{error}</p>
-              <button
-                type="button"
-                className="button button-secondary"
-                onClick={() => void loadPage(recordedFilters)}
-              >
-                Retry
-              </button>
-            </div>
+            </ErrorPanel>
           ) : null}
 
           {!loading && !error && expenses.length === 0 ? (
-            <div className="status-panel" role="status">
-              <p>
-                {hasActiveRecordedFilters
-                  ? 'No expenses match the current filters.'
-                  : 'No expenses yet.'}
-              </p>
-              <Link to={paths.transactionsExpensesAdd} className="button button-primary">
-                Add expense
-              </Link>
-            </div>
+            <EmptyState
+              title={hasActiveRecordedFilters ? 'No matching expenses' : 'No expenses yet'}
+              action={
+                <Link to={paths.transactionsExpensesAdd} className="button button-primary">
+                  Add expense
+                </Link>
+              }
+            >
+              {hasActiveRecordedFilters
+                ? 'No expenses match the current filters. Try clearing the filter or choosing a different month.'
+                : 'Record spending here so budgets and reports stay up to date.'}
+            </EmptyState>
           ) : null}
 
           {!loading && !error && expenses.length > 0 ? (

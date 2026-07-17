@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { isAbortError } from '../../../api/ApiClientError'
+import { Alert, EmptyState, ErrorPanel, LoadingState, SuccessBanner } from '../../../components/ui/Feedback'
 import { HelpLink } from '../../guidance/HelpLink'
 import { deleteCategory, getCategories, addStarterCategories } from '../api/categoryApi'
 import { CategoryList } from '../components/CategoryList'
@@ -138,59 +139,48 @@ export function CategoriesPage() {
       </div>
 
       {starterError ? (
-        <p className="status-banner error" role="alert">
+        <Alert tone="error" role="alert">
           {starterError}
-        </p>
+        </Alert>
       ) : null}
 
-      {successMessage ? (
-        <p className="status-banner success" role="status" aria-live="polite">
-          {successMessage}
-        </p>
-      ) : null}
+      {successMessage ? <SuccessBanner>{successMessage}</SuccessBanner> : null}
 
       {deleteError ? (
-        <p className="status-banner error" role="alert">
+        <Alert tone="error" role="alert">
           {deleteError}
-        </p>
+        </Alert>
       ) : null}
 
-      {loading ? (
-        <p className="status-banner" role="status" aria-live="polite">
-          Loading categories…
-        </p>
-      ) : null}
+      {loading ? <LoadingState withSkeleton>Loading categories…</LoadingState> : null}
 
       {!loading && error ? (
-        <div className="status-panel" role="alert">
+        <ErrorPanel onRetry={() => void loadCategories()}>
           <p>{error}</p>
-          <button
-            type="button"
-            className="button button-secondary"
-            onClick={() => void loadCategories()}
-          >
-            Retry
-          </button>
-        </div>
+        </ErrorPanel>
       ) : null}
 
       {!loading && !error && categories.length === 0 ? (
-        <div className="status-panel" role="status">
-          <p>No categories yet. Add starter categories for common everyday spending, or create your own.</p>
-          <div className="form-actions">
-            <button
-              type="button"
-              className="button button-secondary"
-              disabled={addingStarter}
-              onClick={() => void handleAddStarterCategories()}
-            >
-              Add starter categories
-            </button>
-            <Link to="/budgets/categories/new" className="button button-primary">
-              Add category
-            </Link>
-          </div>
-        </div>
+        <EmptyState
+          title="No categories yet"
+          action={
+            <div className="form-actions">
+              <button
+                type="button"
+                className="button button-secondary"
+                disabled={addingStarter}
+                onClick={() => void handleAddStarterCategories()}
+              >
+                Add starter categories
+              </button>
+              <Link to="/budgets/categories/new" className="button button-primary">
+                Add category
+              </Link>
+            </div>
+          }
+        >
+          Add starter categories for common everyday spending, or create your own labels.
+        </EmptyState>
       ) : null}
 
       {!loading && !error && categories.length > 0 ? (

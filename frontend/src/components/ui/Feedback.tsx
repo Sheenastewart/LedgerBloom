@@ -56,21 +56,39 @@ export function ErrorPanel({
 export function EmptyState({
   children,
   action,
+  title,
 }: {
   children: ReactNode
   action?: ReactNode
+  /** Optional short heading for intentional empty screens. */
+  title?: string
 }) {
   return (
     <div className="empty-state" role="status">
-      <div>{children}</div>
+      {title ? <p className="empty-state__title">{title}</p> : null}
+      <div className="empty-state__body">{children}</div>
       {action}
     </div>
   )
 }
 
-export function LoadingState({ children = 'Loading…' }: { children?: ReactNode }) {
+export function LoadingState({
+  children = 'Loading…',
+  withSkeleton = false,
+}: {
+  children?: ReactNode
+  /** Subtle placeholder bars while content loads. */
+  withSkeleton?: boolean
+}) {
   return (
-    <div className="loading-state" role="status" aria-live="polite">
+    <div className="loading-state" role="status" aria-live="polite" aria-busy="true">
+      {withSkeleton ? (
+        <div className="skeleton-stack" aria-hidden="true">
+          <div className="skeleton-block skeleton-block--lg" />
+          <div className="skeleton-block" />
+          <div className="skeleton-block skeleton-block--sm" />
+        </div>
+      ) : null}
       <p>{children}</p>
     </div>
   )

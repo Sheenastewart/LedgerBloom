@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { ApiClientError, isAbortError } from '../../../api/ApiClientError'
 import { HowThisWorks } from '../../../components/HowThisWorks'
 import { SimpleLineChart } from '../../../components/charts/SimpleCharts'
+import { EmptyState, ErrorPanel, LoadingState } from '../../../components/ui/Feedback'
 import { HelpLink } from '../../guidance/HelpLink'
 import { getMonthlyComparison } from '../api/reportsApi'
 import { MonthRangeForm } from '../components/MonthRangeForm'
@@ -96,23 +97,12 @@ export function TrendsPage() {
       <MonthRangeForm appliedRange={range} defaultRange={DEFAULT_RANGE} onApply={handleApplyRange} />
 
       {error ? (
-        <div className="status-panel" role="alert">
+        <ErrorPanel onRetry={() => void loadComparison(range)}>
           <p>{error}</p>
-          <button
-            type="button"
-            className="button button-secondary"
-            onClick={() => void loadComparison(range)}
-          >
-            Retry
-          </button>
-        </div>
+        </ErrorPanel>
       ) : null}
 
-      {loading ? (
-        <p className="status-banner" role="status" aria-live="polite">
-          Loading trends…
-        </p>
-      ) : null}
+      {loading ? <LoadingState withSkeleton>Loading trends…</LoadingState> : null}
 
       {!loading && !error && comparison ? (
         <>
@@ -125,9 +115,10 @@ export function TrendsPage() {
           </p>
 
           {isEmptyRange ? (
-            <p className="dashboard-empty" role="status">
-              No income or expense entries in this range.
-            </p>
+            <EmptyState title="No activity in this range">
+              No income or expense entries in this range. Try a wider period or add transactions
+              first.
+            </EmptyState>
           ) : null}
 
           {comparison.months.length > 0 ? (

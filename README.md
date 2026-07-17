@@ -194,6 +194,25 @@ Budget planning moved from per-category limits to nine preset **budget groups**,
 
 Stage 12 does **not** include bank sync, OCR/receipts, push notifications, or production hosting.
 
+### Product Polish & UX Refinement
+
+LedgerBloom’s core financial workflows are feature-complete. This milestone refines the existing experience so the product feels more mature—without redesigning identity, navigation, or workflows.
+
+**What changed**
+
+- Shared loading skeletons and consistent `LoadingState` / `EmptyState` / `ErrorPanel` / success alerts on high-traffic screens (Dashboard, Expenses, Income, Categories, Trends)
+- Clearer intentional empty states with short titles and next-step actions
+- Stronger focus visibility on filters, details summaries, and search
+- Button hover states for secondary, danger, and icon buttons
+- Settings Account and Security reorganized into spaced panels for discoverability (same settings, clearer layout)
+- Global search: Settings destinations, platform-aware shortcut label, arrow/Enter navigation, richer no-results copy
+- Period filters: year dropdowns (1992–2035) and current-month defaults aligned across Dashboard, Budgets, Reports, and Transactions
+- Subtle list-row hover and mobile-friendly filter/period grids
+
+**What did not change**
+
+- Dashboard section order, navigation structure, budget groups, auth, food assistance, merchant-first display, or branding palette
+
 ## Repository structure
 
 ```text

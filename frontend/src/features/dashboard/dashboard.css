@@ -70,10 +70,10 @@
   color: inherit;
 }
 
-.dashboard-period-grid .field select:focus,
-.dashboard-period-grid .field input:focus {
+.dashboard-period-grid .field select:focus-visible,
+.dashboard-period-grid .field input:focus-visible {
   outline: var(--lb-focus-ring);
-  outline-offset: 2px;
+  outline-offset: var(--lb-focus-offset);
 }
 
 .dashboard-period-actions {
@@ -81,6 +81,13 @@
   flex-wrap: wrap;
   gap: 0.65rem;
   margin-top: 1rem;
+}
+
+@media (max-width: 40rem) {
+  .dashboard-period-grid {
+    grid-template-columns: 1fr;
+    max-width: none;
+  }
 }
 
 .dashboard-summary-grid {

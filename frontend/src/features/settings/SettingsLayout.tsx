@@ -3,6 +3,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { SectionTabs } from '../../components/SectionTabs'
 import { paths } from '../../routes/paths'
 import '../../components/sectionNav.css'
+import './settings.css'
 
 const TABS = [
   { to: paths.settingsAccount, label: 'Account' },

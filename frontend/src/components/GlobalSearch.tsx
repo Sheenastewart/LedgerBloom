@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { paths } from '../routes/paths'
 import { HELP_TOPICS } from '../features/guidance/helpContent'
@@ -25,7 +25,16 @@ const STATIC_ITEMS: SearchItem[] = [
   { id: 'rep-review', label: 'Monthly review', group: 'Reports', to: paths.reportsReview },
   { id: 'rep-insights', label: 'Insights', group: 'Reports', to: paths.reportsInsights },
   { id: 'rep-x', label: 'Exports', group: 'Reports', to: paths.reportsExports },
-  { id: 'help', label: 'Help', group: 'Help', to: paths.settingsHelp },
+  { id: 'set-account', label: 'Account settings', group: 'Settings', to: paths.settingsAccount },
+  { id: 'set-security', label: 'Security', group: 'Settings', to: paths.settingsSecurity },
+  {
+    id: 'set-prefs',
+    label: 'Preferences',
+    group: 'Settings',
+    to: paths.settingsPreferences,
+  },
+  { id: 'set-about', label: 'About LedgerBloom', group: 'Settings', to: paths.settingsAbout },
+  { id: 'help', label: 'Help Center', group: 'Help', to: paths.settingsHelp },
   ...HELP_TOPICS.slice(0, 12).map((topic) => ({
     id: `help-${topic.id}`,
     label: topic.title,
@@ -35,6 +44,15 @@ const STATIC_ITEMS: SearchItem[] = [
   })),
 ]
 
+function shortcutLabel(): string {
+  if (typeof navigator === 'undefined') {
+    return '⌘K'
+  }
+  const platform = navigator.platform ?? ''
+  const isApple = /Mac|iPhone|iPad|iPod/i.test(platform)
+  return isApple ? '⌘K' : 'Ctrl+K'
+}
+
 type GlobalSearchProps = {
   extraItems?: SearchItem[]
 }
@@ -42,9 +60,12 @@ type GlobalSearchProps = {
 export function GlobalSearch({ extraItems = [] }: GlobalSearchProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [activeIndex, setActiveIndex] = useState(0)
   const inputId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const [kbdLabel] = useState(shortcutLabel)
 
   const catalog = useMemo(() => [...STATIC_ITEMS, ...extraItems], [extraItems])
 
@@ -60,24 +81,28 @@ export function GlobalSearch({ extraItems = [] }: GlobalSearchProps) {
   }, [catalog, query])
 
   useEffect(() => {
-    function onKey(event: KeyboardEvent) {
+    function onKey(event: globalThis.KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
         setOpen(true)
       }
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && open) {
+        event.preventDefault()
         setOpen(false)
+        triggerRef.current?.focus()
       }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [])
+  }, [open])
 
   useEffect(() => {
     if (open) {
       inputRef.current?.focus()
+      setActiveIndex(0)
     } else {
       setQuery('')
+      setActiveIndex(0)
     }
   }, [open])
 
@@ -92,17 +117,43 @@ export function GlobalSearch({ extraItems = [] }: GlobalSearchProps) {
     return () => document.removeEventListener('mousedown', onPointer)
   }, [open])
 
+  useEffect(() => {
+    setActiveIndex(0)
+  }, [query])
+
+  function handleInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setActiveIndex((current) => Math.min(current + 1, Math.max(results.length - 1, 0)))
+      return
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setActiveIndex((current) => Math.max(current - 1, 0))
+      return
+    }
+    if (event.key === 'Enter' && results[activeIndex]) {
+      event.preventDefault()
+      const link = rootRef.current?.querySelector<HTMLAnchorElement>(
+        `[data-search-index="${activeIndex}"]`,
+      )
+      link?.click()
+    }
+  }
+
   return (
     <div className="global-search" ref={rootRef}>
       <button
+        ref={triggerRef}
         type="button"
         className="global-search__trigger"
         aria-expanded={open}
         aria-controls={inputId}
+        aria-haspopup="dialog"
         onClick={() => setOpen(true)}
       >
         Search
-        <kbd className="global-search__kbd">⌘K</kbd>
+        <kbd className="global-search__kbd">{kbdLabel}</kbd>
       </button>
       {open ? (
         <div className="global-search__panel" role="dialog" aria-label="Search LedgerBloom">
@@ -114,18 +165,23 @@ export function GlobalSearch({ extraItems = [] }: GlobalSearchProps) {
             id={inputId}
             className="global-search__input"
             type="search"
-            placeholder="Search pages, reports, help…"
+            placeholder="Search pages, reports, settings, help…"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={handleInputKeyDown}
             autoComplete="off"
+            aria-autocomplete="list"
+            aria-controls={`${inputId}-results`}
           />
-          <ul className="global-search__results">
-            {results.map((item) => (
-              <li key={item.id}>
+          <ul id={`${inputId}-results`} className="global-search__results" role="listbox">
+            {results.map((item, index) => (
+              <li key={item.id} role="option" aria-selected={index === activeIndex}>
                 <Link
                   to={item.to}
-                  className="global-search__result"
+                  className={`global-search__result${index === activeIndex ? ' is-active' : ''}`}
+                  data-search-index={index}
                   onClick={() => setOpen(false)}
+                  onMouseEnter={() => setActiveIndex(index)}
                 >
                   <span>{item.label}</span>
                   <span className="global-search__group">{item.group}</span>
@@ -133,7 +189,9 @@ export function GlobalSearch({ extraItems = [] }: GlobalSearchProps) {
               </li>
             ))}
             {results.length === 0 ? (
-              <li className="global-search__empty">No matches.</li>
+              <li className="global-search__empty" role="status">
+                No matches. Try a page name like “Budget” or “Trends”.
+              </li>
             ) : null}
           </ul>
         </div>

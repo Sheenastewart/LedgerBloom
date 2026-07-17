@@ -102,7 +102,7 @@ describe('TrendsPage', () => {
     renderPage()
 
     expect(
-      await screen.findByText('No income or expense entries in this range.'),
+      await screen.findByText(/No income or expense entries in this range/i),
     ).toBeInTheDocument()
   })
 

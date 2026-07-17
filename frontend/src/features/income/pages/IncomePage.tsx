@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { isAbortError } from '../../../api/ApiClientError'
 import { HowThisWorks } from '../../../components/HowThisWorks'
 import { HelpLink } from '../../guidance/HelpLink'
+import { Alert, EmptyState, ErrorPanel, LoadingState, SuccessBanner } from '../../../components/ui/Feedback'
 import { paths } from '../../../routes/paths'
 import { todayIso } from '../../../utils/dueDateUtils'
 import { expandUpcomingSchedules } from '../../../utils/expandRecurringOccurrences'
@@ -304,15 +305,13 @@ export function IncomePage() {
       </HowThisWorks>
 
       {successMessage && !recurringSuccess ? (
-        <p className="status-banner success" role="status" aria-live="polite">
-          {successMessage}
-        </p>
+        <SuccessBanner>{successMessage}</SuccessBanner>
       ) : null}
 
       {deleteError ? (
-        <p className="status-banner error" role="alert">
+        <Alert tone="error" role="alert">
           {deleteError}
-        </p>
+        </Alert>
       ) : null}
 
       <IncomeFilters
@@ -343,36 +342,27 @@ export function IncomePage() {
           </summary>
 
           <div className="upcoming-period__body">
-            {loading ? (
-              <p className="status-banner" role="status" aria-live="polite">
-                Loading income…
-              </p>
-            ) : null}
+            {loading ? <LoadingState withSkeleton>Loading income…</LoadingState> : null}
 
             {!loading && error ? (
-              <div className="status-panel" role="alert">
+              <ErrorPanel onRetry={() => void loadReceived(recordedFilters)}>
                 <p>{error}</p>
-                <button
-                  type="button"
-                  className="button button-secondary"
-                  onClick={() => void loadReceived(recordedFilters)}
-                >
-                  Retry
-                </button>
-              </div>
+              </ErrorPanel>
             ) : null}
 
             {!loading && !error && entries.length === 0 ? (
-              <div className="status-panel" role="status">
-                <p>
-                  {hasActiveRecordedFilters
-                    ? 'No income entries match the current filters.'
-                    : 'No received income yet.'}
-                </p>
-                <Link to={paths.transactionsIncomeAdd} className="button button-primary">
-                  Add income
-                </Link>
-              </div>
+              <EmptyState
+                title={hasActiveRecordedFilters ? 'No matching income' : 'No received income yet'}
+                action={
+                  <Link to={paths.transactionsIncomeAdd} className="button button-primary">
+                    Add income
+                  </Link>
+                }
+              >
+                {hasActiveRecordedFilters
+                  ? 'No income entries match the current filters. Try clearing the filter or choosing a different month.'
+                  : 'Record paychecks and other money that already arrived.'}
+              </EmptyState>
             ) : null}
 
             {!loading && !error && entries.length > 0 ? (
@@ -417,22 +407,13 @@ export function IncomePage() {
             </HowThisWorks>
 
             {upcomingLoading ? (
-              <p className="status-banner" role="status" aria-live="polite">
-                Loading expected income…
-              </p>
+              <LoadingState withSkeleton>Loading expected income…</LoadingState>
             ) : null}
 
             {!upcomingLoading && upcomingError ? (
-              <div className="status-panel" role="alert">
+              <ErrorPanel onRetry={() => void loadUpcoming(fetchDaysForFilters(appliedFilters))}>
                 <p>{upcomingError}</p>
-                <button
-                  type="button"
-                  className="button button-secondary"
-                  onClick={() => void loadUpcoming(fetchDaysForFilters(appliedFilters))}
-                >
-                  Retry
-                </button>
-              </div>
+              </ErrorPanel>
             ) : null}
 
             {!upcomingLoading && !upcomingError ? (

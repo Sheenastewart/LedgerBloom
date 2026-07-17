@@ -119,7 +119,7 @@ describe('IncomePage', () => {
     vi.mocked(incomeApi.getIncomeEntries).mockResolvedValue([])
     renderPage()
 
-    expect(await screen.findByText('No received income yet.')).toBeInTheDocument()
+    expect(await screen.findByText('No received income yet')).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: 'Add income' }).length).toBeGreaterThan(0)
   })
 

@@ -141,7 +141,7 @@ describe('ExpensesPage', () => {
     vi.mocked(expenseApi.getExpenses).mockResolvedValue([])
     renderPage()
 
-    expect(await screen.findByText('No expenses yet.')).toBeInTheDocument()
+    expect(await screen.findByText('No expenses yet')).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: 'Add expense' }).length).toBeGreaterThan(0)
   })
 
@@ -157,7 +157,7 @@ describe('ExpensesPage', () => {
     await user.selectOptions(expenseFilters().getByLabelText('Category'), '1')
     await user.click(expenseFilters().getByRole('button', { name: 'Apply' }))
 
-    expect(await screen.findByText('No expenses match the current filters.')).toBeInTheDocument()
+    expect(await screen.findByText(/No expenses match the current filters/i)).toBeInTheDocument()
   })
 
   it('shows an error state and retries', async () => {

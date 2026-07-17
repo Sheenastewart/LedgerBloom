@@ -5,7 +5,7 @@ import { ActivityRowList } from '../../../components/ActivityRowList'
 import { HowThisWorks } from '../../../components/HowThisWorks'
 import { InfoTooltip } from '../../../components/InfoTooltip'
 import { Button } from '../../../components/ui/Button'
-import { ErrorPanel, LoadingState } from '../../../components/ui/Feedback'
+import { ErrorPanel, LoadingState, Alert } from '../../../components/ui/Feedback'
 import { formatCurrency, formatIsoDate } from '../../../utils/moneyUtils'
 import { getExpenses } from '../../expenses/api/expenseApi'
 import { CALCULATION_DEFS } from '../../guidance/calculationDefs'
@@ -190,11 +190,11 @@ export function DashboardPage() {
       </div>
 
       {error ? <ErrorPanel onRetry={() => void loadDashboard(period)}>{error}</ErrorPanel> : null}
-      {loading ? <LoadingState>Loading dashboard…</LoadingState> : null}
+      {loading ? <LoadingState withSkeleton>Loading dashboard…</LoadingState> : null}
       {actionError ? (
-        <p className="status-banner warning" role="alert">
+        <Alert tone="warning" role="alert">
           {actionError}
-        </p>
+        </Alert>
       ) : null}
 
       {!loading && !error && dashboard ? (
